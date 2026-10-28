@@ -1,5 +1,5 @@
 output "connection_id" {
-  description = "The Clumio connection, for modules/profile. It's known once Clumio's IAM exists, so protection waits for it."
+  description = "The Clumio connection, for modules/protect. It's known once Clumio's IAM exists, so protection waits for it."
   value       = clumio_aws_connection.this.id
   depends_on  = [module.iam]
 }

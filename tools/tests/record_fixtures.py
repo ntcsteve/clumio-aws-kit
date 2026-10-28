@@ -32,6 +32,12 @@ def record(world):
             status_code, body = answer
             items = [item for item in (body.get("_embedded") or {}).get("items", []) if pattern.match(item.get("name") or "")]
             saved = (status_code, {**{k: v for k, v in body.items() if k != "_links"}, "_embedded": {"items": items}})
+        # A rule that claimed a resource (OTHER) can be another team's: its name and tag condition are
+        # theirs. Keep the kit's own rules whole; another rule, only its ID (cold review, 2026-10-28).
+        if path.startswith("/policies/rules/") and answers["kit"]:
+            status_code, body = answer
+            if not status.kit_name_pattern(answers["kit"]).match(body.get("name") or ""):
+                saved = (status_code, {"id": body.get("id")})
         answers["clumio"][f"{unit or ''} {path}"] = list(saved)
         return answer
 

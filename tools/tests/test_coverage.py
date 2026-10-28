@@ -428,6 +428,16 @@ class Coverage(unittest.TestCase):
         self.assertEqual(state, "READY")
         self.assertTrue(any("orders-db" in line and "14 days" in line for line in lines))
 
+    # Cold review, 2026-10-28: the database lookup read one page; another database with a name that
+    # contains this one could push it to page two.
+    def test_a_database_on_a_later_page_is_found(self):
+        self.clumio.lists["/datasources/aws/rds-resources"].append(
+            {"id": "id-orders-db-old", "name": "orders-db-old", "account_native_id": ACCOUNT, "aws_region": REGION, "is_deleted": False})
+        self.add_db("orders-db", backup="2026-10-28T05:00:00Z")
+        self.clumio.page_size["/datasources/aws/rds-resources"] = 1
+        states, _, _ = self.states()
+        self.assertEqual(states["orders-db"], "OURS")
+
 
 if __name__ == "__main__":
     unittest.main()

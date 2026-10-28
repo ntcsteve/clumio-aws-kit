@@ -35,5 +35,18 @@ class Recording(unittest.TestCase):
         self.assertIn(f"gold-s3-{OURS}-us-west-2", saved)
 
 
+
+class OtherRules(unittest.TestCase):
+    # Cold review, 2026-10-28: OTHER looks up the winning rule, and the recorder saved it whole.
+    def test_another_teams_rule_is_saved_as_its_id_only(self):
+        rule = {"id": "r-9", "name": "team-b payroll rule", "condition": '{"aws_tag": "payroll"}'}
+        world = status.World(None, None, None, None, None, lambda path, unit=None: (200, rule), kit=lambda: KIT)
+        recording, answers = record_fixtures.record(world)
+        recording.kit()
+        recording.clumio_get("/policies/rules/r-9", unit=KIT["organizational_unit_id"])
+        saved = str(answers["clumio"])
+        self.assertNotIn("payroll", saved)
+        self.assertIn("r-9", saved)
+
 if __name__ == "__main__":
     unittest.main()

@@ -8,9 +8,9 @@
                                   organizational unit, Region, rule slots, and any existing connection
   tools/status.py --teardown      before a trial teardown: refuses in production, or while a backup runs,
                                   and names the folders still applied
-  tools/status.py --account 123456789012 --region us-west-2 --unit <unit ID or global>
-                                  status of the same policies, made by modules/protect from another
-                                  repository; these flags replace 1-connect's settings
+  tools/status.py --account 123456789012 --region us-west-2 --unit <unit ID or global> [--json]
+                                  status of policies modules/protect made from another repository; all
+                                  three together, for status and --json only
 
 Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a person must act;
 2 AWS or Clumio didn't answer, so nothing is assumed. The account, Region, unit and mode come from
@@ -202,10 +202,11 @@ def check_region(region, regions):
 def check_rule_slots(world, unit_id):
     """Rules belong to a unit, up to its limit. Each 2-protect- folder for RDS, Aurora, EC2 or EBS adds
     one; this counts what the folders set up but not applied still need, before an apply fails halfway."""
-    status_code, body = world.clumio_get("/policies/rules?limit=100", unit=unit_id)
-    if status_code != 200:
-        return "FAIL", "rule slots", f"Clumio answered HTTP {status_code} listing rules. Try again."
-    used = sum(1 for rule in body.get("_embedded", {}).get("items", []) if rule.get("organizational_unit_id") == unit_id)
+    # The list holds every unit's rules, so this unit's can sit on any page: read them all.
+    rules = clumio_items(world, "/policies/rules", None, unit_id, complete=True)
+    if rules is None:
+        return "FAIL", "rule slots", "Clumio didn't list the rules in full. Try again."
+    used = sum(1 for rule in rules if rule.get("organizational_unit_id") == unit_id)
     kind = "global" if unit_id == GLOBAL_UNIT else "child unit"
     limit = RULE_LIMITS[kind]
     pending = world.pending_rule_folders() if world.pending_rule_folders else []
@@ -237,7 +238,7 @@ def exit_code(results):
 # --- Coverage: who protects each tagged resource -------------------------------------------------
 
 TAG_KEY = "clumio-profile"
-VOLUME_TAG_KEY = "clumio-volume-profile"  # A volume on its own: see modules/profile, the volumes rule.
+VOLUME_TAG_KEY = "clumio-volume-profile"  # A volume on its own: see modules/protect, the ebs workload.
 ACTION_STATES = {"OTHER", "BAD_VALUE", "OFF", "DOUBLE"}  # a person must change something
 # Each kind of tagged resource, and the 2-protect- folder (workload) whose policy protects it.
 WORKLOADS = {"s3": "s3", "rds-instance": "rds", "rds-cluster": "aurora", "ec2-instance": "ec2", "ebs-volume": "ebs"}
@@ -387,7 +388,7 @@ def check_in_clumio(world, kit, profiles, item):
     if problem:
         return problem
     if kind.startswith("rds"):
-        backups = clumio_items(world, "/backups/aws/rds-resources", {"resource_id": {"$eq": asset["id"]}}, kit["organizational_unit_id"])
+        backups = clumio_items(world, "/backups/aws/rds-resources", {"resource_id": {"$eq": asset["id"]}}, kit["organizational_unit_id"], complete=True)
         if backups is None:
             return record(kind, name, value, "UNKNOWN", "Clumio didn't answer for its backups. Run again.")
         return protected(kind, name, value, max((b.get("start_timestamp", "") for b in backups if b.get("resource_id") == asset["id"]), default=""))
@@ -411,7 +412,7 @@ def ownership_problem(world, kind, name, value, our_policy, asset, unit):
 def find_database(world, kit, name):
     """Clumio's record of this database in this Region: the record, {} when Clumio hasn't found it, or None when Clumio didn't answer."""
     found = clumio_items(world, "/datasources/aws/rds-resources",
-                         {"account_native_id": {"$eq": kit["account_id"]}, "name": {"$contains": name}}, kit["organizational_unit_id"])
+                         {"account_native_id": {"$eq": kit["account_id"]}, "name": {"$contains": name}}, kit["organizational_unit_id"], complete=True)
     if found is None:
         return None
     return next((a for a in found if a.get("name") == name and a.get("aws_region") == kit["region"] and not a.get("is_deleted")), {})
@@ -613,6 +614,20 @@ def run_json(command, timeout=60):
     return json.loads(answer.stdout) if answer.returncode == 0 and answer.stdout.strip() else None
 
 
+def flag_problem(account, region, unit, mode_flag):
+    """Why the --account, --region and --unit flags can't be used as given, or None. They name the
+    account to check for status and --json; preflight and teardown read 1-connect's settings, mode
+    included, so a flag there would check one account and report another (cold review, 2026-10-28)."""
+    given = [flag for flag in (account, region, unit) if flag]
+    if not given:
+        return None
+    if len(given) < 3:
+        return "Give --account, --region and --unit together, or none of them."
+    if mode_flag:
+        return "--account, --region and --unit work with status and --json only. --preflight and --teardown read 1-connect/terraform.tfvars."
+    return None
+
+
 def kit_from(settings):
     """The account, Region and unit to check, from 1-connect's settings or the flags; None when any is
     missing or malformed. The unit becomes the ID Clumio uses: "global" is the all-zero ID."""
@@ -774,6 +789,9 @@ def main():
     parser.add_argument("--region")
     parser.add_argument("--unit", help='"global", or a unit\'s ID')
     args = parser.parse_args()
+    problem = flag_problem(args.account, args.region, args.unit, args.preflight or args.teardown)
+    if problem:
+        parser.error(problem)
     flags = {"account_id": args.account, "region": args.region, "organizational_unit": args.unit} if args.account else None
     if not args.preflight and not (os.environ.get("CLUMIO_API_TOKEN") and os.environ.get("CLUMIO_API_BASE_URL")):
         print("Export your Clumio details first (0-check/README.md): export CLUMIO_API_BASE_URL=<your API URL>, "
@@ -783,7 +801,7 @@ def main():
         if args.preflight:
             results = preflight(real_world())
             print_results(results)
-            print("Next: 0-check/preview/preview.sh" if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
+            print("Ready. Next: the step you're on (README.md, The steps)." if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
             sys.exit(exit_code(results))
         sys.exit(run_teardown() if args.teardown else run_status(args.json, flags))
     except NothingApplied:

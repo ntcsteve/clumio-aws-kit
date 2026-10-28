@@ -184,5 +184,40 @@ class Preflight(unittest.TestCase):
         self.assertEqual(self.states(results)["AWS sign-in"], "SKIP")
 
 
+
+class PagedRules(FakeClumio):
+    """Rules over pages, as Clumio pages by cursor: this unit's rules only on page two."""
+
+    def get(self, path, unit=None):
+        if path.startswith("/policies/rules"):
+            if "start=2" in path:
+                return 200, rules(5)
+            return 200, {"_embedded": {"items": rules(2, GLOBAL)["_embedded"]["items"]},
+                         "_links": {"_next": {"href": "/policies/rules?limit=100&start=2"}}}
+        return super().get(path, unit)
+
+
+class RuleSlotPages(unittest.TestCase):
+    # Cold review, 2026-10-28: the rule list holds every unit's rules, so this unit's can fall past page one.
+    def test_a_unit_full_on_page_two_is_seen(self):
+        results = Preflight.run_preflight(self, clumio=PagedRules(), pending=["2-protect-ec2"])
+        self.assertEqual({c: s for s, c, _ in results}["rule slots"], "FAIL")
+
+
+class Flags(unittest.TestCase):
+    # Cold review, 2026-10-28: a partial set crashed, and --teardown ignored the flags and checked
+    # 1-connect's account instead.
+    def test_flags_need_all_three(self):
+        self.assertIn("--account, --region and --unit", status.flag_problem(account="123456789012", region=None, unit=None, mode_flag=False))
+
+    def test_flags_work_only_for_status(self):
+        self.assertIn("status and --json", status.flag_problem(account="123456789012", region="us-west-2", unit="global", mode_flag=True))
+
+    def test_a_full_set_for_status_is_fine(self):
+        self.assertIsNone(status.flag_problem(account="123456789012", region="us-west-2", unit="global", mode_flag=False))
+
+    def test_no_flags_is_fine(self):
+        self.assertIsNone(status.flag_problem(account=None, region=None, unit=None, mode_flag=True))
+
 if __name__ == "__main__":
     unittest.main()
