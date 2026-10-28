@@ -1,6 +1,6 @@
 # Proof
 
-Every claim in this repository traces to a capture here: what AWS and Clumio answered, saved as raw JSON, masked, with a checksum manifest.
+The claims in [Does Clumio need our keys?](../docs/keys.md) trace to the captures here, or to the earlier run they link: what AWS and Clumio answered, saved as raw JSON, masked, with a checksum manifest.
 
 ## Check the evidence
 

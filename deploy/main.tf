@@ -1,5 +1,6 @@
 # The first-time path: connect one AWS account and Region to Clumio, then protect it. See README.md.
-# Production teams call ../modules from their own repo instead; every guard lives in the modules.
+# Production teams call ../modules from their own repo instead (docs/production.md). Every guard lives in
+# the modules except the workloads check in variables.tf, which needs both modules' settings at once.
 # Clumio credentials come from CLUMIO_API_TOKEN and CLUMIO_API_BASE_URL in your shell.
 
 locals {

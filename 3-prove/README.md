@@ -10,13 +10,13 @@ tools/status.py
 
 It lists every resource tagged `clumio-profile` (and every volume tagged `clumio-volume-profile`), who protects it, and its last backup. It reads AWS and Clumio, and changes nothing. The first line checks the connection. Right after step 2, resources show NOT_YET or WAITING; once each one's first backup has run, every resource line should say OURS. [Read tools/status.py](../docs/operate.md#read-toolsstatuspy) says what each other state means, and what to do.
 
-Give it time. Clumio finds new resources within about an hour. A bucket joins its protection group once Clumio's daily inventory sees its tag, so allow up to a day.
+Give it time. In the lab run, a bucket joined its protection group within minutes, and every resource had its first backup within an hour of step 2. Allow up to a day before you look in Clumio's Tasks.
 
 ## 2. Restore one
 
 In the Clumio console, restore one resource you protected, to a new name beside the original, never over it. For a database, Clumio creates a new instance or cluster. For a bucket, restore a folder to a new prefix.
 
-When the restore task completes, open what came back and check it. Then delete the restored copy yourself: the kit never deletes data.
+When the restore task completes, open what came back and check it. Which key the copy gets depends on the workload: see [What a restore needs from you](../docs/keys.md#what-a-restore-needs-from-you). The restored copy carries no `clumio-profile` tag, so the kit neither protects nor removes it: delete it yourself when you're done.
 
 ## 3. Keep the evidence
 

@@ -505,7 +505,7 @@ def teardown(world):
     if running:
         return "BLOCKED", running + ["Run tools/status.py --teardown again when they end: removing protection mid-backup leaves Clumio's tasks stuck."]
     databases = world.databases(kit["region"])
-    return "READY", [f"{name}: PITR window {databases[name]['pitr']} days, as Clumio set it. It stays after teardown: change it yourself if you need to."
+    return "READY", [f"{name}: PITR window {databases[name]['pitr']} days now. It stays after teardown: change it yourself if you need to."
                      for kind, name in ours if kind.startswith("rds") and name in databases]
 
 

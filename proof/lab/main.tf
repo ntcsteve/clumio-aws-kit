@@ -1,5 +1,5 @@
 # The proof lab: small test data, each part encrypted under a key it names, tagged so a profile in
-# deploy/ protects it. Its only purpose is to prove claims live: PROOF.md cites what it produced.
+# deploy/ protects it. Its only purpose is to prove claims live: docs/keys.md cites what it produced.
 # Test accounts only. Databases have no deletion protection and skip their final snapshot: they hold
 # no data. Every resource carries kitlab = proof-lab, and every name starts kitlab-<suffix>, so what
 # the lab made is never in doubt.
