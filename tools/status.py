@@ -6,8 +6,6 @@
   tools/status.py --json          the same, for machines
   tools/status.py --preflight     before the first plan: tools, settings, AWS sign-in, Clumio token,
                                   organizational unit, Region, rule slots, and any existing connection
-  tools/status.py --preview       after terraform plan -out=tfplan in deploy/: what the saved plan
-                                  will protect, and each tagged database's PITR window now and after
   tools/status.py --teardown      before a trial teardown: refuses in production, or while a backup runs
 
 Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a person must act;
@@ -55,7 +53,6 @@ class World:
     clumio_credentials_set: Callable[[], bool]
     clumio_get: Callable[..., tuple]  # (path, unit=None) -> (HTTP status, or None if unreachable; body)
     kit: Optional[Callable[[], Optional[dict]]] = None  # Terraform's kit output, or None before deploy/ is applied
-    saved_plan: Optional[Callable[[], Optional[dict]]] = None  # tfplan as JSON, or None without one
     tagged_resources: Optional[Callable[[str], list]] = None  # the tagging API's mappings in a Region
     databases: Optional[Callable[[str], dict]] = None  # name -> {"pitr": days, "cluster": its Aurora cluster or None}
     volumes: Optional[Callable[[str], dict]] = None  # volume ID -> {"instance": the instance it's attached to, or None}
@@ -232,14 +229,6 @@ class NothingApplied(Exception):
     """deploy/ hasn't been applied, so there's no protection to check."""
 
 
-class NothingPlanned(Exception):
-    """There's no saved plan (tfplan) to preview."""
-
-
-class RemovalPlan(Exception):
-    """The saved plan only removes resources, such as a teardown's: there's no protection to preview."""
-
-
 class AwsUnavailable(Exception):
     """AWS didn't answer a read, so no resource list can be trusted."""
 
@@ -304,9 +293,8 @@ def attached_instance(volume_id, context):
 
 
 def workloads_of(profile):
-    """A profile's workloads, from Terraform's kit output or from a saved plan's settings."""
-    on = profile.get("workloads") or profile
-    return {workload: bool(on.get(workload, False)) for workload in LABELS}
+    """A profile's workloads, from Terraform's kit output."""
+    return {workload: bool(profile["workloads"].get(workload, False)) for workload in LABELS}
 
 
 def settings_problem(item, profiles, context):
@@ -482,47 +470,6 @@ def mask(text, found):
     return text
 
 
-# --- Preview: what the saved plan will protect ---------------------------------------------------
-
-WILL_PROTECT = {"s3": "Backtrack, and a daily SecureVault copy",
-                "ec2-instance": "a daily SecureVault copy of the instance and its attached volumes",
-                "ebs-volume": "a daily SecureVault copy of this volume"}
-
-
-def preview(world):
-    """One line per tagged resource: what the saved plan does to it. Raises NothingPlanned."""
-    plan = world.saved_plan()
-    if plan is None:
-        raise NothingPlanned()
-    actions = [change["change"]["actions"] for change in plan.get("resource_changes", [])]
-    if ["delete"] in actions and all(action in (["delete"], ["no-op"]) for action in actions):
-        raise RemovalPlan()
-    settings = {key: value["value"] for key, value in plan["variables"].items()}
-    profiles, region = settings["profiles"], settings["region"]
-    databases = world.databases(region)
-    items, context = tagged(world, region)
-    lines = []
-    for kind, name, value, key in items:
-        problem = settings_problem((kind, name, value, key), profiles, context)
-        if problem:
-            lines.append(problem)
-        elif kind.startswith("rds"):
-            lines.append(pitr_line(kind, name, value, databases.get(name, {}).get("pitr"), profiles[value]))
-        else:
-            lines.append(record(kind, name, value, "WILL_PROTECT", WILL_PROTECT[kind]))
-    return lines
-
-
-def pitr_line(kind, name, value, now, profile):
-    """A database's PITR window now and after. modules/profile has already stopped a plan that shortens
-    a window without allow_shorter_pitr, so this only shows it."""
-    after = profile["pitr_retention_days"]
-    if now is None:
-        return record(kind, name, value, "WILL_PROTECT", f"PITR window: {after} days after (now unknown)")
-    change = "shorter" if after < now else ("longer" if after > now else "unchanged")
-    return record(kind, name, value, "WILL_PROTECT", f"PITR window: {now} days now, {after} days after: {change}")
-
-
 # --- Teardown: is it safe to remove protection now? ----------------------------------------------
 
 def teardown(world):
@@ -530,9 +477,12 @@ def teardown(world):
     kit = world.kit()
     if kit is None:
         raise NothingApplied()
-    if kit["mode"] == "production":
-        return "REFUSED", ["mode is production, so teardown is refused. To retire production on purpose, "
-                           "see Retire a production connection in docs/operate.md."]
+    # The mode as the person set it in deploy/terraform.tfvars. Terraform's production guard is the hard
+    # stop; this says so first, in words, and lets a retire go ahead once the settings say trial.
+    settings, _ = read_settings(world.settings_path)
+    if settings.get("mode") == "production":
+        return "REFUSED", ["mode is production in deploy/terraform.tfvars, so teardown is refused. To retire production "
+                           "on purpose, see Retire a production connection in docs/operate.md."]
     unit = kit["organizational_unit_id"]
     watched = [(f"protection group of profile {name}", p["protection_group_id"]) for name, p in kit["profiles"].items() if p["protection_group_id"]]
     items, _ = tagged(world, kit["region"])
@@ -578,7 +528,6 @@ def real_world():
         clumio_credentials_set=lambda: bool(os.environ.get("CLUMIO_API_TOKEN") and os.environ.get("CLUMIO_API_BASE_URL")),
         clumio_get=clumio_get,
         kit=terraform_kit,
-        saved_plan=terraform_saved_plan,
         tagged_resources=aws_tagged_resources,
         databases=aws_databases,
         volumes=aws_volumes,
@@ -598,12 +547,6 @@ def run_json(command, timeout=60):
 def terraform_kit():
     """The kit output from this folder's state: account, Region, unit, mode and each profile's IDs."""
     return run_json(["terraform", "output", "-json", "kit"])
-
-
-def terraform_saved_plan():
-    if not os.path.exists(os.path.join(DEPLOY, "tfplan")):
-        return None
-    return run_json(["terraform", "show", "-json", "tfplan"], timeout=120)
 
 
 def aws_tagged_resources(region):
@@ -705,13 +648,6 @@ def run_status(as_json):
     return code
 
 
-def run_preview():
-    lines = preview(real_world())
-    print("What the saved plan protects, by tag:")
-    print_records(lines)
-    return 0
-
-
 def run_teardown():
     state, lines = teardown(real_world())
     print(f"{state}: " + {"REFUSED": "teardown is refused.", "BLOCKED": "Clumio is still working on this folder's resources:",
@@ -725,7 +661,6 @@ def main():
     parser = argparse.ArgumentParser(description="Read-only checks for deploy/. Nothing changes.")
     choice = parser.add_mutually_exclusive_group()
     choice.add_argument("--preflight", action="store_true", help="check everything before the first plan")
-    choice.add_argument("--preview", action="store_true", help="what the saved plan will protect")
     choice.add_argument("--teardown", action="store_true", help="whether teardown is safe now")
     parser.add_argument("--json", action="store_true", help="coverage as JSON, for machines")
     args = parser.parse_args()
@@ -735,16 +670,9 @@ def main():
             print_results(results)
             print("Next: 0-check/preview/preview.sh" if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
             sys.exit(exit_code(results))
-        sys.exit(run_preview() if args.preview else run_teardown() if args.teardown else run_status(args.json))
+        sys.exit(run_teardown() if args.teardown else run_status(args.json))
     except NothingApplied:
         print("Nothing is applied in deploy/ yet: plan and apply it first (deploy/README.md).")
-        sys.exit(1)
-    except NothingPlanned:
-        print("There's no saved plan to preview: in deploy/, run terraform plan -out=tfplan.")
-        sys.exit(1)
-    except RemovalPlan:
-        print("The saved plan in deploy/ only removes resources, such as a teardown's, so it protects nothing. "
-              "Read it with terraform show tfplan.")
         sys.exit(1)
     except AwsUnavailable as error:
         print(f"UNKNOWN: {error}")

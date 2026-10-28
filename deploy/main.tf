@@ -57,21 +57,18 @@ module "profile" {
   rule_before_id      = each.value.rule_before_id
 }
 
-# What status.py reads to tell this folder's protection from anyone else's.
+# What tools/status.py reads to tell this folder's protection from anyone else's, plus the rule IDs
+# for ranking another rule against these.
 output "kit" {
   value = {
     account_id             = module.connection.account_id
     region                 = module.connection.region
     organizational_unit_id = module.connection.organizational_unit_id
-    mode                   = var.mode
     profiles = { for name, profile in module.profile : name => {
-      tag                 = profile.tag
-      volume_tag          = profile.volume_tag
       policy_id           = profile.policy_id
       rule_id             = profile.rule_id
       volume_rule_id      = profile.volume_rule_id
       protection_group_id = profile.protection_group_id
-      pitr_retention_days = profile.pitr_retention_days
       workloads           = profile.workloads
     } }
   }

@@ -43,15 +43,12 @@ The first line checks that the connection sits in the organizational unit set in
 
 Exit codes, for scripts and CI: 0 nothing to do, 1 a person must act, 2 AWS or Clumio didn't answer. `tools/status.py --json` prints the same lines as JSON.
 
-After `terraform plan -out=tfplan`, `tools/status.py --preview` shows what the saved plan will protect: each tagged resource, and each database's PITR window now and after. A plan that would shorten a window without `allow_shorter_pitr` has already stopped, in the profile module.
-
 ## Know the limits
 
 - **Rule order is shared.** Clumio keeps every rule in a unit in one chain. Adding a profile's rule links it after the unit's current last rule, so that rule's position changes too; if another team manages its rules with Terraform, their next plan shows it. The kit sets its own rules' position once, at creation, and doesn't fight later reordering.
 - **A database tagged after apply** gets the profile's PITR window from Clumio directly, with no plan in between, so a longer window is cut without the plan's check. Check a database's current window before you tag it.
 - **The teardown check is a step you run.** Terraform runs no checks on destroy, so nothing stops a destroy while Clumio is backing up. Run `tools/status.py --teardown` first, as [Take a trial down](#take-a-trial-down) says.
 - **Teardown reads running tasks by tag.** Remove a resource's tag before teardown, and its running backup isn't seen. If Clumio lists more than one page of tasks for a resource, teardown says UNKNOWN rather than READY: look in Clumio's Tasks.
-- **The preview doesn't read who protects a resource today.** A resource another rule already claims shows WILL_PROTECT in the preview, then OTHER in `tools/status.py`.
 - **OURS right after a change of policy** can show the last backup the previous policy made, until this profile's first backup runs.
 
 ## Take a trial down
@@ -75,5 +72,4 @@ The production guards refuse every destroy, so retiring production is a delibera
    ```
 
 2. Set `mode = "trial"` in `deploy/terraform.tfvars`.
-3. Record the new mode: `terraform plan -out=tfplan`, then `terraform apply tfplan`. The plan changes no resources, only the mode Terraform records, which `tools/status.py --teardown` reads. Without this step it still says production, and refuses.
-4. Take it down as a trial: [Take a trial down](#take-a-trial-down).
+3. Take it down as a trial: [Take a trial down](#take-a-trial-down).

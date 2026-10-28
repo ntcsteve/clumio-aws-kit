@@ -18,7 +18,7 @@ import status  # noqa: E402
 
 def record(world):
     """Wraps each reader so every answer is kept: Clumio by path and unit, AWS by Region."""
-    answers = {"clumio": {}, "tagged_resources": {}, "databases": {}, "volumes": {}, "instances": {}, "kit": None, "plan_variables": None}
+    answers = {"clumio": {}, "tagged_resources": {}, "databases": {}, "volumes": {}, "instances": {}, "kit": None}
 
     def clumio_get(path, unit=None):
         answer = world.clumio_get(path, unit=unit)
@@ -45,13 +45,9 @@ def record(world):
         answers["kit"] = world.kit()
         return answers["kit"]
 
-    def saved_plan():
-        plan = world.saved_plan()
-        answers["plan_variables"] = plan and {"variables": plan["variables"]}  # The rest of a plan isn't read.
-        return plan
-
     recording = status.World(world.settings_path, world.terraform_version, world.aws_cli_found, world.signed_in_account,
-                             world.clumio_credentials_set, clumio_get, kit, saved_plan, tagged_resources, databases, volumes, instances)
+                             world.clumio_credentials_set, clumio_get, kit=kit, tagged_resources=tagged_resources,
+                             databases=databases, volumes=volumes, instances=instances)
     return recording, answers
 
 
@@ -61,11 +57,6 @@ def main():
     recording, answers = record(status.real_world())
     status.coverage(recording)
     status.teardown(recording)
-    if os.path.exists(os.path.join(status.DEPLOY, "tfplan")):
-        try:
-            status.preview(recording)
-        except status.RemovalPlan:
-            pass  # A teardown's plan: nothing to preview, and nothing more to record.
     found = status.masks(status.real_world(), answers["kit"])
     if found is None:
         sys.exit("FAIL: Clumio didn't answer for the connection, so its accounts can't be masked. Nothing was saved. Run again.")

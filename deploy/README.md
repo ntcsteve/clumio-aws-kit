@@ -38,7 +38,7 @@ A profile is a named protection level, such as `gold`, and becomes one Clumio po
 
 Run `terraform plan -out=tfplan`. If a tagged database's PITR window would get shorter, the plan stops and names it. A shorter window deletes AWS's older automated backups for good. Raise `pitr_retention_days`, or set `allow_shorter_pitr = true` in that profile to accept it.
 
-Before you apply, see what the plan will protect: `../tools/status.py --preview`. It lists each tagged resource, and each database's PITR window now and after. Then `terraform apply tfplan`. The plan holds only protection: the policy, its rules, and the S3 protection group and its assignment.
+Read the plan, then run `terraform apply tfplan`. The plan holds only protection: the policy, its rules, and the S3 protection group and its assignment. Then [step 3](../3-prove/README.md) shows what each tagged resource got.
 
 ## Next
 

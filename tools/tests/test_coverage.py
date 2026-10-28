@@ -1,9 +1,10 @@
-"""Tests for status.py's coverage (status), --preview and --teardown. Fakes stand in for AWS and
+"""Tests for status.py's coverage (status) and --teardown. Fakes stand in for AWS and
 Clumio; each fake answer has the shape of a real one read on 2026-10-28, and the fake Clumio filters
 the way the real API does, so a wrong filter in status.py fails here. Run: python3 -m unittest discover -s tests"""
 import json
 import os
 import sys
+import tempfile
 import unittest
 import urllib.parse
 
@@ -15,7 +16,7 @@ UNIT = "11111111-2222-3333-4444-555555555555"
 POLICY, RULE, GROUP = "pol-gold", "rule-gold", "pg-gold"
 
 KIT = {
-    "account_id": ACCOUNT, "region": REGION, "organizational_unit_id": UNIT, "mode": "trial",
+    "account_id": ACCOUNT, "region": REGION, "organizational_unit_id": UNIT,
     "profiles": {"gold": {"tag": {"key": "clumio-profile", "value": "gold"}, "policy_id": POLICY, "rule_id": RULE,
                           "volume_tag": {"key": "clumio-volume-profile", "value": "gold"}, "volume_rule_id": "rule-gold-volumes",
                           "protection_group_id": GROUP, "workloads": {"s3": True, "databases": True, "ec2": True, "ebs_volumes": True}},
@@ -103,14 +104,22 @@ class Coverage(unittest.TestCase):
         self.dbs = {}  # name -> {"pitr": days, "cluster": cluster name or None}
         self.vols = {}  # volume ID -> {"instance": the instance it's attached to, or None}
         self.live_instances = set()  # instance IDs AWS describes as not terminated
+        self.settings_path = self.settings("trial")
         self.kit = dict(KIT)
-        self.plan = None
+
+    def settings(self, mode):
+        """A deploy/terraform.tfvars with this mode, as the person wrote it."""
+        handle, path = tempfile.mkstemp(suffix=".tfvars")
+        with os.fdopen(handle, "w") as out:
+            out.write(f'account_id = "{ACCOUNT}"\nregion = "{REGION}"\norganizational_unit = "{UNIT}"\nmode = "{mode}"\n')
+        self.addCleanup(os.remove, path)
+        return path
 
     def world(self):
         return status.World(
-            settings_path="unused", terraform_version=lambda: "1.15.5", aws_cli_found=lambda: True,
+            settings_path=self.settings_path, terraform_version=lambda: "1.15.5", aws_cli_found=lambda: True,
             signed_in_account=lambda: ACCOUNT, clumio_credentials_set=lambda: True, clumio_get=self.clumio.get,
-            kit=lambda: self.kit, saved_plan=lambda: self.plan,
+            kit=lambda: self.kit,
             tagged_resources=lambda region: self.resources, databases=lambda region: self.dbs,
             volumes=lambda region: self.vols, instances=lambda region: self.live_instances)
 
@@ -279,14 +288,6 @@ class Coverage(unittest.TestCase):
         state, _ = status.teardown(self.world())
         self.assertEqual(state, "BLOCKED")
 
-    def test_preview_flags_a_double_volume_before_anything_is_applied(self):
-        self.plan = self.plan_with(gold={"s3": True, "databases": True, "ec2": True, "ebs_volumes": True, "pitr_retention_days": 3})
-        self.resources = [instance("i-0abc"), volume("vol-0bbb")]
-        self.vols = {"vol-0bbb": {"instance": "i-0abc"}}
-        self.live_instances = {"i-0abc"}
-        states = {line["name"]: line["state"] for line in status.preview(self.world())}
-        self.assertEqual(states, {"i-0abc": "WILL_PROTECT", "vol-0bbb": "DOUBLE"})
-
     # --- Fixes from the cold review ---
 
     def test_teardown_waits_while_a_backup_is_aborting(self):
@@ -333,63 +334,20 @@ class Coverage(unittest.TestCase):
         records, _ = status.coverage(self.world())
         self.assertEqual(records, [])
 
-    # --- --preview, after terraform plan -out=tfplan ---
-
-    def plan_with(self, **profiles):
-        return {"variables": {"account_id": {"value": ACCOUNT}, "region": {"value": REGION},
-                              "profiles": {"value": profiles}}}
-
-    # The profile module stops a plan that shortens a window without allow_shorter_pitr, so a saved
-    # plan has already passed that guard. The preview only shows each window, now and after.
-    def test_preview_shows_a_shorter_window_and_leaves_the_judging_to_the_module(self):
-        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3, "allow_shorter_pitr": True})
-        self.resources = [database("orders-db")]
-        self.dbs = {"orders-db": {"pitr": 7, "cluster": None}}
-        lines = status.preview(self.world())
-        self.assertEqual(lines[0]["state"], "WILL_PROTECT")
-        self.assertIn("7 days now, 3 days after: shorter", lines[0]["detail"])
-
-    # Taking a trial down saves its destroy plan as deploy/tfplan too. Previewing it as protection
-    # would show every resource as WILL_PROTECT for a plan that removes all of it.
-    def test_a_plan_that_only_removes_is_not_previewed_as_protection(self):
-        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3})
-        self.plan["resource_changes"] = [{"address": "module.profile[\"gold\"].clumio_policy.this", "change": {"actions": ["delete"]}},
-                                         {"address": "module.connection.clumio_aws_connection.this", "change": {"actions": ["delete"]}}]
-        self.resources = [database("orders-db")]
-        with self.assertRaises(status.RemovalPlan):
-            status.preview(self.world())
-
-    def test_a_plan_that_creates_is_previewed(self):
-        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 14})
-        self.plan["resource_changes"] = [{"address": "module.profile[\"gold\"].clumio_policy.this", "change": {"actions": ["create"]}}]
-        self.resources = [database("orders-db")]
-        self.dbs = {"orders-db": {"pitr": 7, "cluster": None}}
-        self.assertEqual(status.preview(self.world())[0]["state"], "WILL_PROTECT")
-
-    def test_preview_of_a_longer_window(self):
-        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 14})
-        self.resources = [database("orders-db")]
-        self.dbs = {"orders-db": {"pitr": 7, "cluster": None}}
-        lines = status.preview(self.world())
-        self.assertEqual(lines[0]["state"], "WILL_PROTECT")
-        self.assertIn("7 days now, 14 days after: longer", lines[0]["detail"])
-
-    def test_preview_flags_a_bad_tag_before_anything_is_applied(self):
-        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3})
-        self.resources = [bucket("docs", "gld")]
-        lines = status.preview(self.world())
-        self.assertEqual(lines[0]["state"], "BAD_VALUE")
-
-    def test_preview_with_nothing_tagged_says_what_to_tag(self):
-        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3})
-        self.assertEqual(status.preview(self.world()), [])
-
     # --- --teardown ---
 
-    def test_teardown_is_refused_in_production(self):
-        self.kit = dict(KIT, mode="production")
-        state, _ = status.teardown(self.world())
+    # The check reads the mode from the settings file, as the person set it. Live, 2026-10-28: reading
+    # the applied mode made retiring production need an extra apply just to record "trial".
+    def test_teardown_is_refused_while_the_settings_say_production(self):
+        self.settings_path = self.settings("production")
+        state, lines = status.teardown(self.world())
         self.assertEqual(state, "REFUSED")
+        self.assertIn("mode is production", lines[0])
+
+    def test_teardown_goes_ahead_once_the_settings_say_trial(self):
+        self.settings_path = self.settings("trial")
+        state, _ = status.teardown(self.world())
+        self.assertEqual(state, "READY")
 
     def test_teardown_waits_while_a_backup_runs(self):
         self.add_db("orders-db")

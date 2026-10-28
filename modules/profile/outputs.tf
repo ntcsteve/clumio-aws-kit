@@ -1,9 +1,5 @@
-# What status.py reads to tell this profile's protection from anyone else's.
-
-output "tag" {
-  description = "The tag that puts a resource in this profile."
-  value       = local.tag
-}
+# The profile's Clumio objects, for tools/status.py (policy, group, workloads) and for production
+# callers that rank another rule against these (rule IDs).
 
 output "policy_id" {
   description = "The profile's Clumio policy."
@@ -20,19 +16,9 @@ output "volume_rule_id" {
   value       = one(clumio_policy_rule.volumes[*].id)
 }
 
-output "volume_tag" {
-  description = "The tag that puts a volume on its own in this profile."
-  value       = local.volume_tag
-}
-
 output "protection_group_id" {
   description = "The protection group that holds tagged S3 buckets, or null when s3 is off."
   value       = var.s3 ? clumio_protection_group.s3[0].id : null
-}
-
-output "pitr_retention_days" {
-  description = "The PITR window Clumio sets on this profile's databases, or null when databases is off."
-  value       = var.pitr_retention_days
 }
 
 output "workloads" {

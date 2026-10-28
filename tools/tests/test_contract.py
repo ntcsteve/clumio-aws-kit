@@ -5,6 +5,7 @@ tests, in tools/."""
 import json
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -24,9 +25,13 @@ def replay(answers):
     # The recording predates status.py's instance check. Both lab instances were running when it was
     # made (they were destroyed at 11:49 UTC), so the live instances are the two tagged ones.
     instances = {arn.rsplit("/", 1)[1] for arn in (r["ResourceARN"] for r in answers["tagged_resources"]["us-west-2"]) if ":instance/" in arn}
+    # The run's settings said trial; teardown reads only the mode from them.
+    handle, settings = tempfile.mkstemp(suffix=".tfvars")
+    with os.fdopen(handle, "w") as out:
+        out.write('mode = "trial"\n')
     return status.World(
-        settings_path=None, terraform_version=None, aws_cli_found=None, signed_in_account=None, clumio_credentials_set=None,
-        clumio_get=clumio_get, kit=lambda: answers["kit"], saved_plan=lambda: None,
+        settings_path=settings, terraform_version=None, aws_cli_found=None, signed_in_account=None, clumio_credentials_set=None,
+        clumio_get=clumio_get, kit=lambda: answers["kit"],
         tagged_resources=lambda region: answers["tagged_resources"][region], databases=lambda region: answers["databases"][region],
         volumes=lambda region: answers["volumes"][region], instances=lambda region: instances)
 
@@ -35,6 +40,7 @@ class Stage2dProtected(unittest.TestCase):
     def setUp(self):
         with open(FIXTURE) as recording:
             self.world = replay(json.load(recording))
+        self.addCleanup(os.remove, self.world.settings_path)
 
     def test_coverage_reads_every_resource_as_status_showed_it_live(self):
         # Expected: tools/status.py's live output at 11:00 UTC the same day (RESULTS, stage 2d step 9):
