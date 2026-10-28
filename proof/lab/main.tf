@@ -1,5 +1,5 @@
 # The proof lab: small test data, each part encrypted under a key it names, tagged so a profile in
-# deploy/ protects it. Its only purpose is to prove claims live: docs/keys.md cites what it produced.
+# the 2-protect- folders protect it. Its only purpose is to prove claims live: docs/keys.md cites what it produced.
 # Test accounts only. Databases have no deletion protection and skip their final snapshot: they hold
 # no data. Every resource carries kitlab = proof-lab, and every name starts kitlab-<suffix>, so what
 # the lab made is never in doubt.
@@ -104,7 +104,7 @@ resource "aws_db_subnet_group" "lab" {
   subnet_ids = data.aws_subnets.default[0].ids
 }
 
-# RDS on aws/rds. PITR 7 days: a profile with a shorter window stops the plan in deploy/.
+# RDS on aws/rds. PITR 7 days: a shorter pitr_retention_days stops the plan in 2-protect-rds and 2-protect-aurora.
 resource "aws_db_instance" "rds_amk" {
   count                       = local.has["rds-amk"] ? 1 : 0
   identifier                  = "${local.name}-rds-amk"

@@ -1,0 +1,8 @@
+# Settings for 2-protect-ebs. Copy this file to terraform.tfvars in this folder, then set each REPLACE value:
+#   cp settings.example terraform.tfvars
+# Keep each value on one line. terraform.tfvars never leaves your machine.
+# The account, Region, unit and mode come from 1-connect: apply it first.
+
+name      = "gold" # the profile: resources tagged clumio-volume-profile = gold get this protection
+keep_days = 30     # how long each daily SecureVault copy is kept, in days
+# rule_before_id = "<rule ID>" # only when tools/status.py says another rule claimed these first

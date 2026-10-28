@@ -1,4 +1,11 @@
 # Clumio's IAM in one connected account and Region, from Clumio's published template.
+
+locals {
+  # Clumio's template has three IAM switches; the kit names workloads by 2-protect folder.
+  is_s3  = contains(var.workloads, "s3")
+  is_rds = contains(var.workloads, "rds") || contains(var.workloads, "aurora") # DB instances and DB clusters
+  is_ebs = contains(var.workloads, "ec2") || contains(var.workloads, "ebs")    # EC2 instances and EBS volumes
+}
 # Two callers: modules/connection, with the real connection, and 0-check/preview, with stand-ins, so
 # what the security team previews is exactly what the connection creates.
 
@@ -15,9 +22,9 @@ module "aws_template" {
 
   iam_entities_identifier = var.iam_prefix
   path                    = var.iam_path
-  is_s3_enabled           = contains(var.workloads, "s3")
-  is_rds_enabled          = contains(var.workloads, "rds") # RDS instances and Aurora clusters
-  is_ebs_enabled          = contains(var.workloads, "ebs") # EC2 instances and EBS volumes
+  is_s3_enabled           = local.is_s3
+  is_rds_enabled          = local.is_rds
+  is_ebs_enabled          = local.is_ebs
 
   # Optional organization IAM rules. Clumio's own role tag is always kept.
   clumio_iam_role_tags       = merge({ Vendor = "Clumio" }, var.role_tags)

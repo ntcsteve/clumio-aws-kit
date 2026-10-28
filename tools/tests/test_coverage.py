@@ -13,17 +13,16 @@ import status  # noqa: E402
 
 ACCOUNT, REGION = "123456789012", "us-west-2"
 UNIT = "11111111-2222-3333-4444-555555555555"
-POLICY, RULE, GROUP = "pol-gold", "rule-gold", "pg-gold"
+RULE, GROUP = "rule-gold", "pg-gold"
+# One policy per workload, named <profile>-<workload>-<account>-<region>, as modules/protect makes them.
+# gold has all five 2-protect- folders applied; dbonly has rds and aurora only.
+POLICY = {w: f"pol-gold-{w}" for w in ("s3", "rds", "aurora", "ec2", "ebs")}
+POLICIES = ([{"id": POLICY[w], "name": f"gold-{w}-{ACCOUNT}-{REGION}"} for w in POLICY]
+            + [{"id": f"pol-dbonly-{w}", "name": f"dbonly-{w}-{ACCOUNT}-{REGION}"} for w in ("rds", "aurora")]
+            + [{"id": "pol-theirs", "name": "gold-prod"}, {"id": "pol-elsewhere", "name": f"gold-rds-{ACCOUNT}-eu-west-1"}])
+GROUPS = [{"id": GROUP, "name": f"gold-s3-{ACCOUNT}-{REGION}"}, {"id": "pg-theirs", "name": "someone-elses-group"}]
 
-KIT = {
-    "account_id": ACCOUNT, "region": REGION, "organizational_unit_id": UNIT,
-    "profiles": {"gold": {"tag": {"key": "clumio-profile", "value": "gold"}, "policy_id": POLICY, "rule_id": RULE,
-                          "volume_tag": {"key": "clumio-volume-profile", "value": "gold"}, "volume_rule_id": "rule-gold-volumes",
-                          "protection_group_id": GROUP, "workloads": {"s3": True, "databases": True, "ec2": True, "ebs_volumes": True}},
-                 "dbonly": {"tag": {"key": "clumio-profile", "value": "dbonly"}, "policy_id": "pol-db", "rule_id": "rule-db",
-                            "volume_tag": {"key": "clumio-volume-profile", "value": "dbonly"}, "volume_rule_id": None,
-                            "protection_group_id": None, "workloads": {"s3": False, "databases": True, "ec2": False, "ebs_volumes": False}}},
-}
+KIT = {"account_id": ACCOUNT, "region": REGION, "organizational_unit_id": UNIT}
 
 
 def tagged(arn, value, key="clumio-profile"):
@@ -57,6 +56,8 @@ class FakeClumio:
             "/datasources/aws/ec2-instances": [],
             "/datasources/aws/ebs-volumes": [],
             "/tasks": [],
+            "/policies/definitions": [dict(p) for p in POLICIES],
+            "/datasources/protection-groups": [dict(g) for g in GROUPS],
         }
         self.single = {f"/connections/aws/{ACCOUNT}_{REGION}": (200, {"organizational_unit_id": UNIT}),
                        "/policies/rules/rule-other": (200, {"id": "rule-other", "name": "CEG Demo"})}
@@ -106,9 +107,10 @@ class Coverage(unittest.TestCase):
         self.live_instances = set()  # instance IDs AWS describes as not terminated
         self.settings_path = self.settings("trial")
         self.kit = dict(KIT)
+        self.applied = []  # the 1-connect and 2-protect- folders whose state still holds resources
 
     def settings(self, mode):
-        """A deploy/terraform.tfvars with this mode, as the person wrote it."""
+        """A 1-connect/terraform.tfvars with this mode, as the person wrote it."""
         handle, path = tempfile.mkstemp(suffix=".tfvars")
         with os.fdopen(handle, "w") as out:
             out.write(f'account_id = "{ACCOUNT}"\nregion = "{REGION}"\norganizational_unit = "{UNIT}"\nmode = "{mode}"\n')
@@ -121,9 +123,11 @@ class Coverage(unittest.TestCase):
             signed_in_account=lambda: ACCOUNT, clumio_credentials_set=lambda: True, clumio_get=self.clumio.get,
             kit=lambda: self.kit,
             tagged_resources=lambda region: self.resources, databases=lambda region: self.dbs,
-            volumes=lambda region: self.vols, instances=lambda region: self.live_instances)
+            volumes=lambda region: self.vols, instances=lambda region: self.live_instances,
+            applied_folders=lambda: self.applied)
 
-    def add_db(self, name, policy=POLICY, rule=RULE, backup=None, kind="db", pitr=7, cluster=None):
+    def add_db(self, name, policy=None, rule=RULE, backup=None, kind="db", pitr=7, cluster=None):
+        policy = policy or POLICY["aurora" if kind == "cluster" else "rds"]
         self.resources.append(database(name, kind=kind))
         self.dbs[name] = {"pitr": pitr, "cluster": cluster}
         if policy is not None or kind != "member":
@@ -138,16 +142,16 @@ class Coverage(unittest.TestCase):
         if in_group:
             self.clumio.lists["/datasources/protection-groups/s3-assets"].append(
                 {"id": f"asset-{name}", "bucket_name": name, "group_id": GROUP, "is_deleted": False,
-                 "protection_info": {"policy_id": POLICY}, "last_backup_timestamp": backup})
+                 "protection_info": {"policy_id": POLICY["s3"]}, "last_backup_timestamp": backup})
 
-    def add_instance(self, instance_id, policy=POLICY, backup=None, value="gold"):
+    def add_instance(self, instance_id, policy=POLICY["ec2"], backup=None, value="gold"):
         self.resources.append(instance(instance_id, value))
         self.live_instances.add(instance_id)
         self.clumio.lists["/datasources/aws/ec2-instances"].append(
             {"id": f"id-{instance_id}", "instance_native_id": instance_id, "account_native_id": ACCOUNT, "aws_region": REGION,
              "is_deleted": False, "protection_info": {"policy_id": policy, "rule_id": RULE}, "last_backup_timestamp": backup})
 
-    def add_volume(self, volume_id, attached_to=None, key="clumio-volume-profile", policy=POLICY, backup=None):
+    def add_volume(self, volume_id, attached_to=None, key="clumio-volume-profile", policy=POLICY["ebs"], backup=None):
         self.resources.append(volume(volume_id, key=key))
         self.vols[volume_id] = {"instance": attached_to}
         self.clumio.lists["/datasources/aws/ebs-volumes"].append(
@@ -178,6 +182,8 @@ class Coverage(unittest.TestCase):
         states, records, unit = self.states()
         self.assertEqual(states["orders-db"], "OTHER")
         self.assertIn("CEG Demo", records[0]["detail"])
+        # Cold review, 2026-10-28: the fix (rule_before_id) needs the rule's ID, so the line carries both.
+        self.assertIn("rule-other", records[0]["detail"])
         self.assertEqual(status.coverage_exit_code(records, unit), 1)
 
     def test_a_database_clumio_has_not_found_is_not_yet(self):
@@ -234,6 +240,31 @@ class Coverage(unittest.TestCase):
         _, records, unit = self.states()
         self.assertEqual(unit[0], "FAIL")
         self.assertEqual(status.coverage_exit_code(records, unit), 1)
+
+    # The kit's policies are found by name in Clumio; another team's, or another Region's, never count.
+    def test_only_policies_named_for_this_account_and_region_are_the_kits(self):
+        profiles = status.kit_profiles(self.world(), self.kit)
+        self.assertEqual(sorted(profiles), ["dbonly", "gold"])
+        self.assertEqual(profiles["gold"]["rds"], POLICY["rds"])
+        self.assertEqual(profiles["gold"]["s3_group"], GROUP)
+        self.assertNotIn("s3", profiles["dbonly"])
+
+    def test_a_database_held_by_this_profiles_rds_policy_is_ours_not_the_aurora_one(self):
+        self.add_db("orders-db", policy=POLICY["aurora"], backup="2026-10-28T05:00:00Z")
+        states, _, _ = self.states()
+        self.assertEqual(states["orders-db"], "OTHER")
+
+    def test_more_policies_than_one_page_is_unknown_never_a_guess(self):
+        self.add_db("orders-db")
+        self.clumio.more_pages.add("/policies/definitions")
+        with self.assertRaises(status.ClumioUnavailable):
+            status.coverage(self.world())
+
+    def test_a_tag_for_a_workload_whose_folder_isnt_applied_is_off_and_names_the_folder(self):
+        self.add_instance("i-0abc", value="dbonly")
+        states, records, _ = self.states()
+        self.assertEqual(states["i-0abc"], "OFF")
+        self.assertIn("2-protect-ec2", records[0]["detail"])
 
     def test_nothing_applied_says_so(self):
         self.kit = None
@@ -321,7 +352,6 @@ class Coverage(unittest.TestCase):
     # named by the cluster's resource ID (cluster:cluster-<id>, lowercase). It's the same cluster.
     def test_a_clusters_resource_id_arn_is_the_same_cluster_not_another(self):
         self.add_db("orders-cluster", kind="cluster")
-        self.dbs["orders-cluster"]["resource_id"] = "cluster-BRUTMAG4U7OEBRGDZWKGFJYHXU"
         self.resources.append(database("cluster-brutmag4u7oebrgdzwkgfjyhxu", kind="cluster"))
         records, _ = status.coverage(self.world())
         self.assertEqual([r["name"] for r in records], ["orders-cluster"])
@@ -343,6 +373,18 @@ class Coverage(unittest.TestCase):
         state, lines = status.teardown(self.world())
         self.assertEqual(state, "REFUSED")
         self.assertIn("mode is production", lines[0])
+
+    # Cold review, 2026-10-28: a missing settings file let the check say READY in production.
+    def test_teardown_without_settings_is_unknown_never_ready(self):
+        self.settings_path = os.path.join(tempfile.gettempdir(), "no-such-settings.tfvars")
+        state, _ = status.teardown(self.world())
+        self.assertEqual(state, "UNKNOWN")
+
+    def test_teardown_names_the_folders_still_applied_protect_first(self):
+        self.applied = ["1-connect", "2-protect-rds", "2-protect-s3"]
+        state, lines = status.teardown(self.world())
+        self.assertEqual(state, "READY")
+        self.assertTrue(any("2-protect-rds" in line and "2-protect-s3" in line and "1-connect last" in line for line in lines))
 
     def test_teardown_goes_ahead_once_the_settings_say_trial(self):
         self.settings_path = self.settings("trial")

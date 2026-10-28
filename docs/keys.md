@@ -14,13 +14,13 @@ Two lab runs show it, each with raw AWS and Clumio answers you can check yoursel
 | EC2 | Backed up | Backed up | Encrypted under the key the restore names; without one, unencrypted |
 | EBS on its own | Backed up | Backed up | Not restored in a lab run |
 
-A key policy decides: when a customer-managed key's policy names Clumio's role, the object is backed up; with an explicit Deny, it isn't, and Clumio reports the failed object with AWS's error.
+A customer-managed key's default policy, which lets IAM in the account decide, is enough: the 2026-10-28 run used one and changed nothing. A key policy that explicitly denies Clumio's role blocks it: the object isn't backed up, and Clumio reports it with AWS's error.
 
 ## The evidence
 
 | Run | Covers | Where |
 |---|---|---|
-| 2026-10-28, this kit's own code | All five workloads backed up under AMK and CMK; Aurora CMK and S3 restored | [`proof/evidence/keys-lab-2026-10-28/`](../proof/evidence/keys-lab-2026-10-28): `protected-*` (each resource's key and Clumio's backup record) and `restored-*` (the restored cluster's key and tags) |
+| 2026-10-28, this kit's own code | S3, Aurora, EC2 and EBS backed up under AMK and CMK, and RDS under AMK; the Aurora CMK cluster restored. An S3 restore was checked byte for byte live but not captured | [`proof/evidence/keys-lab-2026-10-28/`](../proof/evidence/keys-lab-2026-10-28): `protected-*` (each resource's key and Clumio's backup record) and `restored-*` (the restored cluster's key and tags) |
 | 2026-10-25 to 27, an earlier lab | S3, RDS and EC2 under AMK and CMK, restores in two Regions, a key policy with an explicit Deny, and CloudTrail showing who called KMS | [get-started-clumio-byok](https://github.com/ntcsteve/get-started-clumio-byok/tree/4a6dc5d), commit `4a6dc5d`, with its own claims table and verifier |
 
 Check the captures here, offline: `proof/verify-evidence.sh`. Each folder matches its `_sha256.txt`, and account numbers are masked. How the lab is built and captured: [proof/README.md](../proof/README.md).

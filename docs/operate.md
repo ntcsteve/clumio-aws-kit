@@ -1,6 +1,6 @@
 # Operate
 
-What to do when something goes wrong, and how to take a trial down. Terraform commands run in `deploy/`. Paths to `tools/status.py` and `0-check/preview/preview.sh` are written from the repository's root folder.
+What to do when something goes wrong, and how to take a trial down. Terraform commands run in the step's own folder. Paths to `tools/status.py` and `0-check/preview/preview.sh` are written from the repository's root folder.
 
 ## When something goes wrong
 
@@ -8,17 +8,17 @@ Start with `tools/status.py --preflight`. It checks the tools, your settings, yo
 
 | You see | What it means, and what to do |
 |---|---|
-| *Set account_id in terraform.tfvars*, or the same for `region`, `organizational_unit`, `mode`, `archive_months` or `pitr_retention_days` | A setting still holds its placeholder. Set it in `deploy/terraform.tfvars`. `tools/status.py --preflight` lists the units you can choose. `archive_months` has no default on purpose: each archive copy bills until it expires, even after a trial, so use 0 for a trial. |
+| *Set account_id in terraform.tfvars*, or the same for `region`, `organizational_unit`, `mode`, `archive_months` or `pitr_retention_days` | A setting still holds its placeholder. Set it in that folder's `terraform.tfvars`. `tools/status.py --preflight` lists the units you can choose. `archive_months` has no default on purpose: each archive copy bills until it expires, even after a trial, so use 0 for a trial. |
 | *AWS account ID not allowed*, or *You're signed in to AWS account …* | You're signed in to another account. Sign in to `account_id`, then run the command again. |
 | *The AWS provider uses Region …* | Only when you call the modules from your own code: your AWS provider's `region` differs from the module's `region`. Make them the same. |
-| *Profile gold would shorten the PITR window of …* | Clumio would set that database's PITR window shorter than it is today, and a shorter window deletes AWS's older automated backups for good. Raise `pitr_retention_days` in the profile, or, to accept it on purpose, set `allow_shorter_pitr = true` in that profile. Then plan again. |
+| *Profile gold would shorten the PITR window of …* | Clumio would set that database's PITR window shorter than it is today, and a shorter window deletes AWS's older automated backups for good. Raise `pitr_retention_days` in that folder, or, to accept it on purpose, set `allow_shorter_pitr = true` there. Then plan again. |
 | *AccessDenied* on `CreateRole`, `TagRole` or `CreatePolicy` | The identity running Terraform lacks a permission. Run `0-check/preview/preview.sh --as <its ARN>`, grant what BLOCKED lists, then plan and apply again. Terraform resumes where it stopped. |
 | *AccessDenied* on `DescribeDBInstances` or `DescribeDBClusters` | The identity running Terraform can't read your databases, and a profile with databases reads each one's PITR window before it changes anything. Grant what `0-check/preview/preview.sh --as <its ARN>` lists, then plan again. |
 | A plan shows changes right after an apply | An interrupted apply can need a second pass: plan, read it, apply. If changes remain after that, save the plan output and contact Clumio support. |
-| *A profile protects a workload the connection's workloads leave out* | A profile turns on S3, databases, EC2 or volumes, but `workloads` leaves out the IAM Clumio needs for them. Add it to `workloads` (run `0-check/preview/preview.sh` to see the new IAM), or turn the workload off in the profile. |
-| *error_code 107 … Number of rules is limited to 25* | The organizational unit has as many protection rules as Clumio allows. Each profile adds one rule, two with `ebs_volumes`. Remove a rule you no longer need, or choose another unit, then plan and apply again. `tools/status.py --preflight` shows how many are used. |
+| *The connection's workloads leave out …* | A `2-protect-` folder's workload isn't in `1-connect`'s `workloads`, so Clumio has no IAM for it. Add it to `workloads` in `1-connect/terraform.tfvars` (run `0-check/preview/preview.sh` to see the new IAM), plan and apply `1-connect`, then plan the protect folder again. |
+| *error_code 107 … Number of rules is limited to 25* | The organizational unit has as many protection rules as Clumio allows. Each `2-protect-` folder adds one rule, except S3. Remove a rule you no longer need, or choose another unit, then plan and apply again. `tools/status.py --preflight` shows how many are used. |
 | *error_code 320 … already exists* | An apply was cut off after Clumio created an object. Run `terraform import <address> <ID from the Clumio console>`, then plan again. |
-| *Instance cannot be destroyed* | `mode = "production"`: the production guard refuses a destroy, a switch to trial, or a new account or Region. That's on purpose. For another account or Region, copy `deploy/` to a new folder. |
+| *Instance cannot be destroyed* | `mode = "production"`: the production guard refuses a destroy, a switch to trial, or a new account or Region. That's on purpose. For another account or Region, copy the whole repository. |
 | *error_code 367*, during a teardown | Your Clumio tenant can't delete connections. Keep the connection, or ask Clumio support. |
 | Anything else | Run again with `TF_LOG=DEBUG TF_LOG_PATH=./tf-debug.log`. The log can hold secrets: check it before you share it. |
 
@@ -30,8 +30,8 @@ Start with `tools/status.py --preflight`. It checks the tools, your settings, yo
 |---|---|---|
 | OURS | This profile's policy protects it, and a backup exists. | Nothing. |
 | WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. |
-| NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. | Run `tools/status.py` again in an hour. |
-| OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in the profile to that rule's ID, then plan and apply. The plan replaces the profile's rules, placed ahead of that one. |
+| NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. | Run `tools/status.py` again in an hour; for a bucket, allow up to a day. |
+| OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in that `2-protect-` folder to the rule's ID, which the line shows, then plan and apply. The plan replaces the folder's rule, placed ahead of that one. |
 | BAD_VALUE | Its `clumio-profile` tag names no profile here, such as a typo. | Fix the tag. |
 | DOUBLE | A volume tagged `clumio-volume-profile` is attached to an instance the profile already protects, and an instance's backup already holds its volumes. | Remove the volume's `clumio-volume-profile` tag, or you pay for two copies. |
 | OFF | Its profile doesn't protect that kind of resource, or a volume carries `clumio-profile` but no attached instance does. | Turn the workload on in the profile, or tag it with another profile. A volume on its own joins with `clumio-volume-profile`. |
@@ -39,7 +39,7 @@ Start with `tools/status.py --preflight`. It checks the tools, your settings, yo
 
 Two kinds are left out on purpose: Aurora's instances, because Clumio protects their cluster, and a volume carrying `clumio-profile` while attached to a tagged instance, because that instance's backup holds it.
 
-The first line checks that the connection sits in the organizational unit set in `deploy/terraform.tfvars`. If it doesn't, the profiles' rules can't match anything.
+The first line checks that the connection sits in the organizational unit set in `1-connect/terraform.tfvars`. If it doesn't, the profiles' rules can't match anything.
 
 Exit codes, for scripts and CI: 0 nothing to do, 1 a person must act, 2 AWS or Clumio didn't answer. `tools/status.py --json` prints the same lines as JSON.
 
@@ -54,23 +54,27 @@ Exit codes, for scripts and CI: 0 nothing to do, 1 a person must act, 2 AWS or C
 
 ## Take a trial down
 
-1. Run `tools/status.py --teardown`. It checks that Clumio isn't backing up these resources. With `mode = "production"`, or while a backup runs, it says why to wait, and you stop here.
-2. On READY, in `deploy/`, run `terraform plan -destroy -out=tfplan`, and read the plan.
-3. Run `terraform apply tfplan`. Terraform removes protection first, then the connection.
-4. Run `terraform state list`. It prints nothing when everything this folder created is gone.
+Reverse the steps: each protect folder first, the connection last. A protect folder needs the connection to plan its own removal, so `1-connect` goes last.
 
-Backups Clumio already made stay until their retention ends. Each database keeps the PITR window Clumio set: step 1 lists them, so you can set them back yourself.
+1. Keep every tag in place until the teardown is done: the check finds running backups through them. Run `tools/status.py --teardown`. It checks that Clumio isn't backing up these resources, and lists every folder at the repository root whose name starts with `1-connect` or `2-protect-` and still has something applied. With `mode = "production"` in `1-connect/terraform.tfvars`, or while a backup runs, it says why to wait, and you stop here.
+2. In each `2-protect-` folder you applied: `terraform plan -destroy -out=tfplan`, read it, `terraform apply tfplan`.
+3. Then in `1-connect`: the same three commands.
+4. In each folder, `terraform state list` prints nothing when it's all gone.
+
+5. Remove the `clumio-profile` and `clumio-volume-profile` tags, so a later setup doesn't pick these resources up without anyone deciding to.
+
+Backups Clumio already made stay until their retention ends. Each database keeps the PITR window Clumio set: the teardown check in step 1 lists them, and you set back the windows you noted before step 2.
 
 ## Retire a production connection
 
 The production guards refuse every destroy, so retiring production is a deliberate act. Do it only when you mean to stop protecting this account and Region.
 
-1. Remove the guards from Terraform's state: the connection's, and one per profile. Each is a marker with nothing behind it in AWS or Clumio, so this deletes nothing:
+1. In each folder you applied, remove its guard from Terraform's state. Each guard is a marker with nothing behind it in AWS or Clumio, so this deletes nothing:
 
    ```bash
-   terraform state rm 'module.connection.terraform_data.production_guard[0]'
-   terraform state rm 'module.profile["gold"].terraform_data.production_guard[0]'   # once per profile
+   terraform state rm 'module.protect.terraform_data.production_guard[0]'      # in each 2-protect- folder
+   terraform state rm 'module.connection.terraform_data.production_guard[0]'   # in 1-connect
    ```
 
-2. Set `mode = "trial"` in `deploy/terraform.tfvars`.
+2. Set `mode = "trial"` in `1-connect/terraform.tfvars`, then in `1-connect` run `terraform plan -out=tfplan` and `terraform apply tfplan`. With the guards gone from state, this changes no resource: it records the trial mode the `2-protect-` folders read.
 3. Take it down as a trial: [Take a trial down](#take-a-trial-down).

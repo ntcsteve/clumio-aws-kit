@@ -9,22 +9,22 @@ variable "account_id" {
 }
 
 variable "region" {
-  description = "The AWS Region connected in deploy/, such as us-west-2."
+  description = "The AWS Region connected in 1-connect/, such as us-west-2."
   type        = string
 
   validation {
     condition     = can(regex("^[a-z]{2}(-gov|-iso[a-z]*)?-[a-z]+-[0-9]$", var.region))
-    error_message = "Set region in terraform.tfvars to the Region connected in deploy/, such as us-west-2."
+    error_message = "Set region in terraform.tfvars to the Region connected in 1-connect/, such as us-west-2."
   }
 }
 
 variable "profile" {
-  description = "The profile in deploy/ that should protect the lab: every part is tagged clumio-profile = <profile>."
+  description = "The name set in the 2-protect- folders that should protect the lab: every part is tagged clumio-profile = <profile>."
   type        = string
 
   validation {
     condition     = can(regex("^[a-z0-9][a-z0-9-]{0,29}$", var.profile))
-    error_message = "Set profile in terraform.tfvars to a profile name from deploy/, such as \"gold\"."
+    error_message = "Set profile in terraform.tfvars to the name set in the 2-protect- folders, such as \"gold\"."
   }
 }
 

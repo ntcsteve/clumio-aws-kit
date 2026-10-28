@@ -2,7 +2,7 @@
 """Records the real AWS and Clumio answers status.py reads, so its contract tests run against real
 shapes, not only against fakes we wrote. Read-only: it calls status.py's own readers, and nothing else.
 
-  python3 tools/tests/record_fixtures.py <name>     after deploy/ is applied, signed in, token exported
+  python3 tools/tests/record_fixtures.py <name>     after 1-connect and a 2-protect- folder are applied, signed in, token exported
 
 Writes tests/fixtures/<name>.json. The account ID, the organizational unit's ID and Clumio's own two
 AWS accounts are masked as stand-ins everywhere, keys included, so the recording replays consistently. check.sh refuses any
@@ -47,7 +47,8 @@ def record(world):
 
     recording = status.World(world.settings_path, world.terraform_version, world.aws_cli_found, world.signed_in_account,
                              world.clumio_credentials_set, clumio_get, kit=kit, tagged_resources=tagged_resources,
-                             databases=databases, volumes=volumes, instances=instances)
+                             databases=databases, volumes=volumes, instances=instances,
+                             applied_folders=world.applied_folders)
     return recording, answers
 
 

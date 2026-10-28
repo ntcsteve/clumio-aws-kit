@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # Preview every IAM role, policy and permission the connection will create in your AWS account,
-# BEFORE anything is created, and check whether the deploy role may create them. Uses deploy's own
+# BEFORE anything is created, and check whether the deploy role may create them. Uses 1-connect's own
 # settings (terraform.tfvars), variables and versions, so what you approve is what gets created.
 #
 #   0-check/preview/preview.sh [--as <role ARN>]
 #
-# Account and Region come from deploy/terraform.tfvars; sign in to that account.
+# Account and Region come from 1-connect/terraform.tfvars; sign in to that account.
 # --as checks another identity (such as the CI/CD deploy role) instead of your own.
 # Runs `terraform plan` only, in a throwaway folder that is deleted afterwards, so there
 # is nothing left to apply. Needs: an AWS sign-in (read-only is enough), terraform, python3.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-DEPLOY="$(cd "$HERE/../../deploy" && pwd)"
+DEPLOY="$(cd "$HERE/../../1-connect" && pwd)"
 IAM_MODULE="$(cd "$HERE/../../modules/connection/iam" && pwd)"
 AS_ARN=""
 OUT=""
@@ -35,7 +35,7 @@ for f in variables.tf versions.tf; do
   [ -f "$DEPLOY/$f" ] || fail "$DEPLOY/$f not found"
 done
 [ -f "$DEPLOY/terraform.tfvars" ] \
-  || fail "$DEPLOY/terraform.tfvars not found. Create it: cp settings.example terraform.tfvars, in deploy/"
+  || fail "$DEPLOY/terraform.tfvars not found. Create it: cp settings.example terraform.tfvars, in 1-connect/"
 # Clumio's template version is pinned once, in the IAM module, on the line after its source.
 MODULE_VERSION="$(awk '/source *= *"clumio-code\/aws-template\/clumio"/ { getline; print }' "$IAM_MODULE/main.tf" \
   | sed -nE 's/^ *version *= *"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p')"
@@ -51,12 +51,12 @@ WORK="$(mktemp -d)"
 # The config never outlives the run; a pack that didn't finish is removed, never left half-written.
 trap 'rm -rf "$WORK"; [ "$FINISHED" = 1 ] || [ -z "$OUT" ] || rm -rf "$OUT"' EXIT
 
-# --- A throwaway config: the connection's IAM module with deploy's settings -------
-# Same versions.tf, variables.tf (and its checks) and terraform.tfvars as deploy. Values Clumio
+# --- A throwaway config: the connection's IAM module with 1-connect's settings -------
+# Same versions.tf, variables.tf (and its checks) and terraform.tfvars as 1-connect. Values Clumio
 # issues at connect time get stand-ins (they must match extract.py), so every document renders.
 # The Clumio provider can never reach Clumio.
 cp "$DEPLOY/versions.tf" "$DEPLOY/variables.tf" "$DEPLOY/terraform.tfvars" "$WORK/"
-[ ! -f "$DEPLOY/.terraform.lock.hcl" ] || cp "$DEPLOY/.terraform.lock.hcl" "$WORK/"   # same provider builds as deploy
+[ ! -f "$DEPLOY/.terraform.lock.hcl" ] || cp "$DEPLOY/.terraform.lock.hcl" "$WORK/"   # same provider builds as 1-connect
 cat > "$WORK/main.tf" <<EOF
 provider "aws" {
   region              = var.region

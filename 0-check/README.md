@@ -7,7 +7,7 @@ Two read-only checks, before anything exists. Nothing is created in AWS or Clumi
 You need:
 
 1. Terraform 1.10 or later, the AWS CLI v2, and Python 3.9 or later. macOS's own Python works. On Windows, use WSL.
-2. An AWS sign-in to the account you're connecting, such as `aws sso login`.
+2. An AWS sign-in to the account you're connecting, such as `aws sso login --profile <name>`, then `export AWS_PROFILE=<name>` in the same shell, so every step uses it.
 3. A Clumio API token, from the Clumio console under Administration, Access management, API tokens.
 
 Put your Clumio details in your shell, so the token never lands in a file:
@@ -28,15 +28,15 @@ Your API URL follows from the Clumio portal you sign in to. The URLs are from [C
 | au.portal.clumio.com | `https://ap-southeast-2.au.api.clumio.com` |
 | jp.portal.clumio.com | Ask your Clumio administrator |
 
-Every command in steps 0 and 3 runs from the repository's root folder, in this same shell.
+Every command in steps 0 and 3 runs from the repository's root folder, in this same shell. Keep the same token and API URL for every step: a token from another Clumio tenant can't see what an earlier step created.
 
-Then make your settings file. Every step reads it, so what you check is what you create:
+Then make step 1's settings file. Preflight and the preview read it, so what you check is what you create:
 
 ```bash
-cp deploy/settings.example deploy/terraform.tfvars
+cp 1-connect/settings.example 1-connect/terraform.tfvars
 ```
 
-Set the first four values in `deploy/terraform.tfvars`: `account_id`, `region`, `organizational_unit` and `mode`.
+Set the first four values in `1-connect/terraform.tfvars`: `account_id`, `region`, `organizational_unit` and `mode`.
 
 ## 1. Preflight
 
@@ -64,4 +64,4 @@ If a CI/CD role deploys for you, check that role the same way, with `--as`.
 
 ## Next
 
-[Steps 1 and 2: connect, then protect](../deploy/README.md).
+[Step 1: connect](../1-connect/README.md).

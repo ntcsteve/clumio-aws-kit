@@ -51,13 +51,13 @@ STATE='{"version": 4, "terraform_''version": "1.15.5", "serial": 1, "line''age":
 
 expect_result "clean tree passes" pass "" ":"
 expect_result "a real, ignored terraform.tfvars (even unformatted) and state are left alone" pass "" \
-  "mkdir -p deploy && printf 'account_id   =  \"$ACCOUNT\"\n' > deploy/terraform.tfvars && printf '%s' '$STATE' > deploy/terraform.tfstate"
+  "mkdir -p 1-connect && printf 'account_id   =  \"$ACCOUNT\"\n' > 1-connect/terraform.tfvars && printf '%s' '$STATE' > 1-connect/terraform.tfstate"
 expect_result "a force-added state file fails" fail "FAIL  no state or plan files" \
-  "mkdir -p deploy && printf '%s' '$STATE' > deploy/terraform.tfstate && git add -f deploy/terraform.tfstate"
+  "mkdir -p 1-connect && printf '%s' '$STATE' > 1-connect/terraform.tfstate && git add -f 1-connect/terraform.tfstate"
 expect_result "a state file under another name fails" fail "FAIL  no state or plan files" \
   "printf '%s' '$STATE' > notes.json"
 expect_result "a force-added plan fails" fail "FAIL  no state or plan files" \
-  "mkdir -p deploy && printf 'PK' > deploy/tfplan && git add -f deploy/tfplan"
+  "mkdir -p 1-connect && printf 'PK' > 1-connect/tfplan && git add -f 1-connect/tfplan"
 expect_result "an account number in a doc fails" fail "FAIL  no account numbers" \
   "printf 'Connect account $ACCOUNT first.\n' > notes.md"
 expect_result "a quoted Clumio token fails" fail "FAIL  no credentials" \
@@ -75,7 +75,7 @@ expect_result "a KMS key ID ending in twelve digits passes" pass "" \
 expect_result "a masked access key, as the evidence stores them, passes" pass "" \
   "printf 'accessKeyId: ASIA''XXXXXXXXXXXXXXXX\n' > notes.md"
 expect_result "12-digit runs inside lock-file hashes pass" pass "" \
-  "mkdir -p deploy && printf 'provider \"x\" {\n  hashes = [\n    \"zh:$ACCOUNT\",\n  ]\n}\n' > deploy/.terraform.lock.hcl"
+  "mkdir -p 1-connect && printf 'provider \"x\" {\n  hashes = [\n    \"zh:$ACCOUNT\",\n  ]\n}\n' > 1-connect/.terraform.lock.hcl"
 expect_result "a script that cannot run fails" fail "FAIL  shell scripts parse and are executable" \
   "printf '#!/usr/bin/env bash\necho hi\n' > notes.sh"
 expect_result "a broken relative link fails" fail "FAIL  relative links resolve" \

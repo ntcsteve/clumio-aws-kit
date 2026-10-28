@@ -13,8 +13,8 @@
 #   5. no account numbers    any 12-digit number outside the stand-ins below
 #   6. relative links        every relative link in a Markdown file points at a file that ships
 #   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
-#   8. deploy                validates with its lock file; the shipped placeholders stop the plan
-#   9. module tests          each module, deploy/ and the proof lab refuse what they must (mock providers)
+#   8. step folders          each validates with its lock file; 1-connect's placeholders stop the plan
+#   9. module tests          each module, each step folder and the proof lab refuse what they must (mock providers)
 #  10. preview golden tests what the security team sees matches the reviewed output exactly
 #  11. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
 #  12. self-test             tests/check_test.sh proves each scan passes and fails when it should
@@ -144,31 +144,26 @@ fi
 # The suites run on a copy of what ships, so local working files never change a result.
 xargs -0 tar -cf - < "$SHIPPED" | tar -xf - -C "$COPIES"
 
-# 8. deploy/ validates with its committed lock file, and the shipped placeholders stop the plan.
-if (cd "$COPIES/deploy" && terraform init -backend=false -input=false -lockfile=readonly > /dev/null 2>&1 \
-    && terraform validate -no-color > /dev/null 2>&1); then
-  pass "deploy: terraform validate"
-  out="$(cd "$COPIES/deploy" && cp settings.example terraform.tfvars && terraform plan -input=false -no-color 2>&1 || true)"
-  MISSING=""
-  for setting in account_id region organizational_unit mode; do
-    grep -q "Set $setting in terraform.tfvars" <<< "$out" || MISSING="$MISSING $setting"
-  done
-  # With those four set and step 2's example profile uncommented, as the file tells a person to, the
-  # archive and PITR placeholders must still stop it. Terraform wraps long messages, so join lines.
-  out="$(cd "$COPIES/deploy" && sed -e 's/"ACCOUNT-ID-REPLACE-THIS"/"123456789012"/' -e 's/"REGION-REPLACE-THIS"/"us-west-2"/' \
-    -e 's/"UNIT-REPLACE-THIS"/"global"/' -e 's/"MODE-REPLACE-THIS"/"trial"/' \
-    -e '/^profiles = {}$/d' -e '/^# profiles = {$/,/^# }$/s/^# //' settings.example > terraform.tfvars \
-    && terraform plan -input=false -no-color 2>&1 | tr '\n' ' ' || true)"
-  grep -q "Set archive_months in terraform.tfvars" <<< "$out" || MISSING="$MISSING archive_months"
-  grep -q "Set pitr_retention_days in terraform.tfvars" <<< "$out" || MISSING="$MISSING pitr_retention_days"
-  [ -z "$MISSING" ] && pass "deploy: the shipped placeholders stop the plan" \
-    || flunk "deploy: these placeholders did not stop the plan:$MISSING"
-else
-  flunk "deploy: terraform init or validate (lock file out of date? run them in deploy/ to see why)"
-fi
+# 8. Each step folder validates with its committed lock file, and 1-connect's shipped placeholders stop
+# its plan before any provider is reached. (A 2-protect- folder reads 1-connect's state first; its
+# placeholders are refused in modules/protect, which suite 9 tests.)
+BAD=""
+for folder in 1-connect 2-protect-s3 2-protect-rds 2-protect-aurora 2-protect-ec2 2-protect-ebs; do
+  (cd "$COPIES/$folder" && terraform init -backend=false -input=false -lockfile=readonly > /dev/null 2>&1 \
+    && terraform validate -no-color > /dev/null 2>&1) || BAD="$BAD $folder"
+done
+[ -z "$BAD" ] && pass "step folders: terraform validate" \
+  || flunk "step folders: terraform init or validate:$BAD (lock file out of date? run them in that folder to see why)"
+out="$(cd "$COPIES/1-connect" && cp settings.example terraform.tfvars && terraform plan -input=false -no-color 2>&1 || true)"
+MISSING=""
+for setting in account_id region organizational_unit mode; do
+  grep -q "Set $setting in terraform.tfvars" <<< "$out" || MISSING="$MISSING $setting"
+done
+[ -z "$MISSING" ] && pass "1-connect: the shipped placeholders stop the plan" \
+  || flunk "1-connect: these placeholders did not stop the plan:$MISSING"
 
 # 9. Each module refuses what it must, with mock providers.
-for module in modules/connection modules/connection/iam modules/profile proof/lab deploy; do
+for module in modules/connection modules/connection/iam modules/protect proof/lab 1-connect 2-protect-s3 2-protect-rds 2-protect-aurora 2-protect-ec2 2-protect-ebs; do
   (cd "$COPIES/$module" && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform test -no-color > /dev/null 2>&1) \
     && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
 done

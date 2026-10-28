@@ -30,19 +30,19 @@ for case in regulated defaults; do
 done
 
 # preview.sh itself: in a copy of the repo's layout, with a stand-in aws that's never signed in, it
-# must find deploy/'s settings and the IAM module, and stop only at the sign-in. The goldens above
+# must find 1-connect's settings and the IAM module, and stop only at the sign-in. The goldens above
 # never run it, so a wrong path here would otherwise reach a user first.
 REPO="$(cd "$HERE/../../.." && pwd)"
 TREE="$RUN/tree"
-mkdir -p "$TREE/0-check" "$TREE/deploy" "$TREE/modules/connection" "$RUN/bin"
+mkdir -p "$TREE/0-check" "$TREE/1-connect" "$TREE/modules/connection" "$RUN/bin"
 cp -R "$REPO/0-check/preview" "$TREE/0-check/"
 cp -R "$REPO/modules/connection/iam" "$TREE/modules/connection/"
-cp "$REPO/deploy/variables.tf" "$REPO/deploy/versions.tf" "$TREE/deploy/"
-cp "$REPO/deploy/settings.example" "$TREE/deploy/terraform.tfvars"
+cp "$REPO/1-connect/variables.tf" "$REPO/1-connect/versions.tf" "$TREE/1-connect/"
+cp "$REPO/1-connect/settings.example" "$TREE/1-connect/terraform.tfvars"
 printf '#!/bin/sh\nexit 255\n' > "$RUN/bin/aws" && chmod +x "$RUN/bin/aws"
 said="$(PATH="$RUN/bin:$PATH" "$TREE/0-check/preview/preview.sh" 2>&1 || true)"
 if grep -q "not signed in to AWS" <<< "$said"; then
-  echo "PASS: preview.sh finds deploy/ and the IAM module"
+  echo "PASS: preview.sh finds 1-connect and the IAM module"
 else
   echo "FAIL: preview.sh stopped before the sign-in:"; sed 's/^/  /' <<< "$said"; FAILED=1
 fi

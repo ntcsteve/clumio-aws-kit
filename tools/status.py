@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Read-only checks for deploy/. Nothing in AWS or Clumio changes. Run it from anywhere.
+"""Read-only checks of the kit in one account and Region. Nothing in AWS or Clumio changes.
 
   tools/status.py                 who protects each resource tagged clumio-profile (or, a volume on
                                   its own, clumio-volume-profile), and its last backup
   tools/status.py --json          the same, for machines
   tools/status.py --preflight     before the first plan: tools, settings, AWS sign-in, Clumio token,
                                   organizational unit, Region, rule slots, and any existing connection
-  tools/status.py --teardown      before a trial teardown: refuses in production, or while a backup runs
+  tools/status.py --teardown      before a trial teardown: refuses in production, or while a backup runs,
+                                  and names the folders still applied
+  tools/status.py --account 123456789012 --region us-west-2 --unit <unit ID or global>
+                                  status of the same policies, made by modules/protect from another
+                                  repository; these flags replace 1-connect's settings
 
 Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a person must act;
-2 AWS or Clumio didn't answer, so nothing is assumed. Settings come from terraform.tfvars and
-Terraform's state in deploy/. Clumio credentials come from CLUMIO_API_TOKEN and
-CLUMIO_API_BASE_URL. Runs on macOS's stock Python 3.9.
+2 AWS or Clumio didn't answer, so nothing is assumed. The account, Region, unit and mode come from
+1-connect/terraform.tfvars; the kit's policies are found by name in Clumio. Clumio credentials come
+from CLUMIO_API_TOKEN and CLUMIO_API_BASE_URL. Runs on macOS's stock Python 3.9.
 """
 import argparse
 import json
@@ -27,7 +31,8 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEPLOY = os.path.normpath(os.path.join(HERE, "..", "deploy"))  # The settings and the state this script reads
+ROOT = os.path.normpath(os.path.join(HERE, ".."))
+CONNECT = os.path.join(ROOT, "1-connect")  # Its terraform.tfvars names the account, Region, unit and mode
 GLOBAL_UNIT = "00000000-0000-0000-0000-000000000000"  # Clumio's ID for the Global unit (read 2026-10-28)
 MIN_TERRAFORM = (1, 10)  # S3 state locking (use_lockfile) needs 1.10
 RULE_LIMIT = 25  # Clumio's answer when full: error_code 107, "Number of rules is limited to 25"
@@ -52,11 +57,12 @@ class World:
     signed_in_account: Callable[[], Optional[str]]
     clumio_credentials_set: Callable[[], bool]
     clumio_get: Callable[..., tuple]  # (path, unit=None) -> (HTTP status, or None if unreachable; body)
-    kit: Optional[Callable[[], Optional[dict]]] = None  # Terraform's kit output, or None before deploy/ is applied
+    kit: Optional[Callable[[], Optional[dict]]] = None  # account_id, region, organizational_unit_id (the unit's ID); None without settings
     tagged_resources: Optional[Callable[[str], list]] = None  # the tagging API's mappings in a Region
     databases: Optional[Callable[[str], dict]] = None  # name -> {"pitr": days, "cluster": its Aurora cluster or None}
     volumes: Optional[Callable[[str], dict]] = None  # volume ID -> {"instance": the instance it's attached to, or None}
     instances: Optional[Callable[[str], set]] = None  # IDs of the instances AWS describes as not terminated
+    applied_folders: Optional[Callable[[], list]] = None  # the 1-connect and 2-protect- folders whose state holds resources
 
 
 # --- Preflight -----------------------------------------------------------------------------------
@@ -106,7 +112,7 @@ def check_tools(world):
 def read_settings(path):
     """The four settings preflight needs, as plain one-line strings. Returns (settings, result)."""
     if not os.path.exists(path):
-        return {}, ("FAIL", "settings", "terraform.tfvars not found. In deploy/, run: cp settings.example terraform.tfvars, then edit it.")
+        return {}, ("FAIL", "settings", "1-connect/terraform.tfvars not found. In 1-connect/, run: cp settings.example terraform.tfvars, then edit it.")
     settings = {}
     with open(path, encoding="utf-8") as lines:
         for line in lines:
@@ -218,15 +224,20 @@ def exit_code(results):
 TAG_KEY = "clumio-profile"
 VOLUME_TAG_KEY = "clumio-volume-profile"  # A volume on its own: see modules/profile, the volumes rule.
 ACTION_STATES = {"OTHER", "BAD_VALUE", "OFF", "DOUBLE"}  # a person must change something
-WORKLOADS = {"s3": "s3", "rds-instance": "databases", "rds-cluster": "databases", "ec2-instance": "ec2", "ebs-volume": "ebs_volumes"}
-LABELS = {"s3": "S3 buckets", "databases": "RDS and Aurora", "ec2": "EC2 instances", "ebs_volumes": "volumes on their own"}
+# Each kind of tagged resource, and the 2-protect- folder (workload) whose policy protects it.
+WORKLOADS = {"s3": "s3", "rds-instance": "rds", "rds-cluster": "aurora", "ec2-instance": "ec2", "ebs-volume": "ebs"}
+LABELS = {"s3": "S3 buckets", "rds": "RDS instances", "aurora": "Aurora clusters", "ec2": "EC2 instances", "ebs": "volumes on their own"}
 # How Clumio lists EC2 instances and EBS volumes, and the field that holds the AWS ID.
 ASSETS = {"ec2-instance": ("/datasources/aws/ec2-instances", "instance_native_id"),
           "ebs-volume": ("/datasources/aws/ebs-volumes", "volume_native_id")}
 
 
 class NothingApplied(Exception):
-    """deploy/ hasn't been applied, so there's no protection to check."""
+    """There are no settings naming an account, Region and unit to check."""
+
+
+class ClumioUnavailable(Exception):
+    """Clumio didn't list the policies in full, so which are the kit's can't be known."""
 
 
 class AwsUnavailable(Exception):
@@ -238,9 +249,32 @@ def coverage(world):
     kit = world.kit()
     if kit is None:
         raise NothingApplied()
+    profiles = kit_profiles(world, kit)
     items, context = tagged(world, kit["region"])
-    records = [settings_problem(item, kit["profiles"], context) or check_in_clumio(world, kit, item) for item in items]
+    records = [settings_problem(item, profiles, context) or check_in_clumio(world, kit, profiles, item) for item in items]
     return records, check_connection_unit(world, kit)
+
+
+def kit_profiles(world, kit):
+    """{profile: {workload: policy ID, "s3_group": group ID}}: the kit's policies, found by the names
+    modules/protect gives them, <profile>-<workload>-<account>-<region>, in the unit. Another team's
+    policy, or another account's or Region's, never matches. Raises ClumioUnavailable."""
+    pattern = re.compile(r"^([a-z0-9][a-z0-9-]*)-(s3|rds|aurora|ec2|ebs)-" + re.escape(f"{kit['account_id']}-{kit['region']}") + "$")
+    unit = kit["organizational_unit_id"]
+    policies = clumio_items(world, "/policies/definitions", None, unit, complete=True)
+    groups = clumio_items(world, "/datasources/protection-groups", None, unit, complete=True)
+    if policies is None or groups is None:
+        raise ClumioUnavailable("Clumio didn't list this unit's policies in full, so which are the kit's can't be known. Run again.")
+    profiles = {}
+    for policy in policies:
+        found = pattern.match(policy.get("name") or "")
+        if found:
+            profiles.setdefault(found.group(1), {})[found.group(2)] = policy["id"]
+    for group in groups:
+        found = pattern.match(group.get("name") or "")
+        if found and found.group(2) == "s3" and not group.get("is_deleted"):
+            profiles.setdefault(found.group(1), {})["s3_group"] = group["id"]
+    return profiles
 
 
 def tagged(world, region):
@@ -292,11 +326,6 @@ def attached_instance(volume_id, context):
     return (context["volumes"].get(volume_id) or {}).get("instance")
 
 
-def workloads_of(profile):
-    """A profile's workloads, from Terraform's kit output."""
-    return {workload: bool(profile["workloads"].get(workload, False)) for workload in LABELS}
-
-
 def settings_problem(item, profiles, context):
     """BAD_VALUE, OFF or DOUBLE: what's wrong before Clumio is even asked; None when nothing is."""
     kind, name, value, key = item
@@ -310,14 +339,15 @@ def settings_problem(item, profiles, context):
                       "A volume attached to a tagged instance is already in that instance's backup.")
     profile = profiles.get(value)
     if profile is None:
-        return record(kind, name, value, "BAD_VALUE", f'no profile named "{value}" here. Profiles: {", ".join(sorted(profiles))}. Fix the tag.')
+        return record(kind, name, value, "BAD_VALUE", f'no profile named "{value}" here. Profiles: {", ".join(sorted(profiles)) or "none applied"}. Fix the tag.')
     workload = WORKLOADS[kind]
-    if not workloads_of(profile)[workload]:
-        return record(kind, name, value, "OFF", f"profile {value} doesn't protect {LABELS[workload]}. "
-                      f"Set {workload} = true in it, or tag this with another profile.")
+    if workload not in profile:
+        return record(kind, name, value, "OFF", f'no 2-protect-{workload} folder with name = "{value}" is applied, so nothing protects '
+                      f"{LABELS[workload]} for it (profile {value} has: {', '.join(sorted(w for w in profile if w in LABELS))}). "
+                      f"Apply 2-protect-{workload}, or tag this with another profile.")
     instance = attached_instance(name, context) if kind == "ebs-volume" else None
     instance_profile = profiles.get(context["instance_profiles"].get(instance))
-    if instance_profile and workloads_of(instance_profile)["ec2"]:
+    if instance_profile and "ec2" in instance_profile:
         return record(kind, name, value, "DOUBLE", f"it's attached to {instance}, whose backup already holds it. "
                       f"Remove its {VOLUME_TAG_KEY} tag, or you pay for two copies.")
     return None
@@ -327,13 +357,13 @@ def record(kind, name, profile, state, detail, last_backup=""):
     return {"kind": kind, "name": name, "profile": profile, "state": state, "detail": detail, "last_backup": last_backup}
 
 
-def check_in_clumio(world, kit, item):
+def check_in_clumio(world, kit, profiles, item):
     kind, name, value, _ = item
-    profile = kit["profiles"][value]
+    profile = profiles[value]
     if kind == "s3":
         return check_bucket(world, kit, name, value, profile)
     asset = find_database(world, kit, name) if kind.startswith("rds") else find_asset(world, kit, kind, name)
-    problem = ownership_problem(world, kind, name, value, profile, asset, kit["organizational_unit_id"])
+    problem = ownership_problem(world, kind, name, value, profile[WORKLOADS[kind]], asset, kit["organizational_unit_id"])
     if problem:
         return problem
     if kind.startswith("rds"):
@@ -344,7 +374,7 @@ def check_in_clumio(world, kit, item):
     return protected(kind, name, value, asset.get("last_backup_timestamp") or "")
 
 
-def ownership_problem(world, kind, name, value, profile, asset, unit):
+def ownership_problem(world, kind, name, value, our_policy, asset, unit):
     """UNKNOWN, NOT_YET or OTHER for an asset Clumio returned; None when our policy protects it."""
     if asset is None:
         return record(kind, name, value, "UNKNOWN", "Clumio didn't answer. Run again; if it persists, check the token.")
@@ -353,7 +383,7 @@ def ownership_problem(world, kind, name, value, profile, asset, unit):
     info = asset.get("protection_info") or {}
     if not info.get("policy_id"):
         return record(kind, name, value, "NOT_YET", "Clumio found it, but no policy applies yet. Run again in a few minutes.")
-    if info["policy_id"] != profile["policy_id"]:
+    if info["policy_id"] != our_policy:
         return record(kind, name, value, "OTHER", claimed_by(world, info, unit))
     return None
 
@@ -381,11 +411,11 @@ def check_bucket(world, kit, name, value, profile):
     found = clumio_items(world, "/datasources/protection-groups/s3-assets", {"bucket_name": {"$eq": name}}, kit["organizational_unit_id"])
     if found is None:
         return record("s3", name, value, "UNKNOWN", "Clumio didn't answer. Run again; if it persists, check the token.")
-    asset = next((a for a in found if a.get("group_id") == profile["protection_group_id"] and not a.get("is_deleted")), None)
+    asset = next((a for a in found if a.get("group_id") == profile.get("s3_group") and not a.get("is_deleted")), None)
     if asset is None:
         return record("s3", name, value, "NOT_YET", "Clumio hasn't added it to this profile's protection group yet. "
                       "A bucket joins once Clumio's daily inventory sees its tag, up to a day: run again later.")
-    if (asset.get("protection_info") or {}).get("policy_id") != profile["policy_id"]:
+    if (asset.get("protection_info") or {}).get("policy_id") != profile["s3"]:
         return record("s3", name, value, "OTHER", claimed_by(world, asset.get("protection_info") or {}, kit["organizational_unit_id"]))
     return protected("s3", name, value, asset.get("last_backup_timestamp") or "")
 
@@ -398,14 +428,14 @@ def protected(kind, name, value, latest):
 
 
 def claimed_by(world, info, unit):
-    """Who applied another policy: a rule, by name, or a direct assignment. A rule is found only in its
-    unit's context (live, 2026-10-28: 404 without it)."""
+    """Who applied another policy: a rule, by name and ID (rule_before_id takes the ID), or a direct
+    assignment. A rule is found only in its unit's context (live, 2026-10-28: 404 without it)."""
     if not info.get("rule_id"):
         return "another policy was assigned to it directly in Clumio. Remove that assignment, or ask whoever made it."
     status_code, rule = world.clumio_get(f"/policies/rules/{info['rule_id']}", unit=unit)
-    rule_name = rule.get("name") if status_code == 200 else info["rule_id"]
-    return (f'rule "{rule_name}" claimed it first: Clumio applies the highest-ranked rule that matches. '
-            "Remove the tag that rule matches, ask its owner, or rank this profile's rule higher (rule_before_id).")
+    rule_name = f'"{rule.get("name")}" ({info["rule_id"]})' if status_code == 200 else info["rule_id"]
+    return (f"rule {rule_name} claimed it first: Clumio applies the highest-ranked rule that matches. Remove the tag that "
+            f"rule matches, ask its owner, or rank this folder's rule ahead of it: rule_before_id = \"{info['rule_id']}\".")
 
 
 def check_connection_unit(world, kit):
@@ -417,7 +447,7 @@ def check_connection_unit(world, kit):
         return ("FAIL", "connection", f"{kit['account_id']}/{kit['region']} is connected in unit {body.get('organizational_unit_id')}, "
                 f"not {kit['organizational_unit_id']}, so these profiles' rules can't match it. Set organizational_unit to the connection's unit.")
     if status_code == 404:
-        return "FAIL", "connection", f"{kit['account_id']}/{kit['region']} isn't connected. Plan and apply deploy/: deploy/README.md, step 1."
+        return "FAIL", "connection", f"{kit['account_id']}/{kit['region']} isn't connected. Plan and apply 1-connect (1-connect/README.md)."
     return "UNKNOWN", "connection", f"Clumio answered HTTP {status_code} for the connection. Run again."
 
 
@@ -432,8 +462,8 @@ def clumio_items(world, path, condition, unit=None, complete=False):
     """A filtered Clumio list, or None when Clumio didn't answer 200, or, with complete, when the
     answer has more than one page. Callers re-check each item: a filter Clumio ignored must never
     turn into a wrong answer."""
-    query = urllib.parse.quote(json.dumps(condition))
-    status_code, body = world.clumio_get(f"{path}?limit=100&filter={query}", unit=unit)
+    query = f"&filter={urllib.parse.quote(json.dumps(condition))}" if condition else ""
+    status_code, body = world.clumio_get(f"{path}?limit=100{query}", unit=unit)
     if status_code != 200 or (complete and (body.get("total_pages_count") or 1) > 1):
         return None
     return body.get("_embedded", {}).get("items", [])
@@ -473,20 +503,23 @@ def mask(text, found):
 # --- Teardown: is it safe to remove protection now? ----------------------------------------------
 
 def teardown(world):
-    """("REFUSED" | "BLOCKED" | "READY" | "UNKNOWN", lines to show). Raises NothingApplied."""
+    """("REFUSED" | "BLOCKED" | "READY" | "UNKNOWN", lines to show). Raises NothingApplied, ClumioUnavailable."""
+    # The mode as the person set it in 1-connect/terraform.tfvars. Terraform's production guard is the
+    # hard stop; this says so first, in words. No readable mode: never READY (cold review, 2026-10-28).
+    settings, _ = read_settings(world.settings_path)
+    if settings.get("mode") not in ("trial", "production"):
+        return "UNKNOWN", [f"no mode in {world.settings_path}, so production can't be ruled out. Set it up as 0-check/README.md says."]
+    if settings["mode"] == "production":
+        return "REFUSED", ["mode is production in 1-connect/terraform.tfvars, so teardown is refused. To retire production "
+                           "on purpose, see Retire a production connection in docs/operate.md."]
     kit = world.kit()
     if kit is None:
         raise NothingApplied()
-    # The mode as the person set it in deploy/terraform.tfvars. Terraform's production guard is the hard
-    # stop; this says so first, in words, and lets a retire go ahead once the settings say trial.
-    settings, _ = read_settings(world.settings_path)
-    if settings.get("mode") == "production":
-        return "REFUSED", ["mode is production in deploy/terraform.tfvars, so teardown is refused. To retire production "
-                           "on purpose, see Retire a production connection in docs/operate.md."]
     unit = kit["organizational_unit_id"]
-    watched = [(f"protection group of profile {name}", p["protection_group_id"]) for name, p in kit["profiles"].items() if p["protection_group_id"]]
+    profiles = kit_profiles(world, kit)
+    watched = [(f"protection group of profile {name}", p["s3_group"]) for name, p in profiles.items() if p.get("s3_group")]
     items, _ = tagged(world, kit["region"])
-    ours = [(kind, name) for kind, name, value, _ in items if kind != "s3" and value in kit["profiles"]]
+    ours = [(kind, name) for kind, name, value, _ in items if kind != "s3" and value in profiles]
     for kind, name in ours:
         asset = find_database(world, kit, name) if kind.startswith("rds") else find_asset(world, kit, kind, name)
         if asset is None:
@@ -505,8 +538,14 @@ def teardown(world):
     if running:
         return "BLOCKED", running + ["Run tools/status.py --teardown again when they end: removing protection mid-backup leaves Clumio's tasks stuck."]
     databases = world.databases(kit["region"])
-    return "READY", [f"{name}: PITR window {databases[name]['pitr']} days now. It stays after teardown: change it yourself if you need to."
-                     for kind, name in ours if kind.startswith("rds") and name in databases]
+    lines = [f"{name}: PITR window {databases[name]['pitr']} days now. It stays after teardown: set back the window you noted, if you need to."
+             for kind, name in ours if kind.startswith("rds") and name in databases]
+    applied = world.applied_folders()
+    if applied:
+        protect = [folder for folder in applied if folder != "1-connect"]
+        lines.append("Still applied: " + ", ".join(protect + (["1-connect"] if "1-connect" in applied else []))
+                     + ". Destroy each 2-protect- folder first, 1-connect last (docs/operate.md, Take a trial down).")
+    return "READY", lines
 
 
 def print_results(results):
@@ -519,34 +558,56 @@ def print_results(results):
 
 # --- The real world ------------------------------------------------------------------------------
 
-def real_world():
+def real_world(flags=None):
+    settings_path = os.path.join(CONNECT, "terraform.tfvars")
     return World(
-        settings_path=os.path.join(DEPLOY, "terraform.tfvars"),
+        settings_path=settings_path,
         terraform_version=terraform_version,
         aws_cli_found=lambda: shutil.which("aws") is not None,
         signed_in_account=signed_in_account,
         clumio_credentials_set=lambda: bool(os.environ.get("CLUMIO_API_TOKEN") and os.environ.get("CLUMIO_API_BASE_URL")),
         clumio_get=clumio_get,
-        kit=terraform_kit,
+        kit=lambda: kit_from(flags) if flags else kit_from(read_settings(settings_path)[0]),
         tagged_resources=aws_tagged_resources,
         databases=aws_databases,
         volumes=aws_volumes,
         instances=aws_instances,
+        applied_folders=applied_folders,
     )
 
 
 def run_json(command, timeout=60):
     """Run a read-only command and parse its JSON output; None when it fails."""
     try:
-        answer = subprocess.run(command, capture_output=True, text=True, timeout=timeout, cwd=DEPLOY)
+        answer = subprocess.run(command, capture_output=True, text=True, timeout=timeout, cwd=ROOT)
     except (OSError, subprocess.TimeoutExpired):
         return None
     return json.loads(answer.stdout) if answer.returncode == 0 and answer.stdout.strip() else None
 
 
-def terraform_kit():
-    """The kit output from this folder's state: account, Region, unit, mode and each profile's IDs."""
-    return run_json(["terraform", "output", "-json", "kit"])
+def kit_from(settings):
+    """The account, Region and unit to check, from 1-connect's settings or the flags; None when any is
+    missing or malformed. The unit becomes the ID Clumio uses: "global" is the all-zero ID."""
+    if not all(key in settings and re.match(SETTING_SHAPES[key][0], settings[key]) for key in ("account_id", "region", "organizational_unit")):
+        return None
+    unit = settings["organizational_unit"]
+    return {"account_id": settings["account_id"], "region": settings["region"],
+            "organizational_unit_id": GLOBAL_UNIT if unit == "global" else unit}
+
+
+def applied_folders():
+    """The 1-connect and 2-protect- folders at the repository root whose local state holds resources."""
+    found = []
+    for folder in sorted(os.listdir(ROOT)):
+        state = os.path.join(ROOT, folder, "terraform.tfstate")
+        if (folder == "1-connect" or folder.startswith("2-protect-")) and os.path.exists(state):
+            try:
+                with open(state, encoding="utf-8") as file:
+                    if json.load(file).get("resources"):
+                        found.append(folder)
+            except (OSError, ValueError):
+                found.append(folder)  # Unreadable: say so by listing it, never assume it's empty.
+    return found
 
 
 def aws_tagged_resources(region):
@@ -633,8 +694,8 @@ def print_records(records):
         print(f"{r['state']:12} {r['kind']:13} {r['name']:32} {r['profile']:10} {r['last_backup'] or '-':20} {r['detail']}")
 
 
-def run_status(as_json):
-    records, unit_result = coverage(real_world())
+def run_status(as_json, flags=None):
+    records, unit_result = coverage(real_world(flags))
     code = coverage_exit_code(records, unit_result)
     if as_json:
         print(json.dumps({"connection": dict(zip(("state", "check", "detail"), unit_result)), "resources": records, "exit_code": code}, indent=1))
@@ -658,23 +719,32 @@ def run_teardown():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Read-only checks for deploy/. Nothing changes.")
+    parser = argparse.ArgumentParser(description="Read-only checks of the kit in one account and Region. Nothing changes.")
     choice = parser.add_mutually_exclusive_group()
     choice.add_argument("--preflight", action="store_true", help="check everything before the first plan")
     choice.add_argument("--teardown", action="store_true", help="whether teardown is safe now")
     parser.add_argument("--json", action="store_true", help="coverage as JSON, for machines")
+    parser.add_argument("--account", help="with --region and --unit: check this account instead of 1-connect's settings")
+    parser.add_argument("--region")
+    parser.add_argument("--unit", help='"global", or a unit\'s ID')
     args = parser.parse_args()
+    flags = {"account_id": args.account, "region": args.region, "organizational_unit": args.unit} if args.account else None
+    if not args.preflight and not (os.environ.get("CLUMIO_API_TOKEN") and os.environ.get("CLUMIO_API_BASE_URL")):
+        print("Export your Clumio details first (0-check/README.md): export CLUMIO_API_BASE_URL=<your API URL>, "
+              "then read -rs CLUMIO_API_TOKEN && export CLUMIO_API_TOKEN")
+        sys.exit(2)
     try:
         if args.preflight:
             results = preflight(real_world())
             print_results(results)
             print("Next: 0-check/preview/preview.sh" if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
             sys.exit(exit_code(results))
-        sys.exit(run_teardown() if args.teardown else run_status(args.json))
+        sys.exit(run_teardown() if args.teardown else run_status(args.json, flags))
     except NothingApplied:
-        print("Nothing is applied in deploy/ yet: plan and apply it first (deploy/README.md).")
+        print("No account, Region and unit to check: set them in 1-connect/terraform.tfvars (0-check/README.md), "
+              "or pass --account, --region and --unit.")
         sys.exit(1)
-    except AwsUnavailable as error:
+    except (AwsUnavailable, ClumioUnavailable) as error:
         print(f"UNKNOWN: {error}")
         sys.exit(2)
 

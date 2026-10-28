@@ -52,3 +52,27 @@ run "a_boundary_that_isnt_a_policy_arn_is_refused" {
   }
   expect_failures = [var.permissions_boundary_arn]
 }
+
+# One vocabulary, the 2-protect- folders' names. Clumio's template has three IAM switches: RDS covers
+# Aurora too, and EBS covers EC2 too.
+run "aurora_alone_turns_on_clumios_rds_iam" {
+  command = plan
+  variables {
+    workloads = ["aurora"]
+  }
+  assert {
+    condition     = local.is_rds && !local.is_s3 && !local.is_ebs
+    error_message = "aurora needs Clumio's RDS IAM, and nothing else."
+  }
+}
+
+run "ec2_alone_turns_on_clumios_ebs_iam" {
+  command = plan
+  variables {
+    workloads = ["ec2"]
+  }
+  assert {
+    condition     = local.is_ebs && !local.is_s3 && !local.is_rds
+    error_message = "ec2 needs Clumio's EBS IAM, and nothing else."
+  }
+}

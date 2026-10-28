@@ -1,0 +1,11 @@
+# Settings for 2-protect-aurora. Copy this file to terraform.tfvars in this folder, then set each REPLACE value:
+#   cp settings.example terraform.tfvars
+# Keep each value on one line. terraform.tfvars never leaves your machine.
+# The account, Region, unit and mode come from 1-connect: apply it first.
+
+name                = "gold" # the profile: resources tagged clumio-profile = gold get this protection
+keep_days           = 30     # how long each daily SecureVault copy is kept, in days
+archive_months      = null   # REPLACE: 0 for a trial (no archive), or months; each archive copy bills until it expires
+pitr_retention_days = null   # REPLACE: 1 to 35 days. Clumio sets this PITR window on every tagged database, turning PITR on where it's off
+# allow_shorter_pitr = true # only to accept a plan that shortens a database's window: that deletes AWS's older backups
+# rule_before_id     = "<rule ID>" # only when tools/status.py says another rule claimed these first

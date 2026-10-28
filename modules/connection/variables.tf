@@ -54,9 +54,9 @@ variable "iam_path" {
 }
 
 variable "workloads" {
-  description = "What Clumio may protect: \"s3\", \"rds\" (RDS and Aurora), \"ebs\" (EC2 and EBS). All by default."
+  description = "What Clumio may protect, by 2-protect folder: \"s3\", \"rds\", \"aurora\", \"ec2\", \"ebs\". All by default."
   type        = list(string)
-  default     = ["s3", "rds", "ebs"]
+  default     = ["s3", "rds", "aurora", "ec2", "ebs"]
 }
 
 variable "role_tags" {

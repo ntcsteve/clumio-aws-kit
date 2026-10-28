@@ -16,7 +16,7 @@ Give it time. In the lab run, a bucket joined its protection group within minute
 
 In the Clumio console, restore one resource you protected, to a new name beside the original, never over it. For a database, Clumio creates a new instance or cluster. For a bucket, restore a folder to a new prefix.
 
-When the restore task completes, open what came back and check it. Which key the copy gets depends on the workload: see [What a restore needs from you](../docs/keys.md#what-a-restore-needs-from-you). The restored copy carries no `clumio-profile` tag, so the kit neither protects nor removes it: delete it yourself when you're done.
+When the restore task completes, open what came back and check it. Which key the copy gets depends on the workload: see [What a restore needs from you](../docs/keys.md#what-a-restore-needs-from-you). A restored Aurora cluster carried no `clumio-profile` tag in the lab run, so the kit neither protects nor removes it: delete it yourself when you're done. Restored S3 objects land in the bucket you name; in a tagged bucket, they're protected with it.
 
 ## 3. Keep the evidence
 
@@ -32,5 +32,5 @@ Add the restore task's ID from Clumio's Tasks page. Each backup and restore is a
 
 ## Next
 
-- Keep it: for production, call the same modules from your own repository, with your own state and CI.
+- Keep it: for production, call the same modules from your own repository, with your own state and CI: see [Production](../docs/production.md).
 - Take a trial down: [Take a trial down](../docs/operate.md#take-a-trial-down).

@@ -160,7 +160,7 @@ TOPIC_ACTIONS = ["sns:CreateTopic", "sns:GetTopicAttributes", "sns:SetTopicAttri
                  "sns:ListTagsForResource", "sns:DeleteTopic"]
 RULE_ACTIONS = ["events:PutRule", "events:DescribeRule", "events:ListTagsForResource", "events:PutTargets",
                 "events:ListTargetsByRule", "events:RemoveTargets", "events:DeleteRule"]
-# modules/profile reads each database's PITR window at plan time, to stop a plan that would shorten
+# modules/protect reads each database's PITR window at plan time, to stop a plan that would shorten
 # one. Taken from Terraform's debug log on a live read (spike S6, 2026-10-28): tags come inside these
 # answers, so no rds:ListTagsForResource. Each action is granted, and checked, on its own resource type.
 DATABASE_READS = [("ReadRdsInstances", "Read RDS instances' PITR windows (the shorter-window guard)", "rds:DescribeDBInstances", "db"),
@@ -229,7 +229,7 @@ def deploy_requirements(plan, region, settings):
         base = f"arn:aws:events:{region}:<ACCOUNT_ID>:rule/"
         rows.append(Row("ClumioEventBridgeRules", "EventBridge rules and targets", RULE_ACTIONS, [base + pattern(rules)],
                         None, region, [(arn, []) for arn in arns(base, rules)]))
-    if "rds" in (settings.get("workloads") or []):   # a profile with databases needs "rds" in workloads
+    if {"rds", "aurora"} & set(settings.get("workloads") or []):   # 2-protect-rds and -aurora read PITR windows
         for sid, label, action, kind in DATABASE_READS:
             grant = f"arn:aws:rds:{region}:<ACCOUNT_ID>:{kind}:*"
             rows.append(Row(sid, label, [action], [grant], None, region, [(grant, [])]))

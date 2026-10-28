@@ -1,14 +1,22 @@
 # Production
 
-Production teams call the two modules from their own repository, with their own state backend, review and CI. The modules are the product: `deploy/` is only their first-time caller, and every guard it relies on lives in the modules, so your repository gets the same checks.
+Production teams call the two modules from their own repository, with their own state backend, review and CI. The modules are the product: the step folders are their first-time callers, and every guard lives in the modules, so your repository gets the same checks.
 
 ## Call the modules
 
-Pin a release tag, so an upgrade is a reviewed change of `ref`:
+Use separate roots, as the step folders do: one for the connection, and one per workload you protect, each with its own state. A protect root looks the connection up, so apply the connection first. The address below is the published repository's once v1.0 is released; until then, use a local path.
 
 ```hcl
+# Root: connect
+terraform {
+  required_providers {
+    clumio = { source = "clumio-code/clumio", version = "0.24.2" }
+    aws    = { source = "hashicorp/aws", version = "~> 6.0" }
+  }
+}
+
 provider "clumio" {
-  clumio_organizational_unit_context = "<unit ID>" # the unit the connection and its rules belong to
+  clumio_organizational_unit_context = "<unit ID>" # the Global unit is 00000000-0000-0000-0000-000000000000
 }
 
 provider "aws" {
@@ -21,41 +29,48 @@ module "connection" {
   account_id = "123456789012"
   region     = "us-west-2"
   mode       = "production"
-}
-
-module "profile_gold" {
-  source              = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/profile?ref=v1.0.0"
-  name                = "gold"
-  connection_id       = module.connection.connection_id
-  account_id          = "123456789012"
-  region              = "us-west-2"
-  mode                = "production"
-  s3                  = true
-  databases           = true
-  keep_days           = 30
-  archive_months      = 12
-  pitr_retention_days = 14
+  workloads  = ["rds", "aurora"]
 }
 ```
 
-Pass `connection_id` from the connection module, never a module-wide `depends_on`: it makes protection wait for Clumio's IAM, and keeps the profile's database reads at plan time, where the PITR guard needs them. `deploy/main.tf` is a complete, tested example of both calls.
+```hcl
+# Root: protect RDS. The same terraform and provider blocks as above.
+module "protect" {
+  source               = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/protect?ref=v1.0.0"
+  workload             = "rds"
+  name                 = "gold"
+  account_id           = "123456789012"
+  region               = "us-west-2"
+  mode                 = "production"
+  connection_workloads = ["rds", "aurora"] # the connection's workloads: a missing one stops the plan
+  keep_days            = 30
+  archive_months       = 12
+  pitr_retention_days  = 14
+}
+```
 
-## What you get, and what you don't
+Keep the connection and each protect call in separate roots: in one root, the connection doesn't exist yet when the protect call looks it up at plan time. `1-connect/` and `2-protect-*/` are complete, tested examples.
 
-| Guard | Where | In your repository |
-|---|---|---|
-| Wrong account or Region stops the plan | Both modules | Yes |
-| A shorter PITR window stops the plan, unless `allow_shorter_pitr = true` | `modules/profile` | Yes |
-| `mode = "production"` refuses destroy, a switch to trial, and a new account or Region | Both modules | Yes |
-| A profile's workload must have Clumio's IAM in the connection (`workloads`) | `deploy/variables.tf` only | **No:** keep each profile's workloads within the connection's `workloads` yourself |
-| No backup running before a teardown | `tools/status.py --teardown` | **No:** it reads `deploy/`. Check Clumio's Tasks before removing a profile |
+## What you get
 
-`tools/status.py` reads `deploy/`'s settings and state, so in v1.0 it doesn't run against your repository. Clumio's console shows each asset's policy and last backup.
+| Guard | In your repository |
+|---|---|
+| Wrong account or Region stops the plan | Yes, in both modules |
+| A shorter PITR window stops the plan, unless `allow_shorter_pitr = true` | Yes, in `modules/protect` |
+| `mode = "production"` refuses destroy, a switch to trial, and a new account, Region, name or workload | Yes, in both modules |
+| A workload the connection's IAM leaves out stops the plan | Yes, when you pass `connection_workloads` |
+| No backup running before a teardown | Run `tools/status.py --teardown` from a checkout of this repository with your settings in `1-connect/terraform.tfvars`, or check Clumio's Tasks |
 
-## One state per account and Region
+`tools/status.py --account <ID> --region <Region> --unit <unit>` shows who protects each tagged resource, for policies `modules/protect` made in any repository: it finds them by name in Clumio. Add `--json` for CI; the exit code is 0 when nothing needs a person.
 
-Keep one Terraform state for each account and Region, and one Clumio tenant per state. A token from another tenant can't see what a state created, and Terraform would create a second set. To protect many accounts, run the same root once per account and Region in your CI.
+## One state per root
+
+Keep one Terraform state per root, per account and Region, and one Clumio tenant across them. A token from another tenant can't see what a state created, and Terraform would create a second set. To protect many accounts, run the same roots once per account and Region in your CI.
 
 ## Retire production
 
-Production refuses every destroy on purpose. To retire it, see [Retire a production connection](operate.md#retire-a-production-connection).
+Production refuses every destroy on purpose. To retire it, in each protect root first and the connection root last:
+
+1. Remove the guard from state: `terraform state rm 'module.protect.terraform_data.production_guard[0]'` (in the connection root, `module.connection.terraform_data.production_guard[0]`). It's a marker with nothing behind it in AWS or Clumio, so this deletes nothing.
+2. Set `mode = "trial"`, then plan and apply once: no resource changes.
+3. Check Clumio's Tasks for running backups, then plan the destroy, read it, and apply it.

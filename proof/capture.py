@@ -143,9 +143,9 @@ def main():
         sys.exit(__doc__)
     evidence_set, capture, restored = sys.argv[1], sys.argv[2], sys.argv[3:]
     lab = subprocess.run(["terraform", "output", "-json", "lab"], capture_output=True, text=True, cwd=os.path.join(HERE, "lab"))
-    kit = status.terraform_kit()
+    kit = status.real_world().kit()
     if lab.returncode != 0 or kit is None:
-        sys.exit("FAIL: apply proof/lab and deploy/ first: no lab or kit output to read.")
+        sys.exit("FAIL: apply proof/lab first, and set 1-connect/terraform.tfvars: no lab output or settings to read.")
     lab, region, unit, account = json.loads(lab.stdout), kit["region"], kit["organizational_unit_id"], kit["account_id"]
     missing = missing_lab_outputs(lab)
     if missing:
