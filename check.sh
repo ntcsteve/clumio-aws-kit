@@ -2,15 +2,22 @@
 # Checks this repository before every commit. Offline: it never calls AWS or Clumio.
 # It reads only what git would ship (tracked files, and new files that .gitignore doesn't exclude),
 # so your own terraform.tfvars, state and .terraform/ never fail it, and never leave your machine.
-# Runs on macOS's stock bash 3.2. Needs git and python3; Terraform 1.10+ once the repo holds .tf files.
+# Runs on macOS's stock bash 3.2. Needs git, python3, Terraform 1.10+ and the Terraform registry.
+# The scans take seconds; the suites take a few minutes.
+#   Scans:
 #   1. shell scripts         every *.sh parses
 #   2. terraform fmt         every .tf is formatted
 #   3. no state or plans     by name, and by content (a renamed state file still holds "lineage")
 #   4. no credentials        AWS access keys, unredacted session tokens or secret keys, a Clumio token
 #   5. no account numbers    any 12-digit number outside the stand-ins below
 #   6. relative links        every relative link in a Markdown file points at a file that ships
-#   7. self-test             tests/check_test.sh proves each check passes and fails when it should
-#                            (skipped with CHECK_SELFTEST=off, which those tests set, so this never loops)
+#   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
+#   7. setup                 validates with its lock file; the shipped placeholders stop the plan
+#   8. module tests          each module refuses what it must (mock providers)
+#   9. preview golden tests  what the security team sees matches the reviewed output exactly
+#  10. status tests          status.py's checks, against fake AWS and Clumio answers
+#  11. self-test             tests/check_test.sh proves each scan passes and fails when it should
+# CHECK_SCANS_ONLY=1 runs the scans only. tests/check_test.sh sets it, so this never loops.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -23,15 +30,20 @@ if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   exit 1
 fi
 SHIPPED="$(mktemp)"
-trap 'rm -f "$SHIPPED"' EXIT
+COPIES="$(mktemp -d)"
+trap 'rm -rf "$SHIPPED" "$COPIES"' EXIT
 git ls-files -co --exclude-standard -z > "$SHIPPED"
 
-# 1. Shell scripts parse.
+# 1. Shell scripts parse, and they and status.py can run (make calls them directly).
 BAD=""
 while IFS= read -r -d '' file; do
-  case "$file" in *.sh) bash -n "$file" 2> /dev/null || BAD="$BAD $file" ;; esac
+  case "$file" in
+    *.sh) { bash -n "$file" 2> /dev/null && [ -x "$file" ]; } || BAD="$BAD $file" ;;
+    */status.py) [ -x "$file" ] || BAD="$BAD $file" ;;
+  esac
 done < "$SHIPPED"
-[ -z "$BAD" ] && pass "shell scripts parse" || flunk "shell scripts parse:$BAD (run: bash -n <file>)"
+[ -z "$BAD" ] && pass "shell scripts parse and are executable" \
+  || flunk "shell scripts parse and are executable:$BAD (run: bash -n <file>; chmod +x <file>)"
 
 # 2. Terraform files are formatted. Each folder that holds a .tf is checked on its own.
 TF_DIRS="$(tr '\0' '\n' < "$SHIPPED" | grep '\.tf$' | xargs -n1 dirname 2> /dev/null | sort -u || true)"
@@ -48,7 +60,8 @@ python3 - "$SHIPPED" << 'PY' || FAILED=1
 import os, re, sys
 
 # Stand-ins the docs may use for an AWS account. Anything else with 12 digits is treated as real.
-STAND_INS = {"123456789012", "111111111111", "222222222222", "333333333333"}
+# 000000000000 is the tail of Clumio's Global unit ID, 00000000-0000-0000-0000-000000000000.
+STAND_INS = {"123456789012", "111111111111", "222222222222", "333333333333", "000000000000"}
 STATE_NAME = re.compile(r"(^|/)([^/]*\.tfstate(\.[^/]*)?|tfplan|[^/]*\.tfplan)$")
 ACCESS_KEY = re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")
 SECRET_FIELD = re.compile(r'"(?:sessionToken|SessionToken|secretAccessKey|SecretAccessKey)"\s*:\s*"(?!REDACTED")[^"]+"')
@@ -103,12 +116,46 @@ for check, found in findings.items():
 sys.exit(1 if failed else 0)
 PY
 
-# 7. The checks above, proven against cases that must pass and must fail.
-if [ "${CHECK_SELFTEST:-on}" = off ]; then
-  echo "SKIP  self-test (CHECK_SELFTEST=off)"
-else
-  tests/check_test.sh > /dev/null 2>&1 && pass "self-test: tests/check_test.sh" \
-    || flunk "self-test: tests/check_test.sh (run it to see which case)"
+if [ "${CHECK_SCANS_ONLY:-0}" = 1 ]; then
+  echo "SKIP  suites and self-test (CHECK_SCANS_ONLY=1)"
+  [ "$FAILED" = 0 ] && echo "ALL CHECKS PASS" || { echo "CHECKS FAILED"; exit 1; }
+  exit 0
 fi
+
+# The suites run on a copy of what ships, so local working files never change a result.
+xargs -0 tar -cf - < "$SHIPPED" | tar -xf - -C "$COPIES"
+
+# 7. setup validates with its committed lock file, and the shipped placeholders stop the plan.
+if (cd "$COPIES/setup" && terraform init -backend=false -input=false -lockfile=readonly > /dev/null 2>&1 \
+    && terraform validate -no-color > /dev/null 2>&1); then
+  pass "setup: terraform validate"
+  out="$(cd "$COPIES/setup" && cp settings.example terraform.tfvars && terraform plan -input=false -no-color 2>&1 || true)"
+  MISSING=""
+  for setting in account_id region organizational_unit mode; do
+    grep -q "Set $setting in terraform.tfvars" <<< "$out" || MISSING="$MISSING $setting"
+  done
+  [ -z "$MISSING" ] && pass "setup: the shipped placeholders stop the plan" \
+    || flunk "setup: these placeholders did not stop the plan:$MISSING"
+else
+  flunk "setup: terraform init or validate (lock file out of date? run them in setup/ to see why)"
+fi
+
+# 8. Each module refuses what it must, with mock providers.
+for module in modules/connection modules/connection/iam; do
+  (cd "$COPIES/$module" && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform test -no-color > /dev/null 2>&1) \
+    && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
+done
+
+# 9. The preview renders exactly what the security team reviewed.
+"$COPIES/setup/preview/test/test.sh" > /dev/null 2>&1 && pass "setup/preview: golden tests" \
+  || flunk "setup/preview: golden tests (run setup/preview/test/test.sh to see the diff)"
+
+# 10. status.py's checks, against fake AWS and Clumio answers.
+(cd "$COPIES/setup" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "setup/status.py: tests" \
+  || flunk "setup/status.py: tests (run: python3 -m unittest discover -s tests, in setup/)"
+
+# 11. The scans above, proven against cases that must pass and must fail.
+tests/check_test.sh > /dev/null 2>&1 && pass "self-test: tests/check_test.sh" \
+  || flunk "self-test: tests/check_test.sh (run it to see which case)"
 
 [ "$FAILED" = 0 ] && echo "ALL CHECKS PASS" || { echo "CHECKS FAILED"; exit 1; }

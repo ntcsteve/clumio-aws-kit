@@ -1,0 +1,95 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ClumioRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags",
+        "iam:GetRole",
+        "iam:DeleteRole",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:PutRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:UpdateRole",
+        "iam:DeleteRolePermissionsBoundary"
+      ],
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/clumio/Clumio*"
+    },
+    {
+      "Sid": "ClumioRoleCreate",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/clumio/Clumio*"
+    },
+    {
+      "Sid": "ClumioPolicyAttachments",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/clumio/Clumio*",
+      "Condition": {
+        "ArnLike": {
+          "iam:PolicyARN": [
+            "arn:aws:iam::<ACCOUNT_ID>:policy/ClumioS3EbPolicy-*",
+            "arn:aws:iam::<ACCOUNT_ID>:policy/clumio/Clumio*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ClumioManagedPolicies",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreatePolicy",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:ListPolicyVersions",
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicyVersion",
+        "iam:DeletePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::<ACCOUNT_ID>:policy/ClumioS3EbPolicy-*",
+        "arn:aws:iam::<ACCOUNT_ID>:policy/clumio/Clumio*"
+      ]
+    },
+    {
+      "Sid": "ClumioSnsTopic",
+      "Effect": "Allow",
+      "Action": [
+        "sns:CreateTopic",
+        "sns:GetTopicAttributes",
+        "sns:SetTopicAttributes",
+        "sns:ListTagsForResource",
+        "sns:DeleteTopic"
+      ],
+      "Resource": "arn:aws:sns:ap-southeast-2:<ACCOUNT_ID>:ClumioInventoryTopic_*"
+    },
+    {
+      "Sid": "ClumioEventBridgeRules",
+      "Effect": "Allow",
+      "Action": [
+        "events:PutRule",
+        "events:DescribeRule",
+        "events:ListTagsForResource",
+        "events:PutTargets",
+        "events:ListTargetsByRule",
+        "events:RemoveTargets",
+        "events:DeleteRule"
+      ],
+      "Resource": "arn:aws:events:ap-southeast-2:<ACCOUNT_ID>:rule/Clumio*"
+    }
+  ]
+}

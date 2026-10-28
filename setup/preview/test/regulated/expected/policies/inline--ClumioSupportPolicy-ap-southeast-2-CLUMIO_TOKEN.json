@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "support:DescribeTrustedAdvisorChecks",
+        "support:DescribeTrustedAdvisorCheckSummaries",
+        "support:DescribeTrustedAdvisorCheckResult",
+        "support:DescribeTrustedAdvisorCheckRefreshStatuses",
+        "support:DescribeSupportedLanguages",
+        "support:DescribeSeverityLevels",
+        "support:DescribeServices",
+        "support:DescribeCreateCaseOptions",
+        "support:DescribeCommunications",
+        "support:DescribeCases",
+        "support:DescribeAttachment",
+        "support:CreateCase",
+        "support:AddCommunicationToCase",
+        "support:AddAttachmentsToSet"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "AllowClumioSupportAccess"
+    }
+  ]
+}

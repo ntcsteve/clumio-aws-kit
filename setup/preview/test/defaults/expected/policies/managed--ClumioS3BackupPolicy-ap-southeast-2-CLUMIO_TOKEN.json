@@ -1,0 +1,115 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GetS3CloudwatchMetrics",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:GetMetricStatistics"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Sid": "AllowS3CopyToClumio",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:PutObjectTagging"
+      ],
+      "Resource": [
+        "arn:aws:s3:::clumio-s3-backup*",
+        "arn:aws:s3:::clumio-s3-backup*/*",
+        "arn:aws:s3:ap-southeast-2:<CLUMIO_DATA_PLANE_ACCOUNT_ID>:accesspoint/clumio-data*"
+      ],
+      "Condition": {
+        "StringLike": {
+          "s3:ResourceAccount": [
+            "<CLUMIO_DATA_PLANE_ACCOUNT_ID>"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "AllowDescribeOrganization",
+      "Effect": "Allow",
+      "Action": [
+        "organizations:DescribeOrganization"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Sid": "AllowS3Backup",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetInventoryConfiguration",
+        "s3:GetObject",
+        "s3:GetObjectTagging",
+        "s3:GetObjectVersion",
+        "s3:GetObjectVersionTagging",
+        "s3:ListBucket",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListBucketVersions",
+        "s3:PutInventoryConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::*"
+      ]
+    },
+    {
+      "Sid": "AllowS3ContinuousBackup",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketNotification",
+        "s3:PutBucketNotification"
+      ],
+      "Resource": [
+        "arn:aws:s3:::*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:ResourceAccount": [
+            "<ACCOUNT_ID>"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "AllowS3EventRuleUpdate",
+      "Effect": "Allow",
+      "Action": [
+        "events:DeleteRule",
+        "events:DescribeRule",
+        "events:ListTargetsByRule",
+        "events:PutRule",
+        "events:PutTargets",
+        "events:RemoveTargets"
+      ],
+      "Resource": [
+        "arn:aws:events:*:<ACCOUNT_ID>:rule/clumio-s3-event-rule-*"
+      ]
+    },
+    {
+      "Sid": "AllowS3ContinuousBackupRolePassToEventBridge",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "<ARN(s) of resources created in the same run>"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": [
+            "events.amazonaws.com"
+          ]
+        }
+      }
+    }
+  ]
+}

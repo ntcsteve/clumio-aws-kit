@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests for ../check.sh. Each case copies the repo as git would ship it into a temporary folder,
 # changes one thing, runs check.sh there, and expects it to pass, or to fail at the named check.
-# The copy runs check.sh with CHECK_SELFTEST=off, so check.sh never calls these tests again.
+# The copy runs check.sh with CHECK_SCANS_ONLY=1, so check.sh never calls these tests again.
 # Runs on macOS's stock bash 3.2. Needs git and python3; no network, no AWS, no Clumio.
 set -euo pipefail
 
@@ -31,7 +31,7 @@ expect_result() {
   copy="$(fresh_copy "case$CASES")"
   (cd "$copy" && eval "$setup")
   set +e
-  output="$(cd "$copy" && CHECK_SELFTEST=off ./check.sh 2>&1)"
+  output="$(cd "$copy" && CHECK_SCANS_ONLY=1 ./check.sh 2>&1)"
   status=$?
   set -e
   if [ "$expected" = pass ] && [ "$status" -eq 0 ]; then
@@ -63,6 +63,8 @@ expect_result "an access key fails" fail "FAIL  no credentials" \
   "printf 'aws_access_key_id = $ACCESS_KEY\n' > notes.md"
 expect_result "12-digit runs inside lock-file hashes pass" pass "" \
   "mkdir -p setup && printf 'provider \"x\" {\n  hashes = [\n    \"zh:$ACCOUNT\",\n  ]\n}\n' > setup/.terraform.lock.hcl"
+expect_result "a script that cannot run fails" fail "FAIL  shell scripts parse and are executable" \
+  "printf '#!/usr/bin/env bash\necho hi\n' > notes.sh"
 expect_result "a broken relative link fails" fail "FAIL  relative links resolve" \
   "printf 'See [the guide](docs/missing.md).\n' > notes.md"
 

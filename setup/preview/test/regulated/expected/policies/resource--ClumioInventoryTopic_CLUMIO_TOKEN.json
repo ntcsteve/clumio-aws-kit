@@ -1,0 +1,79 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "__pub_statement",
+      "Effect": "Allow",
+      "Action": [
+        "SNS:Publish"
+      ],
+      "Resource": [
+        "<ARN(s) of resources created in the same run>"
+      ],
+      "Principal": {
+        "AWS": [
+          "*"
+        ]
+      },
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceAccount": [
+            "<ACCOUNT_ID>"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "__sub_statement",
+      "Effect": "Allow",
+      "Action": [
+        "SNS:Subscribe"
+      ],
+      "Resource": [
+        "<ARN(s) of resources created in the same run>"
+      ],
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::<CLUMIO_AWS_ACCOUNT_ID>:root"
+        ]
+      }
+    },
+    {
+      "Sid": "__desc_sub_statement",
+      "Effect": "Allow",
+      "Action": [
+        "SNS:ListSubscriptionsByTopic"
+      ],
+      "Resource": [
+        "<ARN(s) of resources created in the same run>"
+      ],
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::<CLUMIO_AWS_ACCOUNT_ID>:root"
+        ]
+      }
+    },
+    {
+      "Sid": "AWSEvents_ClumioInventoryRule_<CLUMIO_TOKEN>_clumio-publish",
+      "Effect": "Allow",
+      "Action": [
+        "SNS:Publish"
+      ],
+      "Resource": [
+        "<ARN(s) of resources created in the same run>"
+      ],
+      "Principal": {
+        "Service": [
+          "events.amazonaws.com"
+        ]
+      },
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceAccount": [
+            "<ACCOUNT_ID>"
+          ]
+        }
+      }
+    }
+  ]
+}

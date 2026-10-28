@@ -1,0 +1,294 @@
+{
+  "Statement": [
+    {
+      "Action": "ebs:StartSnapshot",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "StartSnapshotWithClumioTag"
+    },
+    {
+      "Action": [
+        "ebs:PutSnapshotBlock",
+        "ebs:CompleteSnapshot"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "ModifySnapshotOnClumioTaggedResource"
+    },
+    {
+      "Action": [
+        "ec2:CreateSnapshots",
+        "ec2:CreateSnapshot"
+      ],
+      "Condition": {
+        "StringLike": {
+          "aws:RequestTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "CreateSnapshotWithRestoreTag"
+    },
+    {
+      "Action": [
+        "ec2:CreateSnapshots",
+        "ec2:CreateSnapshot"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*"
+      ],
+      "Sid": "CreateSnapshotOnAnyVolumeOrInstance"
+    },
+    {
+      "Action": "ec2:CreateVolume",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "aws:RequestTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+      "Sid": "CreateVolumeWithClumioRestoreTag"
+    },
+    {
+      "Action": "ec2:CreateVolume",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "aws:ResourceTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "CreateVolumeFromSnapshotWithClumioTag"
+    },
+    {
+      "Action": "ec2:DeleteVolume",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+      "Sid": "DeleteClumioRestoredVolume"
+    },
+    {
+      "Action": "ec2:AttachVolume",
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*",
+      "Sid": "AttachVolumeToAnyInstance"
+    },
+    {
+      "Action": "ec2:DetachVolume",
+      "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*",
+      "Sid": "DetachVolumeFromClumioRestoredInstance"
+    },
+    {
+      "Action": [
+        "ec2:DetachVolume",
+        "ec2:AttachVolume"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+      "Sid": "AttachDetachVolume"
+    },
+    {
+      "Action": "ec2:RegisterImage",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "RegisterClumioRestoredSnapshot"
+    },
+    {
+      "Action": "ec2:RegisterImage",
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::image/*",
+      "Sid": "RegisterClumioRestoredImage"
+    },
+    {
+      "Action": "ec2:DeregisterImage",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::image/*",
+      "Sid": "DeregisterClumioRestoredImage"
+    },
+    {
+      "Action": "ec2:RunInstances",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2::snapshot/*",
+        "arn:aws:ec2:ap-southeast-2::image/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:network-interface/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:key-pair/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*",
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:security-group/*"
+      ],
+      "Sid": "RunInstance"
+    },
+    {
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:StopInstances",
+        "ec2:StartInstances"
+      ],
+      "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*",
+      "Sid": "OperationsOnClumioRestoredInstances"
+    },
+    {
+      "Action": "ec2:DeleteNetworkInterface",
+      "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:network-interface/*",
+      "Sid": "DeleteClumioRestoredNic"
+    },
+    {
+      "Action": [
+        "ec2:DisassociateAddress",
+        "ec2:AssociateAddress"
+      ],
+      "Condition": {
+        "StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:network-interface/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*"
+      ],
+      "Sid": "ModifyClumioRestoredNic"
+    },
+    {
+      "Action": "ec2:CreateTags",
+      "Condition": {
+        "StringNotLike": {
+          "ec2:CreateAction": "CreateTags"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2::snapshot/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:network-interface/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:elastic-ip/*"
+      ],
+      "Sid": "CreateTagsOnlyWithCreateActions"
+    },
+    {
+      "Action": "ec2:CreateTags",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "aws:TagKeys": "clumio.restore.tag"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::image/*",
+      "Sid": "CreateTagsIfRequestHasRestoreTag"
+    },
+    {
+      "Action": "ec2:DeleteTags",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "aws:ResourceTag/clumio.restore.tag": "*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2::snapshot/*",
+        "arn:aws:ec2:ap-southeast-2::image/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:network-interface/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:elastic-ip/*"
+      ],
+      "Sid": "DeleteTagsOnClumioRestoredResource"
+    },
+    {
+      "Action": "iam:PassRole",
+      "Condition": {
+        "StringLike": {
+          "iam:PassedToService": "ec2.amazonaws.com*"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*",
+      "Sid": "AssignClumioDataProtectionInstanceRole"
+    },
+    {
+      "Action": [
+        "ebs:ListSnapshotBlocks",
+        "ebs:ListChangedBlocks",
+        "ebs:GetSnapshotBlock"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "EBSReadOperations"
+    },
+    {
+      "Action": "iam:GetInstanceProfile",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:instance-profile/*",
+      "Sid": "GetInstanceProfile"
+    },
+    {
+      "Action": "iam:GetRole",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*",
+      "Sid": "GetRole"
+    },
+    {
+      "Action": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeKeyPairs",
+        "ec2:DescribeElasticGpus",
+        "ec2:DescribeCapacityReservations",
+        "ec2:DescribeAddresses"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EC2DescribeOperations"
+    }
+  ],
+  "Version": "2012-10-17"
+}

@@ -1,0 +1,18 @@
+{
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceAccount": "<ACCOUNT_ID>"
+        }
+      },
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "events.amazonaws.com"
+      },
+      "Sid": "AllowEventBridgeAssumeRole"
+    }
+  ],
+  "Version": "2012-10-17"
+}

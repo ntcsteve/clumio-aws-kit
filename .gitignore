@@ -19,3 +19,6 @@ clumio-iam-preview-*/
 
 __pycache__/
 .DS_Store
+
+# Modules are called by others, who lock their own providers
+modules/**/.terraform.lock.hcl

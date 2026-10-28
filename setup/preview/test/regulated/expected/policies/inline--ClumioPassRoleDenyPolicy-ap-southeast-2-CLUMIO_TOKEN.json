@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "iam:PassRole",
+      "Condition": {
+        "StringLike": {
+          "iam:PassedToService": "*"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/do-not-pass",
+      "Sid": "DenyPassRoleToServices"
+    }
+  ]
+}

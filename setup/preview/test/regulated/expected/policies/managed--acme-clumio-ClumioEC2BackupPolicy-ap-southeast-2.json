@@ -1,0 +1,142 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "ec2:CreateSnapshots",
+        "ec2:CreateSnapshot"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "CreateSnapshotWithClumioTag"
+    },
+    {
+      "Action": [
+        "ec2:CreateSnapshots",
+        "ec2:CreateSnapshot"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:volume/*",
+        "arn:aws:ec2:ap-southeast-2:<ACCOUNT_ID>:instance/*"
+      ],
+      "Sid": "CreateSnapshotOnAnyVolumeOrInstance"
+    },
+    {
+      "Action": "ec2:DeleteSnapshot",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "DeleteClumioTaggedSnapshot"
+    },
+    {
+      "Action": "ec2:RegisterImage",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "aws:ResourceTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "RegisterClumioTaggedSnapshot"
+    },
+    {
+      "Action": "ec2:RegisterImage",
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::image/*",
+      "Sid": "RegisterImage"
+    },
+    {
+      "Action": "ec2:DeregisterImage",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "aws:ResourceTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::image/*",
+      "Sid": "DeregisterClumioTaggedImage"
+    },
+    {
+      "Action": "ec2:CreateTags",
+      "Condition": {
+        "StringNotLike": {
+          "ec2:CreateAction": "CreateTags"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "CreateTagsOnlyWithCreateActions"
+    },
+    {
+      "Action": "ec2:CreateTags",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "aws:RequestTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::image/*",
+      "Sid": "CreateTagsIfRequestHasClumioTag"
+    },
+    {
+      "Action": "ec2:DeleteTags",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Vendor": "Clumio"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:ap-southeast-2::snapshot/*",
+        "arn:aws:ec2:ap-southeast-2::image/*"
+      ],
+      "Sid": "DeleteTagsOnClumioTaggedResource"
+    },
+    {
+      "Action": [
+        "ebs:ListSnapshotBlocks",
+        "ebs:ListChangedBlocks",
+        "ebs:GetSnapshotBlock"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:ap-southeast-2::snapshot/*",
+      "Sid": "EBSReadOperations"
+    },
+    {
+      "Action": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeKeyPairs",
+        "ec2:DescribeElasticGpus",
+        "ec2:DescribeCapacityReservations",
+        "ec2:DescribeAddresses"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "EC2DescribeOperations"
+    },
+    {
+      "Action": "iam:GetInstanceProfile",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:instance-profile/*",
+      "Sid": "GetInstanceProfile"
+    },
+    {
+      "Action": "iam:GetRole",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*",
+      "Sid": "GetRole"
+    }
+  ],
+  "Version": "2012-10-17"
+}

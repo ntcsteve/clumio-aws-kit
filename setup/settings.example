@@ -1,0 +1,21 @@
+# Your settings. Copy this file to terraform.tfvars in this folder, then set the first four values:
+#   cp settings.example terraform.tfvars
+# make preflight, make preview and make plan all read terraform.tfvars, so what you check is what
+# you create. Keep each value on one line, as below. terraform.tfvars never leaves your machine.
+
+account_id          = "ACCOUNT-ID-REPLACE-THIS" # your 12-digit AWS account ID; the plan stops if you're signed in to another
+region              = "REGION-REPLACE-THIS"     # where your data is, such as us-west-2
+organizational_unit = "UNIT-REPLACE-THIS"       # "global", or a unit's ID: make preflight lists them
+mode                = "MODE-REPLACE-THIS"       # "trial" (can be torn down, also for a proof of concept) or "production" (refuses destroy)
+
+# Who gets Clumio's daily compliance report for this Region (not yet proven live):
+# report_emails = ["platform-oncall@example.com"]
+
+# Your organization's IAM rules. make preview shows every role and policy these produce.
+iam_prefix = ""         # such as "platform-clumio", if IAM names must start with a prefix
+iam_path   = "/clumio/" # "/" if your naming rule allows no path
+
+# Only if your organization requires them:
+# role_tags                = { team = "platform" }
+# permissions_boundary_arn = "arn:aws:iam::123456789012:policy/<boundary>"
+# pass_role_deny_list      = ["arn:aws:iam::123456789012:role/<role Clumio must never pass>"]

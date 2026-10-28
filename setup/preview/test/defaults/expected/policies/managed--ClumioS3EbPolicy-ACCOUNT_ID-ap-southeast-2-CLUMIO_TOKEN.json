@@ -1,0 +1,20 @@
+{
+  "Statement": [
+    {
+      "Action": "events:PutEvents",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:events:*:<ACCOUNT_ID>:event-bus/clumio-s3-event-bus-*",
+        "arn:aws:events:*:<CLUMIO_DATA_PLANE_ACCOUNT_ID>:event-bus/clumio-s3-event-bus-*"
+      ],
+      "Sid": "AllowPutEvents"
+    },
+    {
+      "Action": "sqs:SendMessage",
+      "Effect": "Allow",
+      "Resource": "arn:aws:sqs:*:<CLUMIO_DATA_PLANE_ACCOUNT_ID>:daebak_event_*",
+      "Sid": "AllowSendMessage"
+    }
+  ],
+  "Version": "2012-10-17"
+}

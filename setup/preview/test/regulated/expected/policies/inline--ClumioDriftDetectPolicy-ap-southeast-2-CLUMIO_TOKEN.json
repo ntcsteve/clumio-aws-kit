@@ -1,0 +1,31 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReflectOnClumioCfnStack",
+      "Effect": "Allow",
+      "Action": [
+        "events:DescribeEventBus",
+        "events:DescribeRule",
+        "events:ListTagsForResource",
+        "events:ListTargetsByRule",
+        "iam:GetContextKeysForPrincipalPolicy",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:GetServiceLinkedRoleDeletionStatus",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:ListRolePolicies",
+        "iam:ListRoleTags",
+        "iam:SimulatePrincipalPolicy",
+        "sns:GetDataProtectionPolicy",
+        "sns:GetTopicAttributes",
+        "sns:ListSubscriptionsByTopic",
+        "sns:ListTagsForResource"
+      ],
+      "Resource": [
+        "<ARN(s) of resources created in the same run>"
+      ]
+    }
+  ]
+}

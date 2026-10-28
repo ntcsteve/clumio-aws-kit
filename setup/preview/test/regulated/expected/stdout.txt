@@ -1,0 +1,41 @@
+
+Clumio would create in ap-southeast-2 (nothing was created):
+  role  acme-clumio-ClumioIAMRole-ase-2
+        Clumio's main role: find, back up and restore your data
+  role  acme-clumio-ClumioS3EbRole-ase-2
+        EventBridge: send S3 change events to Clumio
+  role  acme-clumio-ClumioSuppt-ap-southeast-2
+        Clumio support: open and read AWS Support cases
+  + 8 managed and 5 inline policies, 13 SNS/EventBridge resources
+  = 182 permissions across 16 AWS services (account, backup, cloudwatch, ebs, ec2, events, iam, kms, organizations, rbin, rds, s3, sns, sqs, sts, support)
+
+The deploy role needs (policies/deploy-role-policy.json; replace <ACCOUNT_ID> first):
+  13 actions  Manage roles and their inline policies             on arn:aws:iam::<ACCOUNT_ID>:role/acme-clumio-Clumio*
+   2 actions  Create roles (only with your permissions boundary) on arn:aws:iam::<ACCOUNT_ID>:role/acme-clumio-Clumio*
+   2 actions  Attach Clumio-named policies to those roles        on arn:aws:iam::<ACCOUNT_ID>:role/acme-clumio-Clumio*
+   7 actions  Managed policies                                   on arn:aws:iam::<ACCOUNT_ID>:policy/acme-clumio-Clumio*
+   5 actions  SNS topic                                          on arn:aws:sns:ap-southeast-2:<ACCOUNT_ID>:ClumioInventoryTopic_*
+   7 actions  EventBridge rules and targets                      on arn:aws:events:ap-southeast-2:<ACCOUNT_ID>:rule/Clumio*
+
+Review before approving (highlights; read every file in policies/):
+  - KMS: can use ANY key whose key policy lets IAM grant access (needed for encrypted data)
+  - S3 read: objects in any bucket it can reach, including other accounts' buckets whose bucket policy allows it
+  - S3 write + delete: objects in every bucket in this account (restores)
+  - S3: can change a bucket's event notifications and inventory configuration
+  - S3 copy out: only to clumio-s3-backup* buckets in Clumio's data plane account
+  - At runtime: creates EventBridge rules clumio-s3-event-rule-* in this account
+  - At runtime: creates S3 Storage Lens configurations clumio-storage-lens-*
+  - Sends events and messages to Clumio's event bus and queues
+  - IAM PassRole: to a role this setup creates
+  - RDS: can change settings of every database in this region, not only tagged ones (it sets backup retention); creates, copies, deletes snapshots. The same IAM serves DocumentDB and Neptune
+  - EC2: can launch instances (restores)
+  - EC2: can terminate only instances it restored (tag clumio.restore.tag)
+  - EC2: can delete only snapshots tagged Vendor=Clumio
+  - Support: can open, read and update AWS Support cases in this account, and read Trusted Advisor results
+  - IAM PassRole: on arn:aws:iam::<ACCOUNT_ID>:role/*, only to ec2.amazonaws.com* (restored instances get their instance role)
+  - IAM PassRole: on arn:aws:iam::<ACCOUNT_ID>:role/*, only to rds.amazonaws.com (restores re-attach a database's own roles)
+  - IAM PassRole: explicitly DENIED on arn:aws:iam::<ACCOUNT_ID>:role/do-not-pass (your pass_role_deny_list)
+  - SNS topic policy: SNS:Publish by any principal, only if AWS:SourceAccount = <ACCOUNT_ID>
+  - SNS topic policy: SNS:Subscribe by arn:aws:iam::<CLUMIO_AWS_ACCOUNT_ID>:root
+  - SNS topic policy: SNS:ListSubscriptionsByTopic by arn:aws:iam::<CLUMIO_AWS_ACCOUNT_ID>:root
+  - SNS topic policy: SNS:Publish by events.amazonaws.com, only if AWS:SourceAccount = <ACCOUNT_ID>
