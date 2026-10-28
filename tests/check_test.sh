@@ -65,6 +65,8 @@ expect_result "12-digit runs inside lock-file hashes pass" pass "" \
   "mkdir -p setup && printf 'provider \"x\" {\n  hashes = [\n    \"zh:$ACCOUNT\",\n  ]\n}\n' > setup/.terraform.lock.hcl"
 expect_result "a script that cannot run fails" fail "FAIL  shell scripts parse and are executable" \
   "printf '#!/usr/bin/env bash\necho hi\n' > notes.sh"
+expect_result "a setting rule that drifted in one copy fails" fail "FAIL  setting rules agree" \
+  "sed -i.bak 's/\\^\\[0-9\\]{12}\\$/^[0-9]{11}$/' modules/profile/variables.tf && rm modules/profile/variables.tf.bak"
 expect_result "a broken relative link fails" fail "FAIL  relative links resolve" \
   "printf 'See [the guide](docs/missing.md).\n' > notes.md"
 

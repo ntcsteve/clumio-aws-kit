@@ -11,13 +11,15 @@
 #   4. no credentials        AWS access keys, unredacted session tokens or secret keys, a Clumio token
 #   5. no account numbers    any 12-digit number outside the stand-ins below
 #   6. relative links        every relative link in a Markdown file points at a file that ships
+#   7. setting rules agree   account, Region, unit and mode are checked the same way in setup/, both
+#                            modules and status.py, so a fix to one copy can't silently miss another
 #   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
-#   7. setup                 validates with its lock file; the shipped placeholders stop the plan
-#   8. module tests          each module refuses what it must (mock providers)
-#   9. preview golden tests  what the security team sees matches the reviewed output exactly
-#  10. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
+#   8. setup                 validates with its lock file; the shipped placeholders stop the plan
+#   9. module tests          each module refuses what it must (mock providers)
+#  10. preview golden tests what the security team sees matches the reviewed output exactly
+#  11. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
 #      Makefile tests        the order make enforces, and its after-checks, against a stand-in terraform
-#  11. self-test             tests/check_test.sh proves each scan passes and fails when it should
+#  12. self-test             tests/check_test.sh proves each scan passes and fails when it should
 # CHECK_SCANS_ONLY=1 runs the scans only. tests/check_test.sh sets it, so this never loops.
 set -euo pipefail
 
@@ -56,7 +58,7 @@ else
   [ -z "$BAD" ] && pass "terraform fmt" || flunk "terraform fmt:$BAD (run: terraform fmt <folder>)"
 fi
 
-# 3 to 6 read file contents, so they share one Python pass. Each prints its own PASS or FAIL line.
+# 3 to 7 read file contents, so they share one Python pass. Each prints its own PASS or FAIL line.
 python3 - "$SHIPPED" << 'PY' || FAILED=1
 import os, re, sys
 
@@ -73,7 +75,8 @@ LINK = re.compile(r"\]\((?!https?://|mailto:|#)([^)#\s]+)")
 
 shipped = [p for p in open(sys.argv[1], "rb").read().decode().split("\0") if p]
 shipped_set = set(shipped)
-findings = {"no state or plan files": [], "no credentials": [], "no account numbers": [], "relative links resolve": []}
+findings = {"no state or plan files": [], "no credentials": [], "no account numbers": [], "relative links resolve": [],
+            "setting rules agree": []}
 
 def is_shipped(path):
     """A link target ships if it is a shipped file, or a folder holding one."""
@@ -105,6 +108,30 @@ for path in shipped:
             if not is_shipped(os.path.join(os.path.dirname(path), target)):
                 findings["relative links resolve"].append(f"{path}: broken link {target}")
 
+# 7. One rule per setting. Terraform states it as regex(...) or contains([...]); status.py as a pattern.
+def tf_rules(path):
+    text = open(path, encoding="utf-8").read()
+    rules = {name: re.search(r'regex\("([^"]*)",\s*var\.' + name + r'\)', text) for name in ("account_id", "region", "organizational_unit")}
+    rules = {name: "^(global|" + m.group(1)[1:-1] + ")$" if name == "organizational_unit" else m.group(1) for name, m in rules.items() if m}
+    mode = re.search(r'contains\(\[([^\]]*)\],\s*var\.mode\)', text)
+    if mode:
+        rules["mode"] = "^(" + "|".join(re.findall(r'"([^"]+)"', mode.group(1))) + ")$"
+    return rules
+
+copies = {path: tf_rules(path) for path in ("setup/variables.tf", "modules/connection/variables.tf", "modules/profile/variables.tf")
+          if path in shipped_set}
+if "setup/status.py" in shipped_set:
+    shapes = re.search(r"SETTING_SHAPES = \{(.*?)\n\}", open("setup/status.py", encoding="utf-8").read(), re.S)
+    copies["setup/status.py"] = dict(re.findall(r'"(\w+)": \(r"([^"]*)"', shapes.group(1))) if shapes else {}
+for name in ("account_id", "region", "organizational_unit", "mode"):
+    seen = {path: rules[name] for path, rules in copies.items() if name in rules}
+    if len(set(seen.values())) > 1:
+        findings["setting rules agree"].append(f"{name} differs: " + "; ".join(f"{path} {rule}" for path, rule in sorted(seen.items())))
+for path, rules in copies.items():
+    expected = {"account_id", "region", "mode"} | ({"organizational_unit"} if path.startswith("setup/") else set())
+    if not expected <= set(rules):
+        findings["setting rules agree"].append(f"{path}: can't find the rule for {', '.join(sorted(expected - set(rules)))}")
+
 failed = False
 for check, found in findings.items():
     if found:
@@ -126,7 +153,7 @@ fi
 # The suites run on a copy of what ships, so local working files never change a result.
 xargs -0 tar -cf - < "$SHIPPED" | tar -xf - -C "$COPIES"
 
-# 7. setup validates with its committed lock file, and the shipped placeholders stop the plan.
+# 8. setup validates with its committed lock file, and the shipped placeholders stop the plan.
 if (cd "$COPIES/setup" && terraform init -backend=false -input=false -lockfile=readonly > /dev/null 2>&1 \
     && terraform validate -no-color > /dev/null 2>&1); then
   pass "setup: terraform validate"
@@ -146,25 +173,25 @@ else
   flunk "setup: terraform init or validate (lock file out of date? run them in setup/ to see why)"
 fi
 
-# 8. Each module refuses what it must, with mock providers.
+# 9. Each module refuses what it must, with mock providers.
 for module in modules/connection modules/connection/iam modules/profile; do
   (cd "$COPIES/$module" && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform test -no-color > /dev/null 2>&1) \
     && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
 done
 
-# 9. The preview renders exactly what the security team reviewed.
+# 10. The preview renders exactly what the security team reviewed.
 "$COPIES/setup/preview/test/test.sh" > /dev/null 2>&1 && pass "setup/preview: golden tests" \
   || flunk "setup/preview: golden tests (run setup/preview/test/test.sh to see the diff)"
 
-# 10. status.py's checks, against fake AWS and Clumio answers.
+# 11. status.py's checks, against fake AWS and Clumio answers.
 (cd "$COPIES/setup" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "setup/status.py: tests" \
   || flunk "setup/status.py: tests (run: python3 -m unittest discover -s tests, in setup/)"
 
-# 10b. The order the Makefile enforces, and its checks after each apply, against a stand-in terraform.
+# 11b. The order the Makefile enforces, and its checks after each apply, against a stand-in terraform.
 "$COPIES/setup/tests/make_test.sh" > /dev/null 2>&1 && pass "setup/Makefile: tests" \
   || flunk "setup/Makefile: tests (run setup/tests/make_test.sh to see which case)"
 
-# 11. The scans above, proven against cases that must pass and must fail.
+# 12. The scans above, proven against cases that must pass and must fail.
 tests/check_test.sh > /dev/null 2>&1 && pass "self-test: tests/check_test.sh" \
   || flunk "self-test: tests/check_test.sh (run it to see which case)"
 
