@@ -37,6 +37,7 @@ GLOBAL_UNIT = "00000000-0000-0000-0000-000000000000"  # Clumio's ID for the Glob
 MIN_TERRAFORM = (1, 10)  # S3 state locking (use_lockfile) needs 1.10
 RULE_LIMIT = 25  # Clumio's answer when full: error_code 107, "Number of rules is limited to 25"
 MAX_UNITS_LISTED = 50  # Bounds the lookups when listing units to choose from
+MAX_PAGES = 20  # Bounds a full list: 2,000 policies, groups or tasks; longer is UNKNOWN, never a partial answer
 TIMEOUT_SECONDS = 30
 
 SETTING_SHAPES = {
@@ -459,14 +460,21 @@ def coverage_exit_code(records, unit_result):
 
 
 def clumio_items(world, path, condition, unit=None, complete=False):
-    """A filtered Clumio list, or None when Clumio didn't answer 200, or, with complete, when the
-    answer has more than one page. Callers re-check each item: a filter Clumio ignored must never
-    turn into a wrong answer."""
+    """A filtered Clumio list, or None when Clumio didn't answer 200. With complete, every page, by
+    following each answer's _links._next (Clumio pages by cursor and gives no page count; read live,
+    2026-10-28), up to MAX_PAGES; a list longer than that is None too, never a partial answer. Callers
+    re-check each item: a filter Clumio ignored must never turn into a wrong answer."""
     query = f"&filter={urllib.parse.quote(json.dumps(condition))}" if condition else ""
-    status_code, body = world.clumio_get(f"{path}?limit=100{query}", unit=unit)
-    if status_code != 200 or (complete and (body.get("total_pages_count") or 1) > 1):
-        return None
-    return body.get("_embedded", {}).get("items", [])
+    page, items = f"{path}?limit=100{query}", []
+    for _ in range(MAX_PAGES if complete else 1):
+        status_code, body = world.clumio_get(page, unit=unit)
+        if status_code != 200:
+            return None
+        items += body.get("_embedded", {}).get("items", [])
+        page = ((body.get("_links") or {}).get("_next") or {}).get("href")
+        if not complete or not page:
+            return items
+    return None
 
 
 def when(timestamp):

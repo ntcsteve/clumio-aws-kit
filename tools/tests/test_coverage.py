@@ -62,7 +62,8 @@ class FakeClumio:
         self.single = {f"/connections/aws/{ACCOUNT}_{REGION}": (200, {"organizational_unit_id": UNIT}),
                        "/policies/rules/rule-other": (200, {"id": "rule-other", "name": "CEG Demo"})}
         self.broken = set()
-        self.more_pages = set()  # paths whose answer says another page follows
+        self.page_size = {}  # path -> items per page; Clumio pages by cursor, a _links._next href (read live, 2026-10-28)
+        self.endless = set()  # paths whose every page links to another
 
     def get(self, path, unit=None):
         bare, _, query = path.partition("?")
@@ -80,9 +81,12 @@ class FakeClumio:
         if "filter" in params:
             for field, test in json.loads(params["filter"][0]).items():
                 found = [item for item in found if matches(lookup(item, field), test)]
-        body = {"_embedded": {"items": found}}
-        if bare in self.more_pages:
-            body["total_pages_count"] = 2
+        size = self.page_size.get(bare, len(found) or 1)
+        start = int(params.get("start", ["0"])[0])
+        body = {"_embedded": {"items": found[start:start + size]}, "start": str(start)}
+        if bare in self.endless or start + size < len(found):
+            following = urllib.parse.urlencode({key: value[0] for key, value in params.items() if key != "start"})
+            body["_links"] = {"_next": {"href": f"{bare}?{following}&start={start + size}"}}
         return 200, body
 
 
@@ -254,9 +258,18 @@ class Coverage(unittest.TestCase):
         states, _, _ = self.states()
         self.assertEqual(states["orders-db"], "OTHER")
 
-    def test_more_policies_than_one_page_is_unknown_never_a_guess(self):
+    # Live, 2026-10-28: the shared tenant had 84 policies, near the 100 on one page, and the list says
+    # nothing about pages but a _next link. Every page is read: one missed would turn ours into BAD_VALUE.
+    def test_policies_on_a_later_page_are_still_found(self):
+        self.add_db("orders-db", backup="2026-10-28T05:00:00Z")
+        self.clumio.page_size["/policies/definitions"] = 1  # gold's RDS policy is the second: page two
+        states, _, _ = self.states()
+        self.assertEqual(states["orders-db"], "OURS")
+
+    def test_a_list_that_never_ends_is_unknown_never_a_guess(self):
         self.add_db("orders-db")
-        self.clumio.more_pages.add("/policies/definitions")
+        self.clumio.page_size["/policies/definitions"] = 1
+        self.clumio.endless.add("/policies/definitions")
         with self.assertRaises(status.ClumioUnavailable):
             status.coverage(self.world())
 
@@ -327,11 +340,14 @@ class Coverage(unittest.TestCase):
         state, _ = status.teardown(self.world())
         self.assertEqual(state, "BLOCKED")
 
-    def test_teardown_with_more_tasks_than_one_page_is_unknown_never_ready(self):
+    def test_teardown_sees_a_running_task_on_a_later_page(self):
         self.add_db("orders-db")
-        self.clumio.more_pages.add("/tasks")
-        state, _ = status.teardown(self.world())
-        self.assertEqual(state, "UNKNOWN")
+        self.clumio.page_size["/tasks"] = 1
+        self.clumio.lists["/tasks"] += [{"id": "4040", "status": "completed", "primary_entity": {"id": "id-orders-db"}},
+                                        {"id": "4041", "status": "in_progress", "primary_entity": {"id": "id-orders-db"}}]
+        state, lines = status.teardown(self.world())
+        self.assertEqual(state, "BLOCKED")
+        self.assertTrue(any("4041" in line for line in lines))
 
     def test_a_tagged_aurora_instance_on_an_untagged_cluster_is_off_and_names_the_cluster(self):
         self.resources.append(database("orders-cluster-1"))
