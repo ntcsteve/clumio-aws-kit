@@ -45,6 +45,8 @@ module "profile" {
   mode                = var.mode
   s3                  = each.value.s3
   databases           = each.value.databases
+  ec2                 = each.value.ec2
+  ebs_volumes         = each.value.ebs_volumes
   keep_days           = each.value.keep_days
   archive_months      = each.value.archive_months
   backtrack_months    = each.value.backtrack_months
@@ -61,9 +63,12 @@ output "kit" {
     mode                   = var.mode
     profiles = { for name, profile in module.profile : name => {
       tag                 = profile.tag
+      volume_tag          = profile.volume_tag
       policy_id           = profile.policy_id
       rule_id             = profile.rule_id
+      volume_rule_id      = profile.volume_rule_id
       protection_group_id = profile.protection_group_id
+      pitr_retention_days = profile.pitr_retention_days
       workloads           = profile.workloads
     } }
   }

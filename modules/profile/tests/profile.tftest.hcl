@@ -27,6 +27,8 @@ variables {
   archive_months      = 12
   backtrack_months    = 3
   pitr_retention_days = 14
+  ec2                 = false
+  ebs_volumes         = false
 }
 
 run "both_workloads_share_one_policy" {
@@ -36,7 +38,7 @@ run "both_workloads_share_one_policy" {
     error_message = "One policy per profile, named after the profile, account and Region."
   }
   assert {
-    condition     = length(clumio_policy_rule.databases) == 1 && length(clumio_protection_group.s3) == 1 && length(clumio_policy_assignment.s3) == 1
+    condition     = length(clumio_policy_rule.tagged) == 1 && length(clumio_protection_group.s3) == 1 && length(clumio_policy_assignment.s3) == 1
     error_message = "Databases need the rule; S3 needs the protection group and its assignment."
   }
   assert {
@@ -51,7 +53,7 @@ run "both_workloads_share_one_policy" {
 run "the_database_rule_matches_the_tag_in_this_account_and_region_only" {
   command = plan
   assert {
-    condition = jsondecode(clumio_policy_rule.databases[0].condition) == {
+    condition = jsondecode(clumio_policy_rule.tagged[0].condition) == {
       entity_type           = { "$in" = ["aws_rds_instance", "aws_rds_cluster"] }
       aws_tag               = { "$eq" = { key = "clumio-profile", value = "gold" } }
       aws_account_native_id = { "$eq" = "123456789012" }
@@ -80,7 +82,7 @@ run "s3_only_has_no_rule" {
     pitr_retention_days = null
   }
   assert {
-    condition     = length(clumio_policy_rule.databases) == 0 && length(clumio_protection_group.s3) == 1
+    condition     = length(clumio_policy_rule.tagged) == 0 && length(clumio_protection_group.s3) == 1
     error_message = "S3 alone needs only its protection group."
   }
 }
@@ -92,7 +94,7 @@ run "databases_only_have_no_protection_group" {
     keep_days = 7
   }
   assert {
-    condition     = length(clumio_protection_group.s3) == 0 && length(clumio_policy_rule.databases) == 1
+    condition     = length(clumio_protection_group.s3) == 0 && length(clumio_policy_rule.tagged) == 1
     error_message = "Databases alone need only their rule."
   }
 }
@@ -114,7 +116,7 @@ run "a_profile_with_no_workload_is_refused" {
     s3        = false
     databases = false
   }
-  expect_failures = [var.databases]
+  expect_failures = [var.ebs_volumes]
 }
 
 run "s3_below_clumios_30_day_minimum_is_refused" {
@@ -124,6 +126,7 @@ run "s3_below_clumios_30_day_minimum_is_refused" {
   }
   expect_failures = [var.keep_days]
 }
+
 
 run "databases_without_a_pitr_window_are_refused" {
   command = plan
@@ -194,7 +197,65 @@ run "the_rule_can_be_ranked_ahead_of_another" {
     rule_before_id = "rule-that-would-win"
   }
   assert {
-    condition     = clumio_policy_rule.databases[0].before_rule_id == "rule-that-would-win"
+    condition     = clumio_policy_rule.tagged[0].before_rule_id == "rule-that-would-win"
     error_message = "rule_before_id must place this profile's rule ahead of the named rule."
+  }
+}
+
+run "ec2_joins_the_profiles_tag_rule_and_the_policy" {
+  command = plan
+  variables {
+    ec2 = true
+  }
+  assert {
+    condition     = jsondecode(clumio_policy_rule.tagged[0].condition).entity_type == { "$in" = ["aws_rds_instance", "aws_rds_cluster", "aws_ec2_instance"] }
+    error_message = "With ec2 on, the tag rule must match EC2 instances too: one rule, one tag."
+  }
+  assert {
+    condition     = contains([for op in clumio_policy.this.operations : op.type], "aws_ec2_instance_backup")
+    error_message = "The policy must back up EC2 instances, with their attached volumes."
+  }
+}
+
+run "ec2_alone_has_a_tag_rule_for_instances_only" {
+  command = plan
+  variables {
+    s3                  = false
+    databases           = false
+    ec2                 = true
+    keep_days           = 7
+    pitr_retention_days = null
+  }
+  assert {
+    condition     = jsondecode(clumio_policy_rule.tagged[0].condition).entity_type == { "$in" = ["aws_ec2_instance"] }
+    error_message = "EC2 alone: the rule matches instances only."
+  }
+}
+
+run "volumes_have_their_own_rule_and_their_own_tag" {
+  command = plan
+  variables {
+    ebs_volumes = true
+  }
+  assert {
+    condition = jsondecode(clumio_policy_rule.volumes[0].condition) == {
+      entity_type           = { "$in" = ["aws_ebs_volume"] }
+      aws_tag               = { "$eq" = { key = "clumio-volume-profile", value = "gold" } }
+      aws_account_native_id = { "$eq" = "123456789012" }
+      aws_region            = { "$eq" = "us-west-2" }
+    }
+    error_message = "Volumes join only through clumio-volume-profile, so a volume an instance already covers isn't backed up twice by accident."
+  }
+  assert {
+    condition     = contains([for op in clumio_policy.this.operations : op.type], "aws_ebs_volume_backup")
+    error_message = "The profile's one policy must back up volumes on their own."
+  }
+}
+
+run "no_volume_rule_unless_asked" {
+  command = plan
+  assert {
+    condition     = length(clumio_policy_rule.volumes) == 0
+    error_message = "No volume rule unless ebs_volumes is on: each rule takes a slot in the unit."
   }
 }

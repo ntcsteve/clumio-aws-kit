@@ -21,7 +21,7 @@ UNIT_STAND_IN = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 def record(world):
     """Wraps each reader so every answer is kept: Clumio by path and unit, AWS by Region."""
-    answers = {"clumio": {}, "tagged_resources": {}, "databases": {}, "kit": None, "plan_variables": None}
+    answers = {"clumio": {}, "tagged_resources": {}, "databases": {}, "volumes": {}, "kit": None, "plan_variables": None}
 
     def clumio_get(path, unit=None):
         answer = world.clumio_get(path, unit=unit)
@@ -36,6 +36,10 @@ def record(world):
         answers["databases"][region] = world.databases(region)
         return answers["databases"][region]
 
+    def volumes(region):
+        answers["volumes"][region] = world.volumes(region)
+        return answers["volumes"][region]
+
     def kit():
         answers["kit"] = world.kit()
         return answers["kit"]
@@ -46,7 +50,7 @@ def record(world):
         return plan
 
     recording = status.World(world.settings_path, world.terraform_version, world.aws_cli_found, world.signed_in_account,
-                             world.clumio_credentials_set, clumio_get, kit, saved_plan, tagged_resources, databases)
+                             world.clumio_credentials_set, clumio_get, kit, saved_plan, tagged_resources, databases, volumes)
     return recording, answers
 
 

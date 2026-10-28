@@ -5,7 +5,8 @@
 #   make preflight    read-only: tools, settings, AWS sign-in, Clumio token, unit, Region, rule slots
 #   make preview      read-only: every IAM role Clumio gets, and whether the deploy role may create it
 #                     (make preview DEPLOY_ROLE=<role ARN> checks that role instead of your sign-in)
-#   make plan         saves a plan of your settings, shows it, then what it will protect, by tag
+#   make plan         saves a plan of your settings, shows it, then what it will protect, by tag.
+#                     It doesn't keep a plan that shortens a PITR window, unless the profile allows it.
 #   make apply        applies the saved plan, checks the result, then runs make status
 #   make status       read-only: who protects each tagged resource, and its last backup
 #   make teardown     checks nothing is running, then saves a plan that removes everything this
@@ -15,7 +16,7 @@ SHELL := /bin/bash
 .PHONY: help preflight preview plan apply status teardown
 
 help:
-	@sed -n '5,13p' Makefile | sed 's/^# //'
+	@sed -n '5,14p' Makefile | sed 's/^# //'
 
 preflight:
 	@./status.py --preflight
@@ -28,7 +29,7 @@ plan:
 	@terraform init -input=false -lockfile=readonly > /dev/null
 	@terraform plan -input=false -out=tfplan
 	@echo
-	@./status.py --preview || true
+	@./status.py --preview || { rm -f tfplan; echo; echo "The plan was not kept: the preview above says why. Fix that, then run make plan again."; exit 1; }
 	@echo
 	@echo "Next: read the plan, and what it protects. If both are what you expect, run: make apply"
 

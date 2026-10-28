@@ -14,7 +14,8 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 | `setup/preview/` | Shows every IAM role and policy before anything exists, and checks the deploy role. Its golden tests are what security reviewed |
 | `modules/connection/` | The product: the connection, Clumio's IAM (`iam/`), the compliance report, and every guard. Production calls it from its own repo |
 | `modules/profile/` | The product: one protection profile, one Clumio policy for everything tagged `clumio-profile = <name>`, with its guards |
-| `docs/operate.md` | Errors and what to do, reading `make status`, and taking a trial down |
+| `docs/operate.md` | Errors and what to do, reading `make status`, the known limits, and taking a trial down |
+| `proof/` | Evidence: the lab (test data under AWS-managed and customer-managed keys), the capture and checksum tools, and every saved capture. `proof/README.md` says how to run it |
 | `check.sh` | Offline checks of this repository. Ends with `ALL CHECKS PASS` |
 | `tests/check_test.sh` | Proves each scan in `check.sh` passes and fails when it should |
 
@@ -24,7 +25,7 @@ This repository is being built in stages. Each stage adds its folders to this ma
 
 1. **Use the `make` commands in `setup/`.** Outside them, plan with `terraform plan -out=tfplan`, show the person the plan, wait for their go, then run `terraform apply tfplan`. Never use `-auto-approve`. One go covers one apply.
 2. **The person names the account, Region, unit and mode.** `account_id`, `region`, `organizational_unit` and `mode` come from the person, never from a guess. A wrong account on a shared Clumio tenant can protect another team's data, and change its databases' backup window.
-3. **Never set `i_understand_byok_is_permanent`.** Only the person sets it, after reading why. Bring your own key binds the whole Clumio tenant to one key, for good.
+3. **Never set `i_understand_byok_is_permanent` or `allow_shorter_pitr`.** Only the person sets them, after reading why. Bring your own key binds the whole Clumio tenant to one key, for good. A shorter PITR window deletes AWS's older backups, for good.
 4. **Never print a secret.** The secret here is `CLUMIO_API_TOKEN`: never print it or other environment variables. The person exports it in the shell that starts you. Terraform never writes it to state or plans. The connection's ExternalId isn't a secret (AWS says so: anyone who can read the role can see it), so plans may show it.
 5. **One Clumio tenant per state.** A token from another tenant can't see what this state created, so Terraform would create a second set.
 6. **Never change `account_id`, `region` or `organizational_unit` in an applied `setup/`.** Copy the folder for another target instead.

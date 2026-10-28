@@ -12,13 +12,16 @@ mode                = "MODE-REPLACE-THIS"       # "trial" (can be torn down, als
 # make plan shows each tagged database's PITR window now, and after: Clumio sets it, up or down.
 profiles = {
   gold = {
-    s3                  = true # S3 buckets: Backtrack, and a daily SecureVault copy
-    databases           = true # RDS and Aurora: AWS PITR, a daily SecureVault copy, a monthly archive
-    keep_days           = 30   # daily SecureVault copies, in days; 30 or more when s3 is on
-    archive_months      = 12   # monthly database archive, in months; 0 turns it off; under 12 costs an early-deletion fee
-    backtrack_months    = 3    # how far back Backtrack can roll a bucket, in months
-    pitr_retention_days = null # REPLACE: 1 to 35 days. Clumio sets it on every gold database, longer or shorter than today
-    # rule_before_id    = "<rule ID>" # only when make status says another rule claimed these databases first
+    s3                  = true  # S3 buckets: Backtrack, and a daily SecureVault copy
+    databases           = true  # RDS and Aurora: AWS PITR, a daily SecureVault copy, and a monthly archive
+    ec2                 = true  # EC2 instances, with their attached volumes: a daily SecureVault copy
+    ebs_volumes         = false # volumes on their own, tagged clumio-volume-profile = gold; attached volumes are already in their instance's copy
+    keep_days           = 30    # daily SecureVault copies, in days; 30 or more when s3 is on
+    archive_months      = null  # REPLACE: 0 for a trial (no archive), or your retention in months; each copy bills until it expires
+    pitr_retention_days = null  # REPLACE: 1 to 35 days. Clumio sets this AWS PITR window on every gold database, turning PITR on where it's off
+    # backtrack_months   = 3    # how far back Backtrack can roll a bucket, in months
+    # allow_shorter_pitr = true # only to let make plan keep a plan that shortens a database's window: that deletes AWS's older backups
+    # rule_before_id     = "<rule ID>" # only when make status says another rule claimed these resources first
   }
 }
 

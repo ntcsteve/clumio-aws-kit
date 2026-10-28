@@ -26,11 +26,14 @@ resource "random_id" "suffix" {
 }
 
 locals {
-  name    = "kitlab-${random_id.suffix.hex}"
-  tag     = { "clumio-profile" = var.profile }
-  has     = { for p in ["s3", "rds-amk", "aurora-amk", "aurora-cmk", "bad-tag"] : p => contains(var.parts, p) }
-  key     = local.has["s3"] || local.has["aurora-cmk"] # A customer-managed key costs money and takes 7 days to delete.
-  auroras = { for k in ["amk", "cmk"] : k => k if local.has["aurora-${k}"] }
+  name      = "kitlab-${random_id.suffix.hex}"
+  tag       = { "clumio-profile" = var.profile }
+  has       = { for p in ["s3", "rds-amk", "aurora-amk", "aurora-cmk", "bad-tag", "ec2-amk", "ec2-cmk", "ebs-amk", "ebs-cmk", "ebs-double"] : p => contains(var.parts, p) }
+  key       = anytrue([for p in ["s3", "aurora-cmk", "ec2-cmk", "ebs-cmk"] : local.has[p]]) # A customer-managed key costs money and takes 7 days to delete.
+  auroras   = { for k in ["amk", "cmk"] : k => k if local.has["aurora-${k}"] }
+  instances = { for k in ["amk", "cmk"] : k => k if local.has["ec2-${k}"] }
+  volumes   = { for k in ["amk", "cmk", "double"] : k => k if local.has["ebs-${k}"] }
+  network   = local.has["rds-amk"] || length(local.auroras) + length(local.instances) + length(local.volumes) > 0
 }
 
 # The customer-managed key. Its default key policy lets IAM in this account grant access, as AWS's
@@ -83,7 +86,7 @@ resource "aws_s3_bucket" "bad_tag" {
 }
 
 data "aws_vpc" "default" {
-  count   = local.has["rds-amk"] || length(local.auroras) > 0 ? 1 : 0
+  count   = local.network ? 1 : 0
   default = true
 }
 
@@ -96,7 +99,7 @@ data "aws_subnets" "default" {
 }
 
 resource "aws_db_subnet_group" "lab" {
-  count      = length(data.aws_vpc.default)
+  count      = local.has["rds-amk"] || length(local.auroras) > 0 ? 1 : 0
   name       = local.name
   subnet_ids = data.aws_subnets.default[0].ids
 }
@@ -148,4 +151,57 @@ resource "aws_rds_cluster_instance" "aurora" {
   publicly_accessible = false
   apply_immediately   = true
   tags                = local.tag
+}
+
+# EC2 and EBS: everything in the default VPC's first subnet, so volumes and instances share a zone.
+data "aws_subnet" "first" {
+  count = length(local.instances) + length(local.volumes) > 0 ? 1 : 0
+  id    = sort(data.aws_subnets.default[0].ids)[0]
+}
+
+data "aws_ssm_parameter" "amazon_linux" {
+  count = length(local.instances) > 0 ? 1 : 0
+  name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64" # AWS's own pointer to its latest image.
+}
+
+# Two small instances. Their root volumes carry the instance tag, as launch templates often copy it:
+# status must count the instance and leave its volume out, because the instance's backup holds it.
+resource "aws_instance" "ec2" {
+  for_each                    = local.instances
+  ami                         = data.aws_ssm_parameter.amazon_linux[0].value
+  instance_type               = "t4g.nano"
+  subnet_id                   = data.aws_subnet.first[0].id
+  associate_public_ip_address = false # Nothing reaches it, and it needs nothing.
+  tags                        = merge(local.tag, { Name = "${local.name}-ec2-${each.key}" })
+
+  root_block_device {
+    encrypted   = true
+    kms_key_id  = each.key == "cmk" ? aws_kms_key.lab[0].arn : null # null: EBS uses aws/ebs
+    volume_size = 8
+    volume_type = "gp3"
+    tags        = local.tag
+  }
+
+  metadata_options {
+    http_tokens = "required" # IMDSv2 only.
+  }
+}
+
+# Volumes on their own, tagged clumio-volume-profile. The double one is attached to the AMK instance,
+# which the profile already protects: status must call it DOUBLE.
+resource "aws_ebs_volume" "own" {
+  for_each          = local.volumes
+  availability_zone = data.aws_subnet.first[0].availability_zone
+  size              = 1
+  type              = "gp3"
+  encrypted         = true
+  kms_key_id        = each.key == "cmk" ? aws_kms_key.lab[0].arn : null # null: EBS uses aws/ebs
+  tags              = { "clumio-volume-profile" = var.profile, Name = "${local.name}-ebs-${each.key}" }
+}
+
+resource "aws_volume_attachment" "double" {
+  count       = local.has["ebs-double"] ? 1 : 0
+  device_name = "/dev/sdf"
+  volume_id   = aws_ebs_volume.own["double"].id
+  instance_id = aws_instance.ec2["amk"].id
 }

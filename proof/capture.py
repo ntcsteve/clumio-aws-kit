@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Saves the evidence for the lab's key claims: what AWS and Clumio say about each lab resource's key,
-protection and backups. Read-only: it only describes, lists and reads.
+protection and backups, for S3, RDS, Aurora, EC2 and EBS. Read-only: it only describes, lists and reads.
 
   python3 proof/capture.py <set> <capture name> [restored database ...]
 
@@ -42,11 +42,50 @@ def clumio(path, unit):
 
 
 def key_facts(region, key_id):
-    """Who manages the key, its aliases, and for an AWS-managed key, the policy AWS wrote."""
-    facts = {"describe-key": aws(region, "kms", "describe-key", "--key-id", key_id),
-             "list-aliases": aws(region, "kms", "list-aliases", "--key-id", key_id)}
-    if facts["describe-key"]["KeyMetadata"]["KeyManager"] == "AWS":
-        facts["key-policy"] = aws(region, "kms", "get-key-policy", "--key-id", key_id, "--policy-name", "default")
+    """Who manages the key, its aliases, and its policy: the one AWS wrote for an AWS-managed key, and
+    for the lab's customer-managed key, the default policy that lets IAM in the account grant access."""
+    return {"describe-key": aws(region, "kms", "describe-key", "--key-id", key_id),
+            "list-aliases": aws(region, "kms", "list-aliases", "--key-id", key_id),
+            "key-policy": aws(region, "kms", "get-key-policy", "--key-id", key_id, "--policy-name", "default")}
+
+
+def clumio_asset_facts(kind, native_id, unit):
+    """Clumio's record of an EC2 instance or EBS volume, and its backups with the key each recorded."""
+    path, field, backups_path, backup_field = {
+        "ec2": ("/datasources/aws/ec2-instances", "instance_native_id", "/backups/aws/ec2-instances", "instance_id"),
+        "ebs": ("/datasources/aws/ebs-volumes", "volume_native_id", "/backups/aws/ebs-volumes", "volume_id")}[kind]
+    query = status.urllib.parse.quote(json.dumps({field: {"$eq": native_id}}))
+    found = clumio(f"{path}?limit=100&filter={query}", unit)
+    facts = {"clumio-resource": found}
+    for asset in found.get("_embedded", {}).get("items", []):
+        if asset.get(field) == native_id:
+            backups = status.urllib.parse.quote(json.dumps({backup_field: {"$eq": asset["id"]}}))
+            facts["clumio-backups"] = clumio(f"{backups_path}?limit=100&filter={backups}", unit)
+    return facts
+
+
+def instance_facts(region, instance_id, unit):
+    """The instance, each attached volume's key, and Clumio's record and backups of the instance."""
+    described = aws(region, "ec2", "describe-instances", "--instance-ids", instance_id)
+    facts = {"describe-instances": described}
+    mappings = described["Reservations"][0]["Instances"][0].get("BlockDeviceMappings", [])
+    for volume_id in sorted(m["Ebs"]["VolumeId"] for m in mappings if "Ebs" in m):
+        facts.update({f"{volume_id}-{name}": value for name, value in volume_key_facts(region, volume_id).items()})
+    facts.update(clumio_asset_facts("ec2", instance_id, unit))
+    return facts
+
+
+def volume_key_facts(region, volume_id):
+    described = aws(region, "ec2", "describe-volumes", "--volume-ids", volume_id)
+    facts = {"describe-volumes": described}
+    facts.update(key_facts(region, described["Volumes"][0]["KmsKeyId"]))
+    return facts
+
+
+def volume_facts(region, volume_id, unit):
+    """A volume on its own: its key, and Clumio's record and backups of it."""
+    facts = volume_key_facts(region, volume_id)
+    facts.update(clumio_asset_facts("ebs", volume_id, unit))
     return facts
 
 
@@ -108,6 +147,10 @@ def main():
     databases += [(name, True) for name in lab["auroras"].values()] + [(name, True) for name in restored]
     for name, cluster in databases:
         files.update({f"{name}-{fact}": value for fact, value in database_facts(region, name, cluster, unit, account).items()})
+    for label, instance_id in sorted(lab.get("instances", {}).items()):
+        files.update({f"ec2-{label}-{fact}": value for fact, value in instance_facts(region, instance_id, unit).items()})
+    for label, volume_id in sorted(lab.get("volumes", {}).items()):
+        files.update({f"ebs-{label}-{fact}": value for fact, value in volume_facts(region, volume_id, unit).items()})
     when = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     folder = os.path.join(HERE, "evidence", evidence_set, f"{capture}-{when}")
     write_capture(folder, files, account, unit)

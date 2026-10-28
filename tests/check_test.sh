@@ -14,6 +14,7 @@ CASES=0
 # Stand-ins built at run time, so this file never holds a value check.sh refuses.
 ACCOUNT="98765""4321098"       # a real-looking account number, outside the allowlist
 ACCESS_KEY="AKIA""Q3EXAMPLEKEY7WZX" # the shape of an AWS access key ID: AKIA and 16 more
+JWT="ey""JhbGciOiJSUzI1NiJ9.ey""JzdWIiOiJ0ZXN0LXVzZXIifQ.c2lnbmF0dXJlLXN0YW5kLWlu"  # the shape of a Clumio token
 
 # A fresh copy of what git would ship from this repo, in its own git repo.
 fresh_copy() {
@@ -59,6 +60,12 @@ expect_result "a force-added plan fails" fail "FAIL  no state or plan files" \
   "mkdir -p setup && printf 'PK' > setup/tfplan && git add -f setup/tfplan"
 expect_result "an account number in a doc fails" fail "FAIL  no account numbers" \
   "printf 'Connect account $ACCOUNT first.\n' > notes.md"
+expect_result "a quoted Clumio token fails" fail "FAIL  no credentials" \
+  "printf 'export CLUMIO_API_TOKEN=\"$JWT\"\n' > notes.txt"
+expect_result "a Clumio token in JSON fails" fail "FAIL  no credentials" \
+  "printf '{\"CLUMIO_API_TOKEN\": \"$JWT\"}\n' > notes.json"
+expect_result "a Bearer header with a token fails" fail "FAIL  no credentials" \
+  "printf 'Authorization: Bearer $JWT\n' > notes.md"
 expect_result "an access key fails" fail "FAIL  no credentials" \
   "printf 'aws_access_key_id = $ACCESS_KEY\n' > notes.md"
 expect_result "an account number inside a hyphenated name fails" fail "FAIL  no account numbers" \

@@ -1,6 +1,6 @@
 # One protection profile: one Clumio policy, applied to every resource tagged clumio-profile = <name>
-# in one account and Region. Databases join through a rule; S3 buckets through a protection group,
-# because Clumio's rules don't cover S3. Every guard lives here, so production repos that call this
+# in one account and Region. Databases and EC2 instances join through a rule; S3 buckets through a
+# protection group, because Clumio's rules don't cover S3; volumes on their own through a second rule. Every guard lives here, so production repos that call this
 # module directly get the same checks as setup/.
 # The caller configures both providers; the Clumio provider's organizational unit holds these objects.
 
@@ -15,14 +15,17 @@ data "clumio_aws_connection" "this" {
 }
 
 locals {
-  tag  = { key = "clumio-profile", value = var.name }
-  name = "${var.name}-${var.account_id}-${var.region}" # Unique in the tenant: one profile per account and Region.
+  tag        = { key = "clumio-profile", value = var.name }
+  volume_tag = { key = "clumio-volume-profile", value = var.name } # Its own key: see the volumes rule below.
+  name       = "${var.name}-${var.account_id}-${var.region}"       # Unique in the tenant: one profile per account and Region.
   # A tag alone matches across the whole tenant, so every selection is scoped to this account and Region.
   scope = {
     aws_tag               = { "$eq" = local.tag }
     aws_account_native_id = { "$eq" = var.account_id }
     aws_region            = { "$eq" = var.region }
   }
+  # What the profile's tag rule matches: databases and EC2 instances. S3 joins by protection group.
+  rule_entities = concat(var.databases ? ["aws_rds_instance", "aws_rds_cluster"] : [], var.ec2 ? ["aws_ec2_instance"] : [])
 }
 
 resource "clumio_policy" "this" {
@@ -71,7 +74,8 @@ resource "clumio_policy" "this" {
     }
   }
 
-  # Databases, AWS PITR: Clumio sets each database's PITR window to this, up or down.
+  # Databases, AWS PITR: Clumio sets each database's PITR window to this, turning it on where it's off.
+  # It also shortens a longer window, deleting AWS's older backups: setup's make plan stops on that.
   dynamic "operations" {
     for_each = var.databases ? [1] : []
     content {
@@ -138,6 +142,54 @@ resource "clumio_policy" "this" {
     }
   }
 
+  # EC2: a daily copy of each instance, with its attached EBS volumes.
+  dynamic "operations" {
+    for_each = var.ec2 ? [1] : []
+    content {
+      type           = "aws_ec2_instance_backup"
+      action_setting = "immediate"
+      slas {
+        retention_duration {
+          unit  = "days"
+          value = var.keep_days
+        }
+        rpo_frequency {
+          unit  = "days"
+          value = 1
+        }
+      }
+      advanced_settings {
+        aws_ec2_instance_backup {
+          backup_tier = "standard" # SecureVault Standard
+        }
+      }
+    }
+  }
+
+  # EBS: a daily copy of each volume tagged on its own.
+  dynamic "operations" {
+    for_each = var.ebs_volumes ? [1] : []
+    content {
+      type           = "aws_ebs_volume_backup"
+      action_setting = "immediate"
+      slas {
+        retention_duration {
+          unit  = "days"
+          value = var.keep_days
+        }
+        rpo_frequency {
+          unit  = "days"
+          value = 1
+        }
+      }
+      advanced_settings {
+        aws_ebs_volume_backup {
+          backup_tier = "standard" # SecureVault Standard
+        }
+      }
+    }
+  }
+
   lifecycle {
     precondition {
       condition     = data.aws_caller_identity.signed_in.account_id == var.account_id
@@ -154,14 +206,41 @@ resource "clumio_policy" "this" {
   }
 }
 
-# RDS instances and Aurora clusters with the tag. Clumio applies the first rule that matches, so a
-# rule ranked higher can claim them first: status.py names it, and rule_before_id moves this one up.
-resource "clumio_policy_rule" "databases" {
-  count          = var.databases ? 1 : 0
+# Databases and EC2 instances with the tag. Clumio applies the first rule that matches, so a rule
+# ranked higher can claim them first: status.py names it, and rule_before_id moves this one up.
+resource "clumio_policy_rule" "tagged" {
+  count          = length(local.rule_entities) > 0 ? 1 : 0
   name           = local.name
   policy_id      = clumio_policy.this.id
   before_rule_id = var.rule_before_id
-  condition      = jsonencode(merge({ entity_type = { "$in" = ["aws_rds_instance", "aws_rds_cluster"] } }, local.scope))
+  condition      = jsonencode(merge({ entity_type = { "$in" = local.rule_entities } }, local.scope))
+
+  lifecycle {
+    # Clumio keeps every rule in one chain shared by the whole unit, and rewrites a rule's position
+    # whenever anyone adds, moves or removes a rule. The position is a choice made at creation, not
+    # a value to hold: without this, every plan would show a change and apply would fight the unit.
+    ignore_changes = [before_rule_id]
+  }
+}
+
+# Volumes on their own, by their own tag key. An EC2 backup already holds its attached volumes, so a
+# volume joins only when someone tags it clumio-volume-profile on purpose: status.py calls a tagged
+# volume on a protected instance DOUBLE.
+resource "clumio_policy_rule" "volumes" {
+  count          = var.ebs_volumes ? 1 : 0
+  name           = "${local.name}-volumes"
+  policy_id      = clumio_policy.this.id
+  before_rule_id = var.rule_before_id
+  condition = jsonencode({
+    entity_type           = { "$in" = ["aws_ebs_volume"] }
+    aws_tag               = { "$eq" = local.volume_tag }
+    aws_account_native_id = { "$eq" = var.account_id }
+    aws_region            = { "$eq" = var.region }
+  })
+
+  lifecycle {
+    ignore_changes = [before_rule_id] # As for the tag rule above: Clumio rewrites positions.
+  }
 }
 
 # S3 buckets with the tag, now and later. Glacier storage classes are not backed up.
@@ -188,7 +267,7 @@ resource "clumio_policy_assignment" "s3" {
 resource "terraform_data" "production_guard" {
   count            = var.mode == "production" ? 1 : 0
   triggers_replace = [var.account_id, var.region, var.name]
-  depends_on       = [clumio_policy_rule.databases, clumio_policy_assignment.s3]
+  depends_on       = [clumio_policy_rule.tagged, clumio_policy_rule.volumes, clumio_policy_assignment.s3]
 
   lifecycle {
     prevent_destroy = true

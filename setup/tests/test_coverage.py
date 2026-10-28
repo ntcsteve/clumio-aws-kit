@@ -17,14 +17,24 @@ POLICY, RULE, GROUP = "pol-gold", "rule-gold", "pg-gold"
 KIT = {
     "account_id": ACCOUNT, "region": REGION, "organizational_unit_id": UNIT, "mode": "trial",
     "profiles": {"gold": {"tag": {"key": "clumio-profile", "value": "gold"}, "policy_id": POLICY, "rule_id": RULE,
-                          "protection_group_id": GROUP, "workloads": {"s3": True, "databases": True}},
+                          "volume_tag": {"key": "clumio-volume-profile", "value": "gold"}, "volume_rule_id": "rule-gold-volumes",
+                          "protection_group_id": GROUP, "workloads": {"s3": True, "databases": True, "ec2": True, "ebs_volumes": True}},
                  "dbonly": {"tag": {"key": "clumio-profile", "value": "dbonly"}, "policy_id": "pol-db", "rule_id": "rule-db",
-                            "protection_group_id": None, "workloads": {"s3": False, "databases": True}}},
+                            "volume_tag": {"key": "clumio-volume-profile", "value": "dbonly"}, "volume_rule_id": None,
+                            "protection_group_id": None, "workloads": {"s3": False, "databases": True, "ec2": False, "ebs_volumes": False}}},
 }
 
 
-def tagged(arn, value):
-    return {"ResourceARN": arn, "Tags": [{"Key": "clumio-profile", "Value": value}]}
+def tagged(arn, value, key="clumio-profile"):
+    return {"ResourceARN": arn, "Tags": [{"Key": key, "Value": value}]}
+
+
+def instance(instance_id, value="gold"):
+    return tagged(f"arn:aws:ec2:{REGION}:{ACCOUNT}:instance/{instance_id}", value)
+
+
+def volume(volume_id, value="gold", key="clumio-volume-profile"):
+    return tagged(f"arn:aws:ec2:{REGION}:{ACCOUNT}:volume/{volume_id}", value, key)
 
 
 def bucket(name, value="gold"):
@@ -43,11 +53,14 @@ class FakeClumio:
             "/datasources/aws/rds-resources": [],
             "/backups/aws/rds-resources": [],
             "/datasources/protection-groups/s3-assets": [],
+            "/datasources/aws/ec2-instances": [],
+            "/datasources/aws/ebs-volumes": [],
             "/tasks": [],
         }
         self.single = {f"/connections/aws/{ACCOUNT}_{REGION}": (200, {"organizational_unit_id": UNIT}),
                        "/policies/rules/rule-other": (200, {"id": "rule-other", "name": "CEG Demo"})}
         self.broken = set()
+        self.more_pages = set()  # paths whose answer says another page follows
 
     def get(self, path, unit=None):
         bare, _, query = path.partition("?")
@@ -62,7 +75,10 @@ class FakeClumio:
         if "filter" in params:
             for field, test in json.loads(params["filter"][0]).items():
                 found = [item for item in found if matches(lookup(item, field), test)]
-        return 200, {"_embedded": {"items": found}}
+        body = {"_embedded": {"items": found}}
+        if bare in self.more_pages:
+            body["total_pages_count"] = 2
+        return 200, body
 
 
 def lookup(item, dotted):
@@ -82,6 +98,7 @@ class Coverage(unittest.TestCase):
         self.clumio = FakeClumio()
         self.resources = []
         self.dbs = {}  # name -> {"pitr": days, "cluster": cluster name or None}
+        self.vols = {}  # volume ID -> {"instance": the instance it's attached to, or None}
         self.kit = dict(KIT)
         self.plan = None
 
@@ -90,7 +107,8 @@ class Coverage(unittest.TestCase):
             settings_path="unused", terraform_version=lambda: "1.15.5", aws_cli_found=lambda: True,
             signed_in_account=lambda: ACCOUNT, clumio_credentials_set=lambda: True, clumio_get=self.clumio.get,
             kit=lambda: self.kit, saved_plan=lambda: self.plan,
-            tagged_resources=lambda region: self.resources, databases=lambda region: self.dbs)
+            tagged_resources=lambda region: self.resources, databases=lambda region: self.dbs,
+            volumes=lambda region: self.vols)
 
     def add_db(self, name, policy=POLICY, rule=RULE, backup=None, kind="db", pitr=7, cluster=None):
         self.resources.append(database(name, kind=kind))
@@ -108,6 +126,19 @@ class Coverage(unittest.TestCase):
             self.clumio.lists["/datasources/protection-groups/s3-assets"].append(
                 {"id": f"asset-{name}", "bucket_name": name, "group_id": GROUP, "is_deleted": False,
                  "protection_info": {"policy_id": POLICY}, "last_backup_timestamp": backup})
+
+    def add_instance(self, instance_id, policy=POLICY, backup=None, value="gold"):
+        self.resources.append(instance(instance_id, value))
+        self.clumio.lists["/datasources/aws/ec2-instances"].append(
+            {"id": f"id-{instance_id}", "instance_native_id": instance_id, "account_native_id": ACCOUNT, "aws_region": REGION,
+             "is_deleted": False, "protection_info": {"policy_id": policy, "rule_id": RULE}, "last_backup_timestamp": backup})
+
+    def add_volume(self, volume_id, attached_to=None, key="clumio-volume-profile", policy=POLICY, backup=None):
+        self.resources.append(volume(volume_id, key=key))
+        self.vols[volume_id] = {"instance": attached_to}
+        self.clumio.lists["/datasources/aws/ebs-volumes"].append(
+            {"id": f"id-{volume_id}", "volume_native_id": volume_id, "account_native_id": ACCOUNT, "aws_region": REGION,
+             "is_deleted": False, "protection_info": {"policy_id": policy, "rule_id": "rule-gold-volumes"}, "last_backup_timestamp": backup})
 
     def states(self):
         records, unit_result = status.coverage(self.world())
@@ -200,19 +231,122 @@ class Coverage(unittest.TestCase):
         _, records, _ = self.states()
         self.assertEqual(set(records[0]), {"kind", "name", "profile", "state", "detail", "last_backup"})
 
+    # --- EC2 and EBS ---
+
+    def test_an_instance_with_our_policy_and_a_backup_is_ours(self):
+        self.add_instance("i-0abc", backup="2026-10-28T07:00:00Z")
+        states, _, _ = self.states()
+        self.assertEqual(states["i-0abc"], "OURS")
+
+    def test_an_instance_in_a_profile_without_ec2_is_off(self):
+        self.add_instance("i-0abc", value="dbonly")
+        states, _, _ = self.states()
+        self.assertEqual(states["i-0abc"], "OFF")
+
+    def test_a_volume_tagged_on_its_own_with_a_backup_is_ours(self):
+        self.add_volume("vol-0aaa", backup="2026-10-28T07:00:00Z")
+        states, _, _ = self.states()
+        self.assertEqual(states["vol-0aaa"], "OURS")
+
+    def test_a_volume_tagged_on_its_own_on_a_protected_instance_is_double(self):
+        self.add_instance("i-0abc", backup="2026-10-28T07:00:00Z")
+        self.add_volume("vol-0bbb", attached_to="i-0abc")
+        states, records, unit = self.states()
+        self.assertEqual(states["vol-0bbb"], "DOUBLE")
+        self.assertIn("i-0abc", next(r["detail"] for r in records if r["name"] == "vol-0bbb"))
+        self.assertEqual(status.coverage_exit_code(records, unit), 1)
+
+    def test_a_volume_carrying_the_instance_tag_on_a_protected_instance_is_not_listed(self):
+        self.add_instance("i-0abc", backup="2026-10-28T07:00:00Z")
+        self.add_volume("vol-0ccc", attached_to="i-0abc", key="clumio-profile")
+        states, _, _ = self.states()
+        self.assertEqual(states, {"i-0abc": "OURS"})
+
+    def test_an_unattached_volume_with_the_instance_tag_is_off_and_says_which_tag(self):
+        self.add_volume("vol-0ddd", key="clumio-profile")
+        states, records, _ = self.states()
+        self.assertEqual(states["vol-0ddd"], "OFF")
+        self.assertIn("clumio-volume-profile", records[0]["detail"])
+
+    def test_teardown_waits_while_an_instance_backup_runs(self):
+        self.add_instance("i-0abc")
+        self.clumio.lists["/tasks"].append({"id": "4050", "status": "in_progress", "primary_entity": {"id": "id-i-0abc"}})
+        state, _ = status.teardown(self.world())
+        self.assertEqual(state, "BLOCKED")
+
+    def test_preview_flags_a_double_volume_before_anything_is_applied(self):
+        self.plan = self.plan_with(gold={"s3": True, "databases": True, "ec2": True, "ebs_volumes": True, "pitr_retention_days": 3})
+        self.resources = [instance("i-0abc"), volume("vol-0bbb")]
+        self.vols = {"vol-0bbb": {"instance": "i-0abc"}}
+        states = {line["name"]: line["state"] for line in status.preview(self.world())}
+        self.assertEqual(states, {"i-0abc": "WILL_PROTECT", "vol-0bbb": "DOUBLE"})
+
+    # --- Fixes from the cold review ---
+
+    def test_teardown_waits_while_a_backup_is_aborting(self):
+        self.add_db("orders-db")
+        self.clumio.lists["/tasks"].append({"id": "4060", "status": "aborting", "primary_entity": {"id": "id-orders-db"}})
+        state, _ = status.teardown(self.world())
+        self.assertEqual(state, "BLOCKED")
+
+    def test_teardown_with_more_tasks_than_one_page_is_unknown_never_ready(self):
+        self.add_db("orders-db")
+        self.clumio.more_pages.add("/tasks")
+        state, _ = status.teardown(self.world())
+        self.assertEqual(state, "UNKNOWN")
+
+    def test_a_tagged_aurora_instance_on_an_untagged_cluster_is_off_and_names_the_cluster(self):
+        self.resources.append(database("orders-cluster-1"))
+        self.dbs = {"orders-cluster-1": {"pitr": 7, "cluster": "orders-cluster", "engine": "aurora-mysql"},
+                    "orders-cluster": {"pitr": 7, "cluster": None, "engine": "aurora-mysql"}}
+        states, records, _ = self.states()
+        self.assertEqual(states["orders-cluster-1"], "OFF")
+        self.assertIn("orders-cluster", records[0]["detail"])
+
+    def test_documentdb_and_neptune_are_off_as_not_supported(self):
+        self.resources.append(database("docs-cluster", kind="cluster"))
+        self.dbs = {"docs-cluster": {"pitr": 7, "cluster": None, "engine": "docdb"}}
+        states, records, _ = self.states()
+        self.assertEqual(states["docs-cluster"], "OFF")
+        self.assertIn("not supported", records[0]["detail"])
+
     # --- make plan: --preview ---
 
     def plan_with(self, **profiles):
         return {"variables": {"account_id": {"value": ACCOUNT}, "region": {"value": REGION},
                               "profiles": {"value": profiles}}}
 
-    def test_preview_shows_each_databases_pitr_window_now_and_after(self):
+    def test_preview_stops_on_a_pitr_window_that_would_get_shorter(self):
         self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3})
         self.resources = [database("orders-db")]
         self.dbs = {"orders-db": {"pitr": 7, "cluster": None}}
         lines = status.preview(self.world())
+        self.assertEqual(lines[0]["state"], "SHORTER")
+        self.assertIn("7 days now, 3 days after", lines[0]["detail"])
+        self.assertIn("allow_shorter_pitr", lines[0]["detail"])
+        self.assertEqual(status.preview_exit_code(lines), 1)
+
+    def test_preview_keeps_a_shorter_window_the_profile_allows(self):
+        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3, "allow_shorter_pitr": True})
+        self.resources = [database("orders-db")]
+        self.dbs = {"orders-db": {"pitr": 7, "cluster": None}}
+        lines = status.preview(self.world())
         self.assertEqual(lines[0]["state"], "WILL_PROTECT")
-        self.assertIn("7 days now, 3 days after: SHORTER", lines[0]["detail"])
+        self.assertIn("SHORTER, allowed", lines[0]["detail"])
+        self.assertEqual(status.preview_exit_code(lines), 0)
+
+    def test_preview_of_a_longer_window_goes_ahead(self):
+        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 14})
+        self.resources = [database("orders-db")]
+        self.dbs = {"orders-db": {"pitr": 7, "cluster": None}}
+        lines = status.preview(self.world())
+        self.assertEqual((lines[0]["state"], status.preview_exit_code(lines)), ("WILL_PROTECT", 0))
+        self.assertIn("7 days now, 14 days after: longer", lines[0]["detail"])
+
+    def test_a_bad_tag_shows_in_the_preview_but_does_not_stop_the_plan(self):
+        self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3})
+        self.resources = [bucket("docs", "gld")]
+        self.assertEqual(status.preview_exit_code(status.preview(self.world())), 0)
 
     def test_preview_flags_a_bad_tag_before_anything_is_applied(self):
         self.plan = self.plan_with(gold={"s3": True, "databases": True, "pitr_retention_days": 3})

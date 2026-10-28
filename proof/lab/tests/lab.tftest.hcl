@@ -14,6 +14,12 @@ mock_provider "aws" {
   mock_data "aws_subnets" {
     defaults = { ids = ["subnet-0a", "subnet-0b"] }
   }
+  mock_data "aws_subnet" {
+    defaults = { availability_zone = "us-west-2a" }
+  }
+  mock_data "aws_ssm_parameter" {
+    defaults = { value = "ami-0123456789abcdef0" }
+  }
 }
 mock_provider "random" {}
 
@@ -21,7 +27,7 @@ variables {
   account_id = "123456789012"
   region     = "us-west-2"
   profile    = "gold"
-  parts      = ["s3", "rds-amk", "aurora-amk", "aurora-cmk", "bad-tag"]
+  parts      = ["s3", "rds-amk", "aurora-amk", "aurora-cmk", "bad-tag", "ec2-amk", "ec2-cmk", "ebs-amk", "ebs-cmk", "ebs-double"]
 }
 
 run "every_part_is_built_and_tagged_for_the_profile" {
@@ -99,4 +105,40 @@ run "signed_in_to_another_account_is_refused" {
     values = { account_id = "111111111111" }
   }
   expect_failures = [random_id.suffix]
+}
+
+run "instances_carry_the_profile_tag_and_volumes_on_their_own_the_volume_tag" {
+  command = plan
+  assert {
+    condition     = alltrue([for i in aws_instance.ec2 : i.tags["clumio-profile"] == "gold"]) && length(aws_instance.ec2) == 2
+    error_message = "Both instances must carry clumio-profile = <profile>."
+  }
+  assert {
+    condition     = alltrue([for i in aws_instance.ec2 : i.root_block_device[0].tags["clumio-profile"] == "gold"])
+    error_message = "Root volumes carry the instance tag, as launch templates often copy it: status must not list them."
+  }
+  assert {
+    condition     = alltrue([for v in aws_ebs_volume.own : v.tags["clumio-volume-profile"] == "gold" && v.encrypted]) && length(aws_ebs_volume.own) == 3
+    error_message = "Volumes on their own (amk, cmk, double) must carry clumio-volume-profile = <profile>, encrypted."
+  }
+  assert {
+    condition     = length(aws_volume_attachment.double) == 1
+    error_message = "The double volume must be attached to the protected AMK instance, so status shows DOUBLE."
+  }
+}
+
+run "instances_and_volumes_are_encrypted_and_reachable_by_no_one" {
+  command = plan
+  assert {
+    condition     = alltrue([for i in aws_instance.ec2 : i.root_block_device[0].encrypted && i.associate_public_ip_address == false && i.metadata_options[0].http_tokens == "required"])
+    error_message = "Instances must have encrypted root volumes, no public IP, and IMDSv2 only."
+  }
+}
+
+run "the_double_volume_needs_the_amk_instance" {
+  command = plan
+  variables {
+    parts = ["ebs-double"]
+  }
+  expect_failures = [var.parts]
 }

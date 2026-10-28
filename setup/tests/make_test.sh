@@ -80,6 +80,8 @@ run_case "apply runs a teardown plan, then finds nothing left" apply \
 run_case "apply fails when a teardown leaves something behind" apply \
   ": > teardown.tfplan; echo module.connection.clumio_aws_connection.this > $WORK/bin/state.txt" 1 \
   'grep -q "FAIL  Still in Terraform.s state" <<< "$OUTPUT" && grep -q "clumio_aws_connection.this" <<< "$OUTPUT"'
+run_case "plan drops its saved plan when the preview refuses it" plan "echo 1 > $WORK/bin/preview.exit" 1 \
+  '[ ! -f tfplan ] && grep -q "The plan was not kept" <<< "$OUTPUT"'
 run_case "plan saves tfplan, previews it, and removes a stale teardown plan" plan ": > teardown.tfplan" 0 \
   '[ -f tfplan ] && [ ! -f teardown.tfplan ] && grep -q "status.py --preview" "$CALLS" && grep -q "Next: read the plan" <<< "$OUTPUT"'
 run_case "teardown checks first, saves a destroy plan, and removes a stale plan" teardown ": > tfplan" 0 \

@@ -46,10 +46,23 @@ variable "s3" {
 variable "databases" {
   description = "Protect RDS instances and Aurora clusters tagged with this profile: AWS PITR, a daily SecureVault copy, and a monthly archive."
   type        = bool
+}
 
+variable "ec2" {
+  description = "Protect EC2 instances tagged with this profile: a daily SecureVault copy of each instance and its attached volumes."
+  type        = bool
+  default     = false
+}
+
+variable "ebs_volumes" {
+  description = "Protect EBS volumes tagged clumio-volume-profile = <name>: a daily SecureVault copy of each volume on its own. A volume attached to a protected instance is already in that instance's copy."
+  type        = bool
+  default     = false
+
+  # Checked on the last workload, so every workload setting is known.
   validation {
-    condition     = var.s3 || var.databases
-    error_message = "Turn on at least one workload in this profile: s3 or databases."
+    condition     = var.s3 || var.databases || var.ec2 || var.ebs_volumes
+    error_message = "Turn on at least one workload in this profile: s3, databases, ec2 or ebs_volumes."
   }
 }
 
@@ -64,9 +77,8 @@ variable "keep_days" {
 }
 
 variable "archive_months" {
-  description = "How long each monthly archive copy of a database is kept, in months. 0 turns the archive off. Under 12 incurs Clumio's early-deletion fee."
+  description = "How long each monthly archive copy of a database is kept, in months. 0 turns the archive off. Under 12 incurs Clumio's early-deletion fee. No default: a copy kept a year bills for a year, even after a trial ends."
   type        = number
-  default     = 12
 
   validation {
     condition     = var.archive_months >= 0 && floor(var.archive_months) == var.archive_months
@@ -86,7 +98,7 @@ variable "backtrack_months" {
 }
 
 variable "pitr_retention_days" {
-  description = "The AWS PITR window Clumio sets on every database with this profile, up or down, in days. Required when databases is on: there's no safe default."
+  description = "The AWS PITR window Clumio sets on every database with this profile, in days. It turns PITR on where it's off, and sets it up or down: a shorter window deletes AWS's older automated backups for good. Required when databases is on: there's no safe default."
   type        = number
   default     = null
 

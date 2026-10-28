@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Read-only checks for setup/. Nothing in AWS or Clumio changes. make runs it.
 
-  ./status.py                 who protects each resource tagged clumio-profile, and its last backup
+  ./status.py                 who protects each resource tagged clumio-profile (or, a volume on its
+                              own, clumio-volume-profile), and its last backup
   ./status.py --json          the same, for machines
   ./status.py --preflight     before the first plan: tools, settings, AWS sign-in, Clumio token,
                               organizational unit, Region, rule slots, and any existing connection
   ./status.py --preview       after make plan: what the saved plan will protect, and each tagged
-                              database's PITR window now and after
+                              database's PITR window now and after. Exit 1 when a window would
+                              get shorter and the profile doesn't allow it: make plan then drops
+                              the plan, because a shorter window deletes AWS's older backups
   ./status.py --teardown      before make teardown: refuses in production, or while a backup runs
 
 Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a person must act;
@@ -56,6 +59,7 @@ class World:
     saved_plan: Optional[Callable[[], Optional[dict]]] = None  # tfplan as JSON, or None without one
     tagged_resources: Optional[Callable[[str], list]] = None  # the tagging API's mappings in a Region
     databases: Optional[Callable[[str], dict]] = None  # name -> {"pitr": days, "cluster": its Aurora cluster or None}
+    volumes: Optional[Callable[[str], dict]] = None  # volume ID -> {"instance": the instance it's attached to, or None}
 
 
 # --- Preflight -----------------------------------------------------------------------------------
@@ -215,8 +219,13 @@ def exit_code(results):
 # --- Coverage: who protects each tagged resource -------------------------------------------------
 
 TAG_KEY = "clumio-profile"
-ACTION_STATES = {"OTHER", "BAD_VALUE", "OFF"}  # a person must change something
-LABELS = {"s3": "S3 buckets", "databases": "RDS and Aurora"}
+VOLUME_TAG_KEY = "clumio-volume-profile"  # A volume on its own: see modules/profile, the volumes rule.
+ACTION_STATES = {"OTHER", "BAD_VALUE", "OFF", "DOUBLE"}  # a person must change something
+WORKLOADS = {"s3": "s3", "rds-instance": "databases", "rds-cluster": "databases", "ec2-instance": "ec2", "ebs-volume": "ebs_volumes"}
+LABELS = {"s3": "S3 buckets", "databases": "RDS and Aurora", "ec2": "EC2 instances", "ebs_volumes": "volumes on their own"}
+# How Clumio lists EC2 instances and EBS volumes, and the field that holds the AWS ID.
+ASSETS = {"ec2-instance": ("/datasources/aws/ec2-instances", "instance_native_id"),
+          "ebs-volume": ("/datasources/aws/ebs-volumes", "volume_native_id")}
 
 
 class NothingApplied(Exception):
@@ -236,30 +245,81 @@ def coverage(world):
     kit = world.kit()
     if kit is None:
         raise NothingApplied()
-    records = [check_resource(world, kit, kind, name, value) for kind, name, value in tagged(world, kit["region"])]
+    items, context = tagged(world, kit["region"])
+    records = [settings_problem(item, kit["profiles"], context) or check_in_clumio(world, kit, item) for item in items]
     return records, check_connection_unit(world, kit)
 
 
 def tagged(world, region):
-    """(kind, name, tag value) for each resource carrying the profile tag. Aurora's member instances
-    are left out: Clumio protects their cluster."""
-    members = {name for name, db in world.databases(region).items() if db.get("cluster")}
-    found = []
+    """The resources to check, as (kind, name, tag value, tag key), and what the checks need to know.
+    Left out: an Aurora instance whose cluster is tagged (Clumio protects the cluster), and a volume
+    carrying the instance tag while attached to a tagged instance (that instance's backup holds it)."""
+    databases = world.databases(region)
+    items = []
     for resource in world.tagged_resources(region):
         parsed = parse_arn(resource["ResourceARN"])
-        if parsed and not (parsed[0] == "rds-instance" and parsed[1] in members):
-            value = next((tag["Value"] for tag in resource.get("Tags", []) if tag["Key"] == TAG_KEY), "")
-            found.append((parsed[0], parsed[1], value))
-    return sorted(found)
+        tags = {tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])}
+        key = VOLUME_TAG_KEY if parsed and parsed[0] == "ebs-volume" and VOLUME_TAG_KEY in tags else TAG_KEY
+        if parsed and key in tags:
+            items.append((parsed[0], parsed[1], tags[key], key))
+    tagged_clusters = {name for kind, name, _, _ in items if kind == "rds-cluster"}
+    context = {"instance_profiles": {name: value for kind, name, value, _ in items if kind == "ec2-instance"},
+               "volumes": world.volumes(region) if any(kind == "ebs-volume" for kind, _, _, _ in items) else {},
+               "clusters": {name: db["cluster"] for name, db in databases.items() if db.get("cluster")},
+               "engines": {name: db.get("engine", "") for name, db in databases.items()}}
+    keep = [item for item in items
+            if not (item[0] == "rds-instance" and context["clusters"].get(item[1]) in tagged_clusters)
+            and not (item[0] == "ebs-volume" and item[3] == TAG_KEY and attached_instance(item[1], context) in context["instance_profiles"])]
+    return sorted(keep), context
 
 
 def parse_arn(arn):
-    """(kind, name) for a bucket, an RDS instance or an Aurora cluster; None for anything else."""
+    """(kind, name) for a bucket, an RDS instance, an Aurora cluster, an EC2 instance or an EBS
+    volume; None for anything else."""
     parts = arn.split(":")
     if parts[2] == "s3":
         return "s3", parts[5]
     if parts[2] == "rds" and parts[5] in ("db", "cluster"):
         return ("rds-instance" if parts[5] == "db" else "rds-cluster"), parts[6]
+    if parts[2] == "ec2" and parts[5].startswith(("instance/", "volume/")):
+        kind, name = parts[5].split("/", 1)
+        return ("ec2-instance" if kind == "instance" else "ebs-volume"), name
+    return None
+
+
+def attached_instance(volume_id, context):
+    return (context["volumes"].get(volume_id) or {}).get("instance")
+
+
+def workloads_of(profile):
+    """A profile's workloads, from Terraform's kit output or from a saved plan's settings."""
+    on = profile.get("workloads") or profile
+    return {workload: bool(on.get(workload, False)) for workload in LABELS}
+
+
+def settings_problem(item, profiles, context):
+    """BAD_VALUE, OFF or DOUBLE: what's wrong before Clumio is even asked; None when nothing is."""
+    kind, name, value, key = item
+    if kind.startswith("rds") and context["engines"].get(name) in ("docdb", "neptune"):
+        return record(kind, name, value, "OFF", "DocumentDB and Neptune are not supported by this kit. Remove the tag.")
+    if kind == "rds-instance" and context["clusters"].get(name):
+        return record(kind, name, value, "OFF", f"it's an instance of Aurora cluster {context['clusters'][name]}, and Clumio "
+                      f"protects the cluster. Tag the cluster {TAG_KEY} = {value} instead.")
+    if kind == "ebs-volume" and key == TAG_KEY:
+        return record(kind, name, value, "OFF", f"a volume on its own joins with {VOLUME_TAG_KEY} = {value}. "
+                      "A volume attached to a tagged instance is already in that instance's backup.")
+    profile = profiles.get(value)
+    if profile is None:
+        return record(kind, name, value, "BAD_VALUE", f'no profile named "{value}" here. Profiles: {", ".join(sorted(profiles))}. Fix the tag.')
+    workload = WORKLOADS[kind]
+    if not workloads_of(profile)[workload]:
+        return record(kind, name, value, "OFF", f"profile {value} doesn't protect {LABELS[workload]}. "
+                      f"Set {workload} = true in it, or tag this with another profile.")
+    instance = attached_instance(name, context) if kind == "ebs-volume" else None
+    instance_profile = profiles.get(context["instance_profiles"].get(instance))
+    if instance_profile and workloads_of(instance_profile)["ec2"]:
+        return record(kind, name, value, "DOUBLE", f"it's attached to {instance}, whose backup already holds it. "
+                      f"Remove its {VOLUME_TAG_KEY} tag, or you pay for two copies.")
     return None
 
 
@@ -267,36 +327,35 @@ def record(kind, name, profile, state, detail, last_backup=""):
     return {"kind": kind, "name": name, "profile": profile, "state": state, "detail": detail, "last_backup": last_backup}
 
 
-def check_resource(world, kit, kind, name, value):
-    profile = kit["profiles"].get(value)
-    if profile is None:
-        return record(kind, name, value, "BAD_VALUE",
-                      f'no profile named "{value}" here. Profiles: {", ".join(sorted(kit["profiles"]))}. Fix the tag.')
-    workload = "s3" if kind == "s3" else "databases"
-    if not profile["workloads"][workload]:
-        return record(kind, name, value, "OFF", f"profile {value} doesn't protect {LABELS[workload]}. "
-                      f"Set {workload} = true in it, or tag this with another profile.")
+def check_in_clumio(world, kit, item):
+    kind, name, value, _ = item
+    profile = kit["profiles"][value]
     if kind == "s3":
         return check_bucket(world, kit, name, value, profile)
-    return check_database(world, kit, kind, name, value, profile)
+    asset = find_database(world, kit, name) if kind.startswith("rds") else find_asset(world, kit, kind, name)
+    problem = ownership_problem(world, kind, name, value, profile, asset)
+    if problem:
+        return problem
+    if kind.startswith("rds"):
+        backups = clumio_items(world, "/backups/aws/rds-resources", {"resource_id": {"$eq": asset["id"]}}, kit["organizational_unit_id"])
+        if backups is None:
+            return record(kind, name, value, "UNKNOWN", "Clumio didn't answer for its backups. Run again.")
+        return protected(kind, name, value, max((b.get("start_timestamp", "") for b in backups if b.get("resource_id") == asset["id"]), default=""))
+    return protected(kind, name, value, asset.get("last_backup_timestamp") or "")
 
 
-def check_database(world, kit, kind, name, value, profile):
-    asset = find_database(world, kit, name)
+def ownership_problem(world, kind, name, value, profile, asset):
+    """UNKNOWN, NOT_YET or OTHER for an asset Clumio returned; None when our policy protects it."""
     if asset is None:
         return record(kind, name, value, "UNKNOWN", "Clumio didn't answer. Run again; if it persists, check the token.")
     if asset == {}:
-        return record(kind, name, value, "NOT_YET", "Clumio hasn't found it yet. A new database can take up to an hour: run again then.")
+        return record(kind, name, value, "NOT_YET", "Clumio hasn't found it yet. A new resource can take up to an hour: run again then.")
     info = asset.get("protection_info") or {}
     if not info.get("policy_id"):
         return record(kind, name, value, "NOT_YET", "Clumio found it, but no policy applies yet. Run again in a few minutes.")
     if info["policy_id"] != profile["policy_id"]:
         return record(kind, name, value, "OTHER", claimed_by(world, info))
-    backups = clumio_items(world, "/backups/aws/rds-resources", {"resource_id": {"$eq": asset["id"]}}, kit["organizational_unit_id"])
-    if backups is None:
-        return record(kind, name, value, "UNKNOWN", "Clumio didn't answer for its backups. Run again.")
-    latest = max((b.get("start_timestamp", "") for b in backups if b.get("resource_id") == asset["id"]), default="")
-    return protected(kind, name, value, latest)
+    return None
 
 
 def find_database(world, kit, name):
@@ -306,6 +365,16 @@ def find_database(world, kit, name):
     if found is None:
         return None
     return next((a for a in found if a.get("name") == name and a.get("aws_region") == kit["region"] and not a.get("is_deleted")), {})
+
+
+def find_asset(world, kit, kind, native_id):
+    """Clumio's record of an EC2 instance or EBS volume: the record, {} when not found, None when Clumio didn't answer."""
+    path, field = ASSETS[kind]
+    found = clumio_items(world, path, {field: {"$eq": native_id}}, kit["organizational_unit_id"])
+    if found is None:
+        return None
+    return next((a for a in found if a.get(field) == native_id and a.get("account_native_id") == kit["account_id"]
+                 and a.get("aws_region") == kit["region"] and not a.get("is_deleted")), {})
 
 
 def check_bucket(world, kit, name, value, profile):
@@ -358,12 +427,15 @@ def coverage_exit_code(records, unit_result):
     return 2 if "UNKNOWN" in states else 0
 
 
-def clumio_items(world, path, condition, unit=None):
-    """A filtered Clumio list, or None when Clumio didn't answer 200. Callers re-check each item:
-    a filter Clumio ignored must never turn into a wrong answer."""
+def clumio_items(world, path, condition, unit=None, complete=False):
+    """A filtered Clumio list, or None when Clumio didn't answer 200, or, with complete, when the
+    answer has more than one page. Callers re-check each item: a filter Clumio ignored must never
+    turn into a wrong answer."""
     query = urllib.parse.quote(json.dumps(condition))
     status_code, body = world.clumio_get(f"{path}?limit=100&filter={query}", unit=unit)
-    return body.get("_embedded", {}).get("items", []) if status_code == 200 else None
+    if status_code != 200 or (complete and (body.get("total_pages_count") or 1) > 1):
+        return None
+    return body.get("_embedded", {}).get("items", [])
 
 
 def when(timestamp):
@@ -373,6 +445,11 @@ def when(timestamp):
 
 # --- Preview: what the saved plan will protect ---------------------------------------------------
 
+WILL_PROTECT = {"s3": "Backtrack, and a daily SecureVault copy",
+                "ec2-instance": "a daily SecureVault copy of the instance and its attached volumes",
+                "ebs-volume": "a daily SecureVault copy of this volume"}
+
+
 def preview(world):
     """One line per tagged resource: what the saved plan does to it. Raises NothingPlanned."""
     plan = world.saved_plan()
@@ -381,26 +458,36 @@ def preview(world):
     settings = {key: value["value"] for key, value in plan["variables"].items()}
     profiles, region = settings["profiles"], settings["region"]
     databases = world.databases(region)
+    items, context = tagged(world, region)
     lines = []
-    for kind, name, value in tagged(world, region):
-        profile = profiles.get(value)
-        workload = "s3" if kind == "s3" else "databases"
-        if profile is None:
-            lines.append(record(kind, name, value, "BAD_VALUE", f'no profile named "{value}" in the plan. Fix the tag.'))
-        elif not profile[workload]:
-            lines.append(record(kind, name, value, "OFF", f"profile {value} doesn't protect {LABELS[workload]}."))
-        elif kind == "s3":
-            lines.append(record(kind, name, value, "WILL_PROTECT", "Backtrack, and a daily SecureVault copy"))
+    for kind, name, value, key in items:
+        problem = settings_problem((kind, name, value, key), profiles, context)
+        if problem:
+            lines.append(problem)
+        elif kind.startswith("rds"):
+            lines.append(pitr_line(kind, name, value, databases.get(name, {}).get("pitr"), profiles[value]))
         else:
-            lines.append(record(kind, name, value, "WILL_PROTECT", pitr_change(databases.get(name, {}).get("pitr"), profile["pitr_retention_days"])))
+            lines.append(record(kind, name, value, "WILL_PROTECT", WILL_PROTECT[kind]))
     return lines
 
 
-def pitr_change(now, after):
+def pitr_line(kind, name, value, now, profile):
+    """A database's PITR window now and after. Shorter deletes AWS's older automated backups for good,
+    so it stops the plan unless the profile allows it on purpose."""
+    after = profile["pitr_retention_days"]
     if now is None:
-        return f"PITR window: {after} days after (now unknown)"
-    change = "SHORTER" if after < now else ("longer" if after > now else "unchanged")
-    return f"PITR window: {now} days now, {after} days after: {change}"
+        return record(kind, name, value, "WILL_PROTECT", f"PITR window: {after} days after (now unknown)")
+    if after < now and not profile.get("allow_shorter_pitr"):
+        return record(kind, name, value, "SHORTER", f"PITR window: {now} days now, {after} days after. A shorter window deletes "
+                      f"AWS's older automated backups for good. Set allow_shorter_pitr = true in profile {value} to accept, "
+                      "or raise pitr_retention_days.")
+    change = "SHORTER, allowed" if after < now else ("longer" if after > now else "unchanged")
+    return record(kind, name, value, "WILL_PROTECT", f"PITR window: {now} days now, {after} days after: {change}")
+
+
+def preview_exit_code(lines):
+    """1 only for an unaccepted shorter window: it's the one change here that can't be undone."""
+    return 1 if any(line["state"] == "SHORTER" for line in lines) else 0
 
 
 # --- Teardown: is it safe to remove protection now? ----------------------------------------------
@@ -415,25 +502,28 @@ def teardown(world):
                            "see Retire a production connection in docs/operate.md."]
     unit = kit["organizational_unit_id"]
     watched = [(f"protection group of profile {name}", p["protection_group_id"]) for name, p in kit["profiles"].items() if p["protection_group_id"]]
-    database_names = [name for kind, name, value in tagged(world, kit["region"]) if kind != "s3" and value in kit["profiles"]]
-    for name in database_names:
-        asset = find_database(world, kit, name)
+    items, _ = tagged(world, kit["region"])
+    ours = [(kind, name) for kind, name, value, _ in items if kind != "s3" and value in kit["profiles"]]
+    for kind, name in ours:
+        asset = find_database(world, kit, name) if kind.startswith("rds") else find_asset(world, kit, kind, name)
         if asset is None:
             return "UNKNOWN", ["Clumio didn't answer, so running backups can't be ruled out. Run again."]
         if asset:
             watched.append((name, asset["id"]))
     running = []
     for label, asset_id in watched:
-        tasks = clumio_items(world, "/tasks", {"primary_entity.id": {"$eq": asset_id}}, unit)
+        # Every page, or no answer: a task on page two must never read as nothing running.
+        tasks = clumio_items(world, "/tasks", {"primary_entity.id": {"$eq": asset_id}}, unit, complete=True)
         if tasks is None:
-            return "UNKNOWN", ["Clumio didn't answer, so running backups can't be ruled out. Run again."]
+            return "UNKNOWN", [f"Clumio didn't answer in full for {label}, so running backups can't be ruled out. "
+                               "Look in Clumio's Tasks; teardown waits until nothing runs."]
         running += [f"task {t['id']} ({t.get('type', 'backup')}) for {label}: {t['status']}" for t in tasks
-                    if t.get("status") in ("queued", "in_progress") and (t.get("primary_entity") or {}).get("id") == asset_id]
+                    if t.get("status") in ("queued", "in_progress", "aborting") and (t.get("primary_entity") or {}).get("id") == asset_id]
     if running:
         return "BLOCKED", running + ["Run make teardown again when they end: removing protection mid-backup leaves Clumio's tasks stuck."]
     databases = world.databases(kit["region"])
     return "READY", [f"{name}: PITR window {databases[name]['pitr']} days, as Clumio set it. It stays after teardown: change it yourself if you need to."
-                     for name in database_names if name in databases]
+                     for kind, name in ours if kind.startswith("rds") and name in databases]
 
 
 def print_results(results):
@@ -458,6 +548,7 @@ def real_world():
         saved_plan=terraform_saved_plan,
         tagged_resources=aws_tagged_resources,
         databases=aws_databases,
+        volumes=aws_volumes,
     )
 
 
@@ -482,12 +573,24 @@ def terraform_saved_plan():
 
 
 def aws_tagged_resources(region):
-    """Every bucket, RDS instance and Aurora cluster in the Region carrying the profile tag."""
-    answer = run_json(["aws", "resourcegroupstaggingapi", "get-resources", "--region", region, "--tag-filters", f"Key={TAG_KEY}",
-                       "--resource-type-filters", "s3", "rds:db", "rds:cluster", "--output", "json"], timeout=120)
+    """Every bucket, database, instance and volume in the Region carrying either tag. One call per tag
+    key: the tagging API ANDs the keys of a single call."""
+    found = {}
+    for key in (TAG_KEY, VOLUME_TAG_KEY):
+        answer = run_json(["aws", "resourcegroupstaggingapi", "get-resources", "--region", region, "--tag-filters", f"Key={key}",
+                           "--resource-type-filters", "s3", "rds:db", "rds:cluster", "ec2:instance", "ec2:volume", "--output", "json"], timeout=120)
+        if answer is None:
+            raise AwsUnavailable(f"AWS didn't list the resources tagged {key} in {region}. Check your sign-in, then run again.")
+        found.update({r["ResourceARN"]: r for r in answer.get("ResourceTagMappingList", [])})
+    return list(found.values())
+
+
+def aws_volumes(region):
+    """Each volume, and the instance it's attached to, for DOUBLE."""
+    answer = run_json(["aws", "ec2", "describe-volumes", "--region", region, "--output", "json"], timeout=120)
     if answer is None:
-        raise AwsUnavailable(f"AWS didn't list the resources tagged {TAG_KEY} in {region}. Check your sign-in, then run again.")
-    return answer.get("ResourceTagMappingList", [])
+        raise AwsUnavailable(f"AWS didn't list the volumes in {region}. Check your sign-in, then run again.")
+    return {v["VolumeId"]: {"instance": next((a["InstanceId"] for a in v.get("Attachments", [])), None)} for v in answer.get("Volumes", [])}
 
 
 def aws_databases(region):
@@ -496,9 +599,11 @@ def aws_databases(region):
     clusters = run_json(["aws", "rds", "describe-db-clusters", "--region", region, "--output", "json"], timeout=120)
     if instances is None or clusters is None:
         raise AwsUnavailable(f"AWS didn't list the databases in {region}. Check your sign-in, then run again.")
-    found = {c["DBClusterIdentifier"]: {"pitr": c.get("BackupRetentionPeriod"), "cluster": None} for c in clusters.get("DBClusters", [])}
+    found = {c["DBClusterIdentifier"]: {"pitr": c.get("BackupRetentionPeriod"), "cluster": None, "engine": c.get("Engine", "")}
+             for c in clusters.get("DBClusters", [])}
     for i in instances.get("DBInstances", []):
-        found[i["DBInstanceIdentifier"]] = {"pitr": i.get("BackupRetentionPeriod"), "cluster": i.get("DBClusterIdentifier")}
+        found[i["DBInstanceIdentifier"]] = {"pitr": i.get("BackupRetentionPeriod"), "cluster": i.get("DBClusterIdentifier"),
+                                            "engine": i.get("Engine", "")}
     return found
 
 
@@ -538,7 +643,7 @@ def print_records(records):
         print(f"No resource in this Region carries the tag {TAG_KEY}. Tag what you want protected: {TAG_KEY} = <profile>.")
         return
     for r in records:
-        print(f"{r['state']:12} {r['kind']:12} {r['name']:32} {r['profile']:10} {r['last_backup'] or '-':20} {r['detail']}")
+        print(f"{r['state']:12} {r['kind']:13} {r['name']:32} {r['profile']:10} {r['last_backup'] or '-':20} {r['detail']}")
 
 
 def run_status(as_json):
@@ -560,7 +665,7 @@ def run_preview():
     lines = preview(real_world())
     print("What the saved plan protects, by tag:")
     print_records(lines)
-    return 1 if any(line["state"] in ACTION_STATES for line in lines) else 0
+    return preview_exit_code(lines)
 
 
 def run_teardown():

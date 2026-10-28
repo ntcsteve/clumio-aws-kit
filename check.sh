@@ -16,7 +16,7 @@
 #                            modules and status.py, so a fix to one copy can't silently miss another
 #   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
 #   8. setup                 validates with its lock file; the shipped placeholders stop the plan
-#   9. module tests          each module, and the proof lab, refuses what it must (mock providers)
+#   9. module tests          each module, setup/ and the proof lab refuse what they must (mock providers)
 #  10. preview golden tests what the security team sees matches the reviewed output exactly
 #  11. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
 #      Makefile tests        the order make enforces, and its after-checks, against a stand-in terraform
@@ -76,7 +76,9 @@ STAND_INS = {"123456789012", "111111111111", "222222222222", "333333333333", "00
 STATE_NAME = re.compile(r"(^|/)([^/]*\.tfstate(\.[^/]*)?|tfplan|[^/]*\.tfplan)$")
 ACCESS_KEY = re.compile(r"\b(?:AKIA|ASIA)(?!X{16}\b)[A-Z0-9]{16}\b")  # ASIAXXXXXXXXXXXXXXXX is the evidence's masked form
 SECRET_FIELD = re.compile(r'"(?:sessionToken|SessionToken|secretAccessKey|SecretAccessKey)"\s*:\s*"(?!REDACTED")[^"]+"')
-CLUMIO_TOKEN = re.compile(r"CLUMIO_API_TOKEN=[A-Za-z0-9._-]{20,}")
+# Clumio tokens are JWTs (eyJ...), so a token is caught however it's wrapped: quoted, in JSON, or
+# after Bearer. A plain assignment of anything long is caught too.
+CLUMIO_TOKEN = re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.|CLUMIO_API_TOKEN[\"']?\s*[:=]\s*[\"']?[A-Za-z0-9._-]{20,}")
 # Twelve digits on their own. A UUID's last group can be all digits (a KMS key ID): skip only that,
 # so an account inside a name such as orders-<account>-us-west-2 is still caught.
 ACCOUNT = re.compile(r"(?<![0-9A-Za-z])(?<![0-9a-fA-F]{4}-)\d{12}(?![0-9A-Za-z])")
@@ -172,10 +174,11 @@ if (cd "$COPIES/setup" && terraform init -backend=false -input=false -lockfile=r
   for setting in account_id region organizational_unit mode; do
     grep -q "Set $setting in terraform.tfvars" <<< "$out" || MISSING="$MISSING $setting"
   done
-  # With those four set, the PITR placeholder must still stop it. Terraform wraps long messages, so join lines.
+  # With those four set, the archive and PITR placeholders must still stop it. Terraform wraps long messages, so join lines.
   out="$(cd "$COPIES/setup" && sed -e 's/"ACCOUNT-ID-REPLACE-THIS"/"123456789012"/' -e 's/"REGION-REPLACE-THIS"/"us-west-2"/' \
     -e 's/"UNIT-REPLACE-THIS"/"global"/' -e 's/"MODE-REPLACE-THIS"/"trial"/' settings.example > terraform.tfvars \
     && terraform plan -input=false -no-color 2>&1 | tr '\n' ' ' || true)"
+  grep -q "Set archive_months in terraform.tfvars" <<< "$out" || MISSING="$MISSING archive_months"
   grep -q "Set pitr_retention_days in terraform.tfvars" <<< "$out" || MISSING="$MISSING pitr_retention_days"
   [ -z "$MISSING" ] && pass "setup: the shipped placeholders stop the plan" \
     || flunk "setup: these placeholders did not stop the plan:$MISSING"
@@ -184,7 +187,7 @@ else
 fi
 
 # 9. Each module refuses what it must, with mock providers.
-for module in modules/connection modules/connection/iam modules/profile proof/lab; do
+for module in modules/connection modules/connection/iam modules/profile proof/lab setup; do
   (cd "$COPIES/$module" && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform test -no-color > /dev/null 2>&1) \
     && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
 done
