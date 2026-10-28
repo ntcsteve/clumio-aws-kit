@@ -2,7 +2,7 @@
 # Checks this repository before every commit. Offline: it never calls AWS or Clumio.
 # It reads only what git would ship (tracked files, and new files that .gitignore doesn't exclude),
 # so your own terraform.tfvars, state and .terraform/ never fail it, and never leave your machine.
-# Runs on macOS's stock bash 3.2. Needs git, python3, Terraform 1.10+ and the Terraform registry.
+# Runs on macOS's stock bash 3.2. Needs git, python3, make, Terraform 1.10+ and the Terraform registry.
 # The scans take seconds; the suites take a few minutes.
 #   Scans:
 #   1. shell scripts         every *.sh parses
@@ -16,6 +16,7 @@
 #   8. module tests          each module refuses what it must (mock providers)
 #   9. preview golden tests  what the security team sees matches the reviewed output exactly
 #  10. status tests          status.py's checks, against fake AWS and Clumio answers
+#      Makefile tests        the order make enforces, and its after-checks, against a stand-in terraform
 #  11. self-test             tests/check_test.sh proves each scan passes and fails when it should
 # CHECK_SCANS_ONLY=1 runs the scans only. tests/check_test.sh sets it, so this never loops.
 set -euo pipefail
@@ -153,6 +154,10 @@ done
 # 10. status.py's checks, against fake AWS and Clumio answers.
 (cd "$COPIES/setup" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "setup/status.py: tests" \
   || flunk "setup/status.py: tests (run: python3 -m unittest discover -s tests, in setup/)"
+
+# 10b. The order the Makefile enforces, and its checks after each apply, against a stand-in terraform.
+"$COPIES/setup/tests/make_test.sh" > /dev/null 2>&1 && pass "setup/Makefile: tests" \
+  || flunk "setup/Makefile: tests (run setup/tests/make_test.sh to see which case)"
 
 # 11. The scans above, proven against cases that must pass and must fail.
 tests/check_test.sh > /dev/null 2>&1 && pass "self-test: tests/check_test.sh" \

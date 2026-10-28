@@ -24,10 +24,10 @@ This repository is being built in stages. Each stage adds its folders to this ma
 1. **Use the `make` commands in `setup/`.** Outside them, plan with `terraform plan -out=tfplan`, show the person the plan, wait for their go, then run `terraform apply tfplan`. Never use `-auto-approve`. One go covers one apply.
 2. **The person names the account, Region, unit and mode.** `account_id`, `region`, `organizational_unit` and `mode` come from the person, never from a guess. A wrong account on a shared Clumio tenant can protect another team's data, and change its databases' backup window.
 3. **Never set `i_understand_byok_is_permanent`.** Only the person sets it, after reading why. Bring your own key binds the whole Clumio tenant to one key, for good.
-4. **Never print a secret.** Don't print `CLUMIO_API_TOKEN` or other environment variables. Never open a `*.tfstate` or `tfplan` file, or run `terraform show`: they hold the ExternalId Clumio uses to assume its roles. The person exports the token in the shell that starts you.
+4. **Never print a secret.** The secret here is `CLUMIO_API_TOKEN`: never print it or other environment variables. The person exports it in the shell that starts you. Terraform never writes it to state or plans. The connection's ExternalId isn't a secret (AWS says so: anyone who can read the role can see it), so plans may show it.
 5. **One Clumio tenant per state.** A token from another tenant can't see what this state created, so Terraform would create a second set.
 6. **Never change `account_id`, `region` or `organizational_unit` in an applied `setup/`.** Copy the folder for another target instead.
-7. **The kit never deletes data.** Teardown is `make teardown`, which refuses in production and while a backup runs.
+7. **The kit never deletes data.** Teardown is `make teardown`, then `make apply` after the person has read the plan. It refuses in production.
 8. **The person does the console steps:** the Clumio console, the AWS sign-in, and creating the token.
 
 ## Changing this repository

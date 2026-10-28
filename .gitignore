@@ -1,7 +1,7 @@
 # Your settings: copied from setup/settings.example, never committed
 terraform.tfvars
 
-# Terraform state, plans and working files. State holds the ExternalId Clumio uses to assume its roles.
+# Terraform state, plans and working files. Keep state private: it maps your account's Clumio setup.
 *.tfstate
 *.tfstate.*
 tfplan

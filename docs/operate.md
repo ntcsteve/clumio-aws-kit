@@ -20,4 +20,24 @@ Start with `make preflight`. It checks the tools, your settings, your AWS sign-i
 
 ## Take a trial down
 
-`make teardown` runs `terraform destroy`, which shows what it will remove and asks you to type `yes`. With `mode = "production"` it stops before removing anything. Backups Clumio already made stay until their retention ends.
+1. Run `make teardown`. It saves a plan that removes everything this folder created, and shows it. With `mode = "production"` it stops before saving anything.
+2. Read the plan, then run `make apply`. It applies that plan, then checks that nothing is left in Terraform's state.
+
+Backups Clumio already made stay until their retention ends.
+
+## If you run Terraform directly
+
+Every guard lives in Terraform, so plain `terraform plan` and `terraform apply` stop at the same wrong account, placeholder or production destroy as `make` does. What you give up: `terraform apply` plans again and asks you to type `yes`, instead of applying the plan you read, and nothing checks the result afterwards. `make apply` checks that a new plan shows no changes, or after a teardown, that nothing is left.
+
+## Retire a production connection
+
+The production guard refuses every destroy, so retiring production is a deliberate act in three steps. Do it only when you mean to stop protecting this account and Region.
+
+1. Remove the guard from Terraform's state. It's a marker with nothing behind it in AWS or Clumio, so this deletes nothing:
+
+   ```bash
+   terraform state rm 'module.connection.terraform_data.production_guard[0]'
+   ```
+
+2. Set `mode = "trial"` in `terraform.tfvars`.
+3. Take it down as a trial: `make teardown`, read the plan, `make apply`.

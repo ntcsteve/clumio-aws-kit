@@ -34,5 +34,5 @@ module "connection" {
 }
 
 output "next_step" {
-  value = "Connected ${module.connection.account_id}/${module.connection.region} in unit ${module.connection.organizational_unit_id} (${var.mode}). make apply has checked that a new plan shows no changes."
+  value = "Connected ${module.connection.account_id}/${module.connection.region} in unit ${module.connection.organizational_unit_id} (${var.mode})."
 }
