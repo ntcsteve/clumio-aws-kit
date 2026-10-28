@@ -1,0 +1,82 @@
+{
+ "DBClusters": [
+  {
+   "ActivityStreamStatus": "stopped",
+   "AllocatedStorage": 1,
+   "AssociatedRoles": [],
+   "AutoMinorVersionUpgrade": true,
+   "AvailabilityZones": [
+    "us-west-2a",
+    "us-west-2b",
+    "us-west-2c"
+   ],
+   "BackupRetentionPeriod": 1,
+   "ClusterCreateTime": "2026-10-28T08:37:17.122000+00:00",
+   "CopyTagsToSnapshot": false,
+   "CrossAccountClone": false,
+   "DBClusterArn": "arn:aws:rds:us-west-2:123456789012:cluster:kitlab-7dbed8-aurora-amk",
+   "DBClusterIdentifier": "kitlab-7dbed8-aurora-amk",
+   "DBClusterMembers": [
+    {
+     "DBClusterParameterGroupStatus": "in-sync",
+     "DBInstanceIdentifier": "kitlab-7dbed8-aurora-amk-1",
+     "IsClusterWriter": true,
+     "PromotionTier": 0
+    }
+   ],
+   "DBClusterParameterGroup": "default.aurora-mysql8.0",
+   "DBSubnetGroup": "kitlab-7dbed8",
+   "DatabaseInsightsMode": "standard",
+   "DbClusterResourceId": "cluster-BRUTMAG4U7OEBRGDZWKGFJYHXU",
+   "DeletionProtection": false,
+   "DomainMemberships": [],
+   "EarliestRestorableTime": "2026-10-28T08:37:36.305000+00:00",
+   "Endpoint": "kitlab-7dbed8-aurora-amk.cluster-ctuwo24sw7mq.us-west-2.rds.amazonaws.com",
+   "Engine": "aurora-mysql",
+   "EngineLifecycleSupport": "open-source-rds-extended-support",
+   "EngineMode": "provisioned",
+   "EngineVersion": "8.0.mysql_aurora.3.10.3",
+   "HostedZoneId": "Z1PVIF0B656C1W",
+   "HttpEndpointEnabled": false,
+   "IAMDatabaseAuthenticationEnabled": false,
+   "InternetAccessGatewayEnabled": false,
+   "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/f98ee5aa-8465-4c04-a66e-2d7238fa3cf9",
+   "LatestRestorableTime": "2026-10-28T11:21:28.467000+00:00",
+   "LocalWriteForwardingStatus": "disabled",
+   "MasterUserSecret": {
+    "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/d22e49a1-892b-485f-b5e4-eabd0ded6fab",
+    "SecretArn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:rds!cluster-f7e50978-89eb-43f3-924c-f709260e45c4-Bk1C0p",
+    "SecretStatus": "active"
+   },
+   "MasterUsername": "kitlab",
+   "MultiAZ": false,
+   "NetworkType": "IPV4",
+   "Port": 3306,
+   "PreferredBackupWindow": "07:15-07:45",
+   "PreferredMaintenanceWindow": "wed:11:57-wed:12:27",
+   "ReadReplicaIdentifiers": [],
+   "ReaderEndpoint": "kitlab-7dbed8-aurora-amk.cluster-ro-ctuwo24sw7mq.us-west-2.rds.amazonaws.com",
+   "Status": "available",
+   "StorageEncrypted": true,
+   "StorageEncryptionType": "sse-kms",
+   "TagList": [
+    {
+     "Key": "clumio-profile",
+     "Value": "gold"
+    },
+    {
+     "Key": "kitlab",
+     "Value": "proof-lab"
+    }
+   ],
+   "UpgradeRolloutOrder": "second",
+   "VPCNetworkingEnabled": true,
+   "VpcSecurityGroups": [
+    {
+     "Status": "active",
+     "VpcSecurityGroupId": "sg-090a795cbfbe981e5"
+    }
+   ]
+  }
+ ]
+}

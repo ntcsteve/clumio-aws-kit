@@ -1,0 +1,18 @@
+{
+ "_embedded": {
+  "items": []
+ },
+ "_links": {
+  "_self": {
+   "href": "/api/backups/aws/rds-resources?filter=%7B%22resource_id%22:+%7B%22$eq%22:+%2221dbfde2-d2c2-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100",
+   "templated": false,
+   "type": "get"
+  }
+ },
+ "current_count": 0,
+ "filter_applied": "{\"resource_id\": {\"$eq\": \"21dbfde2-d2c2-11f1-b010-fa4dc59c62ac\"}}",
+ "limit": 100,
+ "start": "1",
+ "total_count": 0,
+ "total_pages_count": 0
+}

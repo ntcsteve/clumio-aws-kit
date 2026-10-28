@@ -1,0 +1,172 @@
+{
+ "Reservations": [
+  {
+   "Groups": [],
+   "Instances": [
+    {
+     "AmiLaunchIndex": 0,
+     "Architecture": "arm64",
+     "BlockDeviceMappings": [
+      {
+       "DeviceName": "/dev/xvda",
+       "Ebs": {
+        "AttachTime": "2026-10-28T08:37:19+00:00",
+        "DeleteOnTermination": true,
+        "EbsCardIndex": 0,
+        "Status": "attached",
+        "VolumeId": "vol-03c7b955a0ed96d44"
+       }
+      },
+      {
+       "DeviceName": "/dev/sdf",
+       "Ebs": {
+        "AttachTime": "2026-10-28T08:37:45.028000+00:00",
+        "DeleteOnTermination": false,
+        "EbsCardIndex": 0,
+        "Status": "attached",
+        "VolumeId": "vol-09d339eb8664e24d0"
+       }
+      }
+     ],
+     "BootMode": "uefi",
+     "CapacityReservationSpecification": {
+      "CapacityReservationPreference": "open"
+     },
+     "ClientToken": "terraform-Y7o5yvRKx2Xsm7Ji66OZWIeJ5e",
+     "CpuOptions": {
+      "CoreCount": 2,
+      "ThreadsPerCore": 1
+     },
+     "CurrentInstanceBootMode": "uefi",
+     "EbsOptimized": false,
+     "EnaSupport": true,
+     "EnclaveOptions": {
+      "Enabled": false
+     },
+     "HibernationOptions": {
+      "Configured": false
+     },
+     "Hypervisor": "xen",
+     "ImageId": "ami-0e7e8cbdc1a628256",
+     "InstanceId": "i-09740d00cb879dce6",
+     "InstanceType": "t4g.nano",
+     "LaunchTime": "2026-10-28T08:37:18+00:00",
+     "MaintenanceOptions": {
+      "AutoRecovery": "default",
+      "RebootMigration": "default"
+     },
+     "MetadataOptions": {
+      "HttpEndpoint": "enabled",
+      "HttpProtocolIpv6": "disabled",
+      "HttpPutResponseHopLimit": 2,
+      "HttpTokens": "required",
+      "InstanceMetadataTags": "disabled",
+      "State": "applied"
+     },
+     "Monitoring": {
+      "State": "disabled"
+     },
+     "NetworkInterfaces": [
+      {
+       "Attachment": {
+        "AttachTime": "2026-10-28T08:37:18+00:00",
+        "AttachmentId": "eni-attach-0f2484748a1e1d12f",
+        "DeleteOnTermination": true,
+        "DeviceIndex": 0,
+        "NetworkCardIndex": 0,
+        "Status": "attached"
+       },
+       "Description": "",
+       "Groups": [
+        {
+         "GroupId": "sg-090a795cbfbe981e5",
+         "GroupName": "default"
+        }
+       ],
+       "InterfaceType": "interface",
+       "Ipv6Addresses": [],
+       "MacAddress": "06:ff:d0:40:3c:cb",
+       "NetworkInterfaceId": "eni-08e68a9df85bd44d7",
+       "Operator": {
+        "Managed": false
+       },
+       "OwnerId": "123456789012",
+       "PrivateDnsName": "ip-172-31-38-157.us-west-2.compute.internal",
+       "PrivateIpAddress": "172.31.38.157",
+       "PrivateIpAddresses": [
+        {
+         "Primary": true,
+         "PrivateDnsName": "ip-172-31-38-157.us-west-2.compute.internal",
+         "PrivateIpAddress": "172.31.38.157"
+        }
+       ],
+       "SourceDestCheck": true,
+       "Status": "in-use",
+       "SubnetId": "subnet-07a208dd4ff9df1bc",
+       "VpcId": "vpc-037b82a3a27e9975f"
+      }
+     ],
+     "NetworkPerformanceOptions": {
+      "BandwidthWeighting": "default"
+     },
+     "Operator": {
+      "HiddenByDefault": false,
+      "Managed": false
+     },
+     "Placement": {
+      "AvailabilityZone": "us-west-2a",
+      "AvailabilityZoneId": "usw2-az2",
+      "GroupName": "",
+      "Tenancy": "default"
+     },
+     "PlatformDetails": "Linux/UNIX",
+     "PrivateDnsName": "ip-172-31-38-157.us-west-2.compute.internal",
+     "PrivateDnsNameOptions": {
+      "EnableResourceNameDnsAAAARecord": false,
+      "EnableResourceNameDnsARecord": false,
+      "HostnameType": "ip-name"
+     },
+     "PrivateIpAddress": "172.31.38.157",
+     "ProductCodes": [],
+     "PublicDnsName": "",
+     "RootDeviceName": "/dev/xvda",
+     "RootDeviceType": "ebs",
+     "SecondaryInterfaces": [],
+     "SecurityGroups": [
+      {
+       "GroupId": "sg-090a795cbfbe981e5",
+       "GroupName": "default"
+      }
+     ],
+     "SourceDestCheck": true,
+     "State": {
+      "Code": 16,
+      "Name": "running"
+     },
+     "StateTransitionReason": "",
+     "SubnetId": "subnet-07a208dd4ff9df1bc",
+     "Tags": [
+      {
+       "Key": "Name",
+       "Value": "kitlab-7dbed8-ec2-amk"
+      },
+      {
+       "Key": "kitlab",
+       "Value": "proof-lab"
+      },
+      {
+       "Key": "clumio-profile",
+       "Value": "gold"
+      }
+     ],
+     "UsageOperation": "RunInstances",
+     "UsageOperationUpdateTime": "2026-10-28T08:37:18+00:00",
+     "VirtualizationType": "hvm",
+     "VpcId": "vpc-037b82a3a27e9975f"
+    }
+   ],
+   "OwnerId": "123456789012",
+   "ReservationId": "r-0ad15b105933b26e2"
+  }
+ ]
+}

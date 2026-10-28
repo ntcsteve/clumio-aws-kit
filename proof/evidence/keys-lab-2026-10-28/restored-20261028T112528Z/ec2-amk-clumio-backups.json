@@ -1,0 +1,164 @@
+{
+ "_embedded": {
+  "items": [
+   {
+    "_links": {
+     "_self": {
+      "href": "/backups/aws/ec2-instances/4e551dbd-d2b7-11f1-b010-fa4dc59c62ac_2026-10-28T10:30:53Z.4056530466",
+      "templated": false,
+      "type": "get"
+     },
+     "restore-aws-ec2-instance": {
+      "href": "/restores/aws/ec2-instances",
+      "templated": false,
+      "type": "post"
+     }
+    },
+    "account_native_id": "123456789012",
+    "ami": {
+     "ami_native_id": "ami-0e7e8cbdc1a628256",
+     "architecture": "arm64",
+     "boot_mode": "uefi",
+     "has_ena_support": true,
+     "hypervisor_type": "xen",
+     "image_type": "machine",
+     "is_public": true,
+     "name": "al2023-ami-2023.12.20261026.1-kernel-6.18-arm64",
+     "number_of_ebs_volumes": 1,
+     "number_of_ephemeral_volumes": 0,
+     "owner_id": "137112412989",
+     "platform": "linux",
+     "root_device_name": "/dev/xvda",
+     "root_device_type": "ebs",
+     "sriov_net_support": "simple",
+     "state": "available",
+     "tpm_support": "",
+     "virtualization_type": "hvm"
+    },
+    "attached_backup_ebs_volumes": [
+     {
+      "id": "",
+      "is_root": false,
+      "kms_key_native_id": "6bc43b62-fcc0-4b42-a5e7-8922e359a13b",
+      "name": "/dev/sdf",
+      "size": 1073741824,
+      "status": "attached",
+      "tags": [
+       {
+        "key": "Name",
+        "value": "kitlab-7dbed8-ebs-double"
+       },
+       {
+        "key": "clumio-volume-profile",
+        "value": "gold"
+       },
+       {
+        "key": "kitlab",
+        "value": "proof-lab"
+       }
+      ],
+      "type": "gp3",
+      "utilized_size_in_bytes": 0,
+      "volume_native_id": "vol-09d339eb8664e24d0"
+     },
+     {
+      "id": "",
+      "is_root": true,
+      "kms_key_native_id": "6bc43b62-fcc0-4b42-a5e7-8922e359a13b",
+      "name": "/dev/xvda",
+      "size": 8589934592,
+      "status": "attached",
+      "tags": [
+       {
+        "key": "kitlab",
+        "value": "proof-lab"
+       },
+       {
+        "key": "clumio-profile",
+        "value": "gold"
+       }
+      ],
+      "type": "gp3",
+      "utilized_size_in_bytes": 1901592576,
+      "volume_native_id": "vol-03c7b955a0ed96d44"
+     }
+    ],
+    "aws_az": "us-west-2a",
+    "aws_region": "us-west-2",
+    "backup_ami": null,
+    "backup_aws_region": "us-west-2",
+    "backup_tier": "standard",
+    "boot_mode": "uefi",
+    "browsing_failed_reason": null,
+    "expiration_timestamp": "2026-11-27T10:30:18Z",
+    "iam_instance_profile": null,
+    "id": "4e551dbd-d2b7-11f1-b010-fa4dc59c62ac_2026-10-28T10:30:53Z.4056530466",
+    "instance_id": "4e551dbd-d2b7-11f1-b010-fa4dc59c62ac",
+    "instance_native_id": "i-09740d00cb879dce6",
+    "instance_store_block_device_mappings": null,
+    "instance_type": "t4g.nano",
+    "is_browsable": true,
+    "key_pair_name": null,
+    "key_pair_native_id": null,
+    "migration_timestamp": "",
+    "network_interfaces": [
+     {
+      "device_index": 0,
+      "network_interface_native_id": "eni-08e68a9df85bd44d7",
+      "public_ip": "",
+      "security_group_native_ids": [
+       "sg-090a795cbfbe981e5"
+      ],
+      "subnet_native_id": "subnet-07a208dd4ff9df1bc",
+      "virtual_name": "eth0"
+     }
+    ],
+    "public_ip_address": "",
+    "size": 9,
+    "start_timestamp": "2026-10-28T10:30:53Z",
+    "subnet_native_id": "subnet-07a208dd4ff9df1bc",
+    "tags": [
+     {
+      "key": "Name",
+      "value": "kitlab-7dbed8-ec2-amk"
+     },
+     {
+      "key": "kitlab",
+      "value": "proof-lab"
+     },
+     {
+      "key": "clumio-profile",
+      "value": "gold"
+     }
+    ],
+    "tpm_support": "",
+    "type": "clumio_backup",
+    "utilized_size_in_bytes": 1901592576,
+    "vpc_native_id": "vpc-037b82a3a27e9975f"
+   }
+  ]
+ },
+ "_links": {
+  "_first": {
+   "href": "/backups/aws/ec2-instances?filter=%7B%22instance_id%22%3A%7B%22%24eq%22%3A%224e551dbd-d2b7-11f1-b010-fa4dc59c62ac%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-10-28T10%3A30%3A53Z%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_last": {
+   "href": "/backups/aws/ec2-instances?filter=%7B%22instance_id%22%3A%7B%22%24eq%22%3A%224e551dbd-d2b7-11f1-b010-fa4dc59c62ac%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-10-28T10%3A30%3A53Z%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_self": {
+   "href": "/backups/aws/ec2-instances?filter=%7B%22instance_id%22:+%7B%22$eq%22:+%224e551dbd-d2b7-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100",
+   "templated": false,
+   "type": "get"
+  }
+ },
+ "current_count": 1,
+ "filter_applied": "{\"instance_id\":{\"$eq\":\"4e551dbd-d2b7-11f1-b010-fa4dc59c62ac\"},\"start_timestamp\":{\"$lte\":\"2026-10-28T10:30:53Z\"}}",
+ "limit": 100,
+ "start": "1",
+ "total_count": 1,
+ "total_pages_count": 1
+}

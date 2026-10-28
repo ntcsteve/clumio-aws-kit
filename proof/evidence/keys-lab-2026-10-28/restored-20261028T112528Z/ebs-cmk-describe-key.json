@@ -1,0 +1,21 @@
+{
+ "KeyMetadata": {
+  "AWSAccountId": "123456789012",
+  "Arn": "arn:aws:kms:us-west-2:123456789012:key/8e30b3e9-4e71-4b9b-bf8c-7d3b9b35bbeb",
+  "CreationDate": "2026-10-28T16:37:03.612000+08:00",
+  "CurrentKeyMaterialId": "1594a4d6c2e9658d53e249f3222660835899b936027bc7eae97d18df38f8d41d",
+  "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+  "Description": "kitlab-7dbed8: customer-managed key for the Clumio proof lab",
+  "Enabled": true,
+  "EncryptionAlgorithms": [
+   "SYMMETRIC_DEFAULT"
+  ],
+  "KeyId": "8e30b3e9-4e71-4b9b-bf8c-7d3b9b35bbeb",
+  "KeyManager": "CUSTOMER",
+  "KeySpec": "SYMMETRIC_DEFAULT",
+  "KeyState": "Enabled",
+  "KeyUsage": "ENCRYPT_DECRYPT",
+  "MultiRegion": false,
+  "Origin": "AWS_KMS"
+ }
+}

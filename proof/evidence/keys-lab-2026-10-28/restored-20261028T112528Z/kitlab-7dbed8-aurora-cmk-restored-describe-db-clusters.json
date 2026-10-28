@@ -1,0 +1,68 @@
+{
+ "DBClusters": [
+  {
+   "ActivityStreamStatus": "stopped",
+   "AllocatedStorage": 1,
+   "AssociatedRoles": [],
+   "AutoMinorVersionUpgrade": true,
+   "AvailabilityZones": [
+    "us-west-2a",
+    "us-west-2b",
+    "us-west-2c"
+   ],
+   "BackupRetentionPeriod": 1,
+   "ClusterCreateTime": "2026-10-28T11:15:58.127000+00:00",
+   "CopyTagsToSnapshot": false,
+   "CrossAccountClone": false,
+   "DBClusterArn": "arn:aws:rds:us-west-2:123456789012:cluster:kitlab-7dbed8-aurora-cmk-restored",
+   "DBClusterIdentifier": "kitlab-7dbed8-aurora-cmk-restored",
+   "DBClusterMembers": [
+    {
+     "DBClusterParameterGroupStatus": "in-sync",
+     "DBInstanceIdentifier": "kitlab-7dbed8-aurora-cmk-restored-i1",
+     "IsClusterWriter": true,
+     "PromotionTier": 1
+    }
+   ],
+   "DBClusterParameterGroup": "default.aurora-mysql8.0",
+   "DBSubnetGroup": "kitlab-7dbed8",
+   "DatabaseInsightsMode": "standard",
+   "DbClusterResourceId": "cluster-Q4UD3L4C5AMK2RZJ7RXR5HP434",
+   "DeletionProtection": false,
+   "DomainMemberships": [],
+   "EarliestRestorableTime": "2026-10-28T11:16:55.136000+00:00",
+   "Endpoint": "kitlab-7dbed8-aurora-cmk-restored.cluster-ctuwo24sw7mq.us-west-2.rds.amazonaws.com",
+   "Engine": "aurora-mysql",
+   "EngineLifecycleSupport": "open-source-rds-extended-support",
+   "EngineMode": "provisioned",
+   "EngineVersion": "8.0.mysql_aurora.3.10.3",
+   "HostedZoneId": "Z1PVIF0B656C1W",
+   "HttpEndpointEnabled": false,
+   "IAMDatabaseAuthenticationEnabled": false,
+   "InternetAccessGatewayEnabled": false,
+   "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/8e30b3e9-4e71-4b9b-bf8c-7d3b9b35bbeb",
+   "LatestRestorableTime": "2026-10-28T11:16:55.136000+00:00",
+   "LocalWriteForwardingStatus": "disabled",
+   "MasterUsername": "kitlab",
+   "MultiAZ": false,
+   "NetworkType": "IPV4",
+   "Port": 3306,
+   "PreferredBackupWindow": "12:01-12:31",
+   "PreferredMaintenanceWindow": "sat:08:55-sat:09:25",
+   "ReadReplicaIdentifiers": [],
+   "ReaderEndpoint": "kitlab-7dbed8-aurora-cmk-restored.cluster-ro-ctuwo24sw7mq.us-west-2.rds.amazonaws.com",
+   "Status": "available",
+   "StorageEncrypted": true,
+   "StorageEncryptionType": "sse-kms",
+   "TagList": [],
+   "UpgradeRolloutOrder": "second",
+   "VPCNetworkingEnabled": true,
+   "VpcSecurityGroups": [
+    {
+     "Status": "active",
+     "VpcSecurityGroupId": "sg-090a795cbfbe981e5"
+    }
+   ]
+  }
+ ]
+}

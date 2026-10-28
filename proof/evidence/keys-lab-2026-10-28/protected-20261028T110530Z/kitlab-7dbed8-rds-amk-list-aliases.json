@@ -1,0 +1,11 @@
+{
+ "Aliases": [
+  {
+   "AliasArn": "arn:aws:kms:us-west-2:123456789012:alias/aws/rds",
+   "AliasName": "alias/aws/rds",
+   "CreationDate": "2026-10-26T16:11:17.634000+08:00",
+   "LastUpdatedDate": "2026-10-26T16:11:17.634000+08:00",
+   "TargetKeyId": "f98ee5aa-8465-4c04-a66e-2d7238fa3cf9"
+  }
+ ]
+}

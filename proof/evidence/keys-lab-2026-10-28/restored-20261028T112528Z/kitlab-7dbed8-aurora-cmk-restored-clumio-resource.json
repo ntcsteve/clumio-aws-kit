@@ -1,0 +1,102 @@
+{
+ "_embedded": {
+  "items": [
+   {
+    "_links": {
+     "_self": {
+      "href": "/datasources/aws/rds-resources/21dbfde2-d2c2-11f1-b010-fa4dc59c62ac",
+      "templated": false,
+      "type": "get"
+     },
+     "create-backup-aws-rds-resource": {
+      "href": "/backups/aws/rds-resources",
+      "templated": false,
+      "type": "post"
+     },
+     "list-backup-aws-rds-resources": {
+      "href": "/backups/aws/rds-resources",
+      "templated": false,
+      "type": "get"
+     },
+     "list-rds-restored-records": {
+      "href": "/restores/aws/rds-resources/records",
+      "templated": false,
+      "type": "get"
+     },
+     "restore-aws-rds-resource": {
+      "href": "/restores/aws/rds-resources",
+      "templated": false,
+      "type": "post"
+     }
+    },
+    "account_native_id": "123456789012",
+    "aws_azs": [
+     "us-west-2a",
+     "us-west-2b",
+     "us-west-2c"
+    ],
+    "aws_region": "us-west-2",
+    "backup_status_info": {
+     "backup_status": "unknown",
+     "last_failed_policy_start_timestamp": "",
+     "last_successful_policy_start_timestamp": "",
+     "operation_info_list": null
+    },
+    "deletion_timestamp": null,
+    "direct_assignment_policy_id": "",
+    "earliest_aws_snapshot_restorable_timestamp": null,
+    "engine": "aurora-mysql",
+    "engine_mode": "provisioned",
+    "engine_version": "8.0.mysql_aurora.3.10.3",
+    "environment_id": "3697d435-d2b7-11f1-b010-fa4dc59c62ac",
+    "first_clumio_snapshot_timestamp": null,
+    "first_granular_backup_timestamp": null,
+    "has_direct_assignment": false,
+    "id": "21dbfde2-d2c2-11f1-b010-fa4dc59c62ac",
+    "is_deleted": false,
+    "is_encrypted": true,
+    "is_multi_az": false,
+    "is_supported": true,
+    "kms_key_native_id": "arn:aws:kms:us-west-2:123456789012:key/8e30b3e9-4e71-4b9b-bf8c-7d3b9b35bbeb",
+    "last_clumio_snapshot_timestamp": null,
+    "last_granular_backup_timestamp": null,
+    "latest_aws_snapshot_restorable_timestamp": null,
+    "name": "kitlab-7dbed8-aurora-cmk-restored",
+    "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "protection_info": null,
+    "protection_status": "unprotected",
+    "resource_native_id": "cluster-Q4UD3L4C5AMK2RZJ7RXR5HP434",
+    "security_group_native_ids": [
+     "sg-090a795cbfbe981e5"
+    ],
+    "size": 1073741824,
+    "subnet_group_name": "kitlab-7dbed8",
+    "tags": [],
+    "type": "aws_rds_cluster",
+    "unsupported_reason": ""
+   }
+  ]
+ },
+ "_links": {
+  "_first": {
+   "href": "/datasources/aws/rds-resources?filter=%7B%22account_native_id%22%3A+%7B%22%24eq%22%3A+%22123456789012%22%7D%2C+%22name%22%3A+%7B%22%24contains%22%3A+%22kitlab-7dbed8-aurora-cmk-restored%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_last": {
+   "href": "/datasources/aws/rds-resources?filter=%7B%22account_native_id%22%3A+%7B%22%24eq%22%3A+%22123456789012%22%7D%2C+%22name%22%3A+%7B%22%24contains%22%3A+%22kitlab-7dbed8-aurora-cmk-restored%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_self": {
+   "href": "/datasources/aws/rds-resources?filter=%7B%22account_native_id%22:+%7B%22$eq%22:+%22123456789012%22%7D,+%22name%22:+%7B%22$contains%22:+%22kitlab-7dbed8-aurora-cmk-restored%22%7D%7D&limit=100",
+   "templated": false,
+   "type": "get"
+  }
+ },
+ "current_count": 1,
+ "limit": 100,
+ "start": "1",
+ "total_count": 1,
+ "total_pages_count": 1
+}

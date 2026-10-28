@@ -1,0 +1,11 @@
+{
+ "Aliases": [
+  {
+   "AliasArn": "arn:aws:kms:us-west-2:123456789012:alias/aws/s3",
+   "AliasName": "alias/aws/s3",
+   "CreationDate": "2026-10-28T16:37:16.458000+08:00",
+   "LastUpdatedDate": "2026-10-28T16:37:16.458000+08:00",
+   "TargetKeyId": "ffe0b205-408a-4cc3-9c8d-61838261cb83"
+  }
+ ]
+}

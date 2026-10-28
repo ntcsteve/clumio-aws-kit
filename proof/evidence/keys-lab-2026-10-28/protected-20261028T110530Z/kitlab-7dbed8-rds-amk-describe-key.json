@@ -1,0 +1,21 @@
+{
+ "KeyMetadata": {
+  "AWSAccountId": "123456789012",
+  "Arn": "arn:aws:kms:us-west-2:123456789012:key/f98ee5aa-8465-4c04-a66e-2d7238fa3cf9",
+  "CreationDate": "2026-10-26T16:11:17.524000+08:00",
+  "CurrentKeyMaterialId": "c0c525d4926d844ad98712ad8ef9ddbe86cf837f7656673367227b157f494916",
+  "CustomerMasterKeySpec": "SYMMETRIC_DEFAULT",
+  "Description": "Default key that protects my RDS database volumes when no other key is defined",
+  "Enabled": true,
+  "EncryptionAlgorithms": [
+   "SYMMETRIC_DEFAULT"
+  ],
+  "KeyId": "f98ee5aa-8465-4c04-a66e-2d7238fa3cf9",
+  "KeyManager": "AWS",
+  "KeySpec": "SYMMETRIC_DEFAULT",
+  "KeyState": "Enabled",
+  "KeyUsage": "ENCRYPT_DECRYPT",
+  "MultiRegion": false,
+  "Origin": "AWS_KMS"
+ }
+}

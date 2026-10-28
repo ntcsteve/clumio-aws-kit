@@ -1,0 +1,135 @@
+{
+ "_embedded": {
+  "items": [
+   {
+    "_embedded": {},
+    "_links": {
+     "_self": {
+      "href": "/datasources/aws/ec2-instances/4db40f2e-d2b7-11f1-b010-fa4dc59c62ac",
+      "templated": false,
+      "type": "get"
+     },
+     "create-backup-aws-ec2-instance": {
+      "href": "/backups/aws/ec2-instances",
+      "templated": false,
+      "type": "post"
+     },
+     "list-backup-aws-ec2-instances": {
+      "href": "/backups/aws/ec2-instances",
+      "templated": false,
+      "type": "get"
+     },
+     "list-restored-files": {
+      "href": "/restores/files",
+      "templated": false,
+      "type": "get"
+     },
+     "read-aws-ec2-instance-volumes": {
+      "href": "/datasources/aws/ec2-instances/4db40f2e-d2b7-11f1-b010-fa4dc59c62ac/volumes",
+      "templated": false,
+      "type": "get"
+     },
+     "read-policy-definition": {
+      "href": "/policies/definitions/810f38ee-2cae-4d89-a11a-74b2dc9ecbb8",
+      "templated": false,
+      "type": "get"
+     },
+     "read-policy-rule": {
+      "href": "/policies/rules/bbe2b717-22dd-438f-886c-2078d9a5a8d9",
+      "templated": false,
+      "type": "get"
+     },
+     "read-policy-summary": {
+      "href": "/policies/definitions/810f38ee-2cae-4d89-a11a-74b2dc9ecbb8/summary",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "account_native_id": "123456789012",
+    "available_device_names": [],
+    "aws_az": "us-west-2a",
+    "aws_region": "us-west-2",
+    "backup_status_info": {
+     "backup_status": "unknown",
+     "last_failed_policy_start_timestamp": "",
+     "last_successful_policy_start_timestamp": "2026-10-28T10:30:18Z",
+     "operation_info_list": [
+      {
+       "backup_status": "unknown",
+       "last_failed_policy_start_timestamp": "",
+       "last_successful_policy_start_timestamp": "2026-10-28T10:30:18Z",
+       "operation": "aws_ec2_instance_backup"
+      }
+     ]
+    },
+    "deletion_timestamp": null,
+    "direct_assignment_policy_id": "",
+    "ena_support": true,
+    "environment_id": "3697d435-d2b7-11f1-b010-fa4dc59c62ac",
+    "has_direct_assignment": false,
+    "id": "4db40f2e-d2b7-11f1-b010-fa4dc59c62ac",
+    "instance_native_id": "i-0775ad4081cf8352a",
+    "is_deleted": false,
+    "is_supported": true,
+    "last_backup_timestamp": "2026-10-28T10:30:53Z",
+    "last_snapshot_timestamp": null,
+    "name": "kitlab-7dbed8-ec2-cmk",
+    "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "protection_info": {
+     "inheriting_entity_id": null,
+     "inheriting_entity_type": null,
+     "policy_id": "810f38ee-2cae-4d89-a11a-74b2dc9ecbb8",
+     "rule_id": "bbe2b717-22dd-438f-886c-2078d9a5a8d9"
+    },
+    "protection_status": "protected",
+    "state": "running",
+    "subnet_id": "subnet-07a208dd4ff9df1bc",
+    "tags": [
+     {
+      "id": "4dab3951-d2b7-11f1-9f52-beb16d9f134a",
+      "key": "clumio-profile",
+      "key_id": "4da926a8-d2b7-11f1-9f52-beb16d9f134a",
+      "value": "gold"
+     },
+     {
+      "id": "4db5d9d0-d2b7-11f1-b010-fa4dc59c62ac",
+      "key": "Name",
+      "key_id": "4db4d27c-d2b7-11f1-b010-fa4dc59c62ac",
+      "value": "kitlab-7dbed8-ec2-cmk"
+     },
+     {
+      "id": "4dae7f51-d2b7-11f1-9f52-beb16d9f134a",
+      "key": "kitlab",
+      "key_id": "4dadda8e-d2b7-11f1-9f52-beb16d9f134a",
+      "value": "proof-lab"
+     }
+    ],
+    "type": "t4g.nano",
+    "unsupported_reason": "",
+    "vpc_id": "vpc-037b82a3a27e9975f"
+   }
+  ]
+ },
+ "_links": {
+  "_first": {
+   "href": "/datasources/aws/ec2-instances?filter=%7B%22instance_native_id%22%3A+%7B%22%24eq%22%3A+%22i-0775ad4081cf8352a%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_last": {
+   "href": "/datasources/aws/ec2-instances?filter=%7B%22instance_native_id%22%3A+%7B%22%24eq%22%3A+%22i-0775ad4081cf8352a%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_self": {
+   "href": "/datasources/aws/ec2-instances?filter=%7B%22instance_native_id%22:+%7B%22$eq%22:+%22i-0775ad4081cf8352a%22%7D%7D&limit=100",
+   "templated": false,
+   "type": "get"
+  }
+ },
+ "current_count": 1,
+ "limit": 100,
+ "start": "1",
+ "total_count": 1,
+ "total_pages_count": 1
+}

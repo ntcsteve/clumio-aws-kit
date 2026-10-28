@@ -1,0 +1,98 @@
+{
+ "_embedded": {
+  "items": [
+   {
+    "_links": {
+     "_self": {
+      "href": "/backups/aws/rds-resources/4edf231c-d2b7-11f1-b010-fa4dc59c62ac_2026-10-28T10:30:53Z_RdsRollingBackup_4056530068",
+      "templated": false,
+      "type": "get"
+     },
+     "list-aws-rds-resources-option-groups": {
+      "href": "/backups/aws/rds-resources/4edf231c-d2b7-11f1-b010-fa4dc59c62ac_2026-10-28T10:30:53Z_RdsRollingBackup_4056530068/option-groups",
+      "templated": false,
+      "type": "get"
+     },
+     "restore-aws-rds-resource": {
+      "href": "/restores/aws/rds-resources",
+      "templated": false,
+      "type": "post"
+     },
+     "restore-rds-record": {
+      "href": "/restores/aws/rds-resources/records",
+      "templated": false,
+      "type": "post"
+     }
+    },
+    "account_native_id": "123456789012",
+    "aws_azs": [
+     "us-west-2d"
+    ],
+    "aws_region": "us-west-2",
+    "backup_aws_region": "us-west-2",
+    "data_retrieval_backup_id": null,
+    "database_native_id": "kitlab-7dbed8-rds-amk",
+    "engine": "postgres",
+    "engine_version": "18.3",
+    "expiration_timestamp": "2026-11-27T10:30:18Z",
+    "id": "4edf231c-d2b7-11f1-b010-fa4dc59c62ac_2026-10-28T10:30:53Z_RdsRollingBackup_4056530068",
+    "instances": [
+     {
+      "class": "db.t4g.micro",
+      "is_publicly_accessible": false,
+      "name": "kitlab-7dbed8-rds-amk"
+     }
+    ],
+    "is_client_side_encryption_enabled": false,
+    "is_cold": false,
+    "kms_key_native_id": "arn:aws:kms:us-west-2:123456789012:key/f98ee5aa-8465-4c04-a66e-2d7238fa3cf9",
+    "migration_timestamp": "",
+    "on_demand_grr_backup_id": null,
+    "option_group_name": null,
+    "parameter_group_name": "default.postgres18",
+    "resource_id": "4edf231c-d2b7-11f1-b010-fa4dc59c62ac",
+    "resource_type": "aws_rds_instance",
+    "security_group_native_ids": [
+     "sg-090a795cbfbe981e5"
+    ],
+    "size": 21474836480,
+    "start_timestamp": "2026-10-28T10:30:53Z",
+    "subnet_group_name": "kitlab-7dbed8",
+    "tags": [
+     {
+      "key": "clumio-profile",
+      "value": "gold"
+     },
+     {
+      "key": "kitlab",
+      "value": "proof-lab"
+     }
+    ],
+    "type": "aws_rds_resource_rolling_backup"
+   }
+  ]
+ },
+ "_links": {
+  "_first": {
+   "href": "/backups/aws/rds-resources?filter=%7B%22resource_id%22%3A%7B%22%24eq%22%3A%224edf231c-d2b7-11f1-b010-fa4dc59c62ac%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-10-28T10%3A30%3A53Z%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_last": {
+   "href": "/backups/aws/rds-resources?filter=%7B%22resource_id%22%3A%7B%22%24eq%22%3A%224edf231c-d2b7-11f1-b010-fa4dc59c62ac%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-10-28T10%3A30%3A53Z%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_self": {
+   "href": "/backups/aws/rds-resources?filter=%7B%22resource_id%22:+%7B%22$eq%22:+%224edf231c-d2b7-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100",
+   "templated": false,
+   "type": "get"
+  }
+ },
+ "current_count": 1,
+ "filter_applied": "{\"resource_id\":{\"$eq\":\"4edf231c-d2b7-11f1-b010-fa4dc59c62ac\"},\"start_timestamp\":{\"$lte\":\"2026-10-28T10:30:53Z\"}}",
+ "limit": 100,
+ "start": "1",
+ "total_count": 1,
+ "total_pages_count": 1
+}
