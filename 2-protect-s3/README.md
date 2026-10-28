@@ -7,7 +7,7 @@ Do [step 1](../1-connect/README.md) first. This folder reads the account, Region
 ## Run it
 
 1. Tag what you want protected: `clumio-profile = gold` (or your profile's name).
-2. In this folder, run `cp settings.example terraform.tfvars`, and set the values marked REPLACE.
+2. In this folder, run `cp settings.example terraform.tfvars`, and check its values.
 3. From the repository root, run `tools/status.py --preflight`. S3 adds no protection rule: buckets join through a protection group.
 4. Here, run `terraform init`, then `terraform plan -out=tfplan`. Read the plan, then run `terraform apply tfplan`.
 
@@ -22,7 +22,7 @@ Protect another workload, or go to [step 3](../3-prove/README.md). For a second 
 
 ```bash
 mkdir ../2-protect-s3-silver
-cp README.md settings.example *.tf ../2-protect-s3-silver/
+cp README.md settings.example *.tf .terraform.lock.hcl ../2-protect-s3-silver/
 ```
 
-Then set `name = "silver"` there.
+Then, before you plan there, set `name = "silver"`: two folders with the same name would make the same policy.

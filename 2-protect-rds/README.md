@@ -14,6 +14,7 @@ Do [step 1](../1-connect/README.md) first. This folder reads the account, Region
 The plan creates one Clumio policy, `<name>-rds-<account>-<region>`, and a rule that applies it to the tagged instances.
 
 - If a tagged database's PITR window would get shorter, the plan stops and names it. Raise `pitr_retention_days`, or set `allow_shorter_pitr = true` to accept it.
+- If PITR is off on a database, Clumio turns it on at the database's next maintenance window: turning backups on restarts an RDS instance, so it waits for that window.
 - **Tag before you plan.** The plan checks the PITR windows of what's tagged. A database tagged after apply gets this window from Clumio directly, with no check: a longer window is cut, and AWS's older backups are deleted.
 - Before you apply, note each database's current window (`aws rds describe-db-instances` or the console): after a teardown, Clumio's window stays, and you set the old one back yourself.
 
@@ -23,7 +24,7 @@ Protect another workload, or go to [step 3](../3-prove/README.md). For a second 
 
 ```bash
 mkdir ../2-protect-rds-silver
-cp README.md settings.example *.tf ../2-protect-rds-silver/
+cp README.md settings.example *.tf .terraform.lock.hcl ../2-protect-rds-silver/
 ```
 
-Then set `name = "silver"` there.
+Then, before you plan there, set `name = "silver"`: two folders with the same name would make the same policy.

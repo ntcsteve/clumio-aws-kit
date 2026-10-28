@@ -14,7 +14,7 @@ terraform plan -out=tfplan     # read it
 terraform apply tfplan
 ```
 
-The plan creates the connection and Clumio's IAM in this account and Region. With `report_emails`, it adds Clumio's daily compliance report. With `mode = "production"`, it adds a guard that refuses destroy, here and in every `2-protect-` folder. For production, keep each folder's Terraform state somewhere safe and shared, or call the modules from your own repository: see [Production](../docs/production.md).
+The plan creates the connection and Clumio's IAM in this account and Region. With `report_emails`, it adds Clumio's daily compliance report. With `mode = "production"`, it adds a guard that refuses destroy, here and in every `2-protect-` folder. The step folders keep their Terraform state locally, beside each other, and read it that way. For production, call the modules from your own repository with its own state backend: see [Production](../docs/production.md).
 
 Run this once per account and Region. The `2-protect-` folders read the account, Region, unit and mode from here. Never change `account_id`, `region` or `organizational_unit` in an applied folder: for another account or Region, copy the whole repository.
 

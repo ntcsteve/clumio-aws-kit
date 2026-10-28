@@ -59,7 +59,7 @@ Keep the connection and each protect call in separate roots: in one root, the co
 | A shorter PITR window stops the plan, unless `allow_shorter_pitr = true` | Yes, in `modules/protect` |
 | `mode = "production"` refuses destroy, a switch to trial, and a new account, Region, name or workload | Yes, in both modules |
 | A workload the connection's IAM leaves out stops the plan | Yes, when you pass `connection_workloads` |
-| No backup running before a teardown | Run `tools/status.py --teardown` from a checkout of this repository with your settings in `1-connect/terraform.tfvars`, or check Clumio's Tasks |
+| No backup running before a teardown | **No:** `tools/status.py --teardown` reads `1-connect`'s settings and refuses in production. Check Clumio's Tasks before removing protection |
 
 `tools/status.py --account <ID> --region <Region> --unit <unit>` shows who protects each tagged resource, for policies `modules/protect` made in any repository: it finds them by name in Clumio. Add `--json` for CI; the exit code is 0 when nothing needs a person.
 

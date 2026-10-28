@@ -12,7 +12,7 @@ mode                = "MODE-REPLACE-THIS"       # "trial" (can be torn down, als
 # report_emails = ["platform-oncall@example.com"]
 
 # What Clumio may protect, by 2-protect folder: "s3", "rds", "aurora", "ec2", "ebs". Clumio's IAM is created
-# for these only; each 2-protect folder you use must be listed (tools/status.py --preflight checks).
+# for these only; each 2-protect folder you use must be listed, or its plan stops and says so.
 workloads = ["s3", "rds", "aurora", "ec2", "ebs"]
 
 # Your organization's IAM rules. 0-check/preview/preview.sh shows every role and policy these produce.

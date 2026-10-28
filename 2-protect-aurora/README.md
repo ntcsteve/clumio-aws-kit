@@ -23,7 +23,7 @@ Protect another workload, or go to [step 3](../3-prove/README.md). For a second 
 
 ```bash
 mkdir ../2-protect-aurora-silver
-cp README.md settings.example *.tf ../2-protect-aurora-silver/
+cp README.md settings.example *.tf .terraform.lock.hcl ../2-protect-aurora-silver/
 ```
 
-Then set `name = "silver"` there.
+Then, before you plan there, set `name = "silver"`: two folders with the same name would make the same policy.
