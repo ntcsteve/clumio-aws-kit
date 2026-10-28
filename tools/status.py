@@ -35,7 +35,10 @@ ROOT = os.path.normpath(os.path.join(HERE, ".."))
 CONNECT = os.path.join(ROOT, "1-connect")  # Its terraform.tfvars names the account, Region, unit and mode
 GLOBAL_UNIT = "00000000-0000-0000-0000-000000000000"  # Clumio's ID for the Global unit (read 2026-10-28)
 MIN_TERRAFORM = (1, 10)  # S3 state locking (use_lockfile) needs 1.10
-RULE_LIMIT = 25  # Clumio's answer when full: error_code 107, "Number of rules is limited to 25"
+# Clumio's rule limits, as seen live; Clumio shows no limit until you hit it (error_code 107): 25 in the
+# Global unit ("Number of rules is limited to 25", v1), 5 in a child unit (2026-10-28).
+RULE_LIMITS = {"global": 25, "child unit": 5}
+RULE_WORKLOADS = ("rds", "aurora", "ec2", "ebs")  # each 2-protect- folder for these adds one rule; S3 adds none
 MAX_UNITS_LISTED = 50  # Bounds the lookups when listing units to choose from
 MAX_PAGES = 20  # Bounds a full list: 2,000 policies, groups or tasks; longer is UNKNOWN, never a partial answer
 TIMEOUT_SECONDS = 30
@@ -64,6 +67,7 @@ class World:
     volumes: Optional[Callable[[str], dict]] = None  # volume ID -> {"instance": the instance it's attached to, or None}
     instances: Optional[Callable[[str], set]] = None  # IDs of the instances AWS describes as not terminated
     applied_folders: Optional[Callable[[], list]] = None  # the 1-connect and 2-protect- folders whose state holds resources
+    pending_rule_folders: Optional[Callable[[], list]] = None  # 2-protect- folders with settings whose rule isn't applied yet
 
 
 # --- Preflight -----------------------------------------------------------------------------------
@@ -196,14 +200,24 @@ def check_region(region, regions):
 
 
 def check_rule_slots(world, unit_id):
-    """Rules belong to a unit, and each unit holds at most RULE_LIMIT (one observation, 2026-10-28)."""
-    status, body = world.clumio_get("/policies/rules?limit=100", unit=unit_id)
-    if status != 200:
-        return "FAIL", "rule slots", f"Clumio answered HTTP {status} listing rules. Try again."
+    """Rules belong to a unit, up to its limit. Each 2-protect- folder for RDS, Aurora, EC2 or EBS adds
+    one; this counts what the folders set up but not applied still need, before an apply fails halfway."""
+    status_code, body = world.clumio_get("/policies/rules?limit=100", unit=unit_id)
+    if status_code != 200:
+        return "FAIL", "rule slots", f"Clumio answered HTTP {status_code} listing rules. Try again."
     used = sum(1 for rule in body.get("_embedded", {}).get("items", []) if rule.get("organizational_unit_id") == unit_id)
-    if used >= RULE_LIMIT:
-        return "FAIL", "rule slots", f"{used} of {RULE_LIMIT} used in this unit, so protection can't add its rules. Remove a rule you no longer need, or choose another unit."
-    return "PASS", "rule slots", f"{used} of {RULE_LIMIT} used in this unit"
+    kind = "global" if unit_id == GLOBAL_UNIT else "child unit"
+    limit = RULE_LIMITS[kind]
+    pending = world.pending_rule_folders() if world.pending_rule_folders else []
+    if used + len(pending) > limit:
+        need = f"{', '.join(pending)} need{'s' if len(pending) == 1 else ''} {len(pending)} more. " if pending else ""
+        return ("FAIL", "rule slots", f"{used} of {limit} used in this unit (the limit Clumio showed for a {kind}). {need}"
+                "Free rules you no longer need, ask Clumio support to raise the unit's limit, or use another unit.")
+    if used >= limit:
+        return ("NOTE", "rule slots", f"{used} of {limit} used in this unit: full. A new 2-protect- folder for RDS, Aurora, EC2 "
+                "or EBS will be refused until a rule is freed or Clumio raises the limit.")
+    note = f"; {', '.join(pending)} will use {len(pending)} more" if pending else ""
+    return "PASS", "rule slots", f"{used} of {limit} used in this unit{note}"
 
 
 def check_connection(world, account, region):
@@ -581,6 +595,7 @@ def real_world(flags=None):
         volumes=aws_volumes,
         instances=aws_instances,
         applied_folders=applied_folders,
+        pending_rule_folders=pending_rule_folders,
     )
 
 
@@ -601,6 +616,24 @@ def kit_from(settings):
     unit = settings["organizational_unit"]
     return {"account_id": settings["account_id"], "region": settings["region"],
             "organizational_unit_id": GLOBAL_UNIT if unit == "global" else unit}
+
+
+def pending_rule_folders():
+    """The 2-protect- folders for RDS, Aurora, EC2 or EBS (copies too, such as 2-protect-rds-silver) that
+    have settings but no rule in their state yet: each will add one rule to the unit."""
+    found = []
+    for folder in sorted(os.listdir(ROOT)):
+        workload = folder[len("2-protect-"):].split("-")[0] if folder.startswith("2-protect-") else ""
+        if workload not in RULE_WORKLOADS or not os.path.exists(os.path.join(ROOT, folder, "terraform.tfvars")):
+            continue
+        try:
+            with open(os.path.join(ROOT, folder, "terraform.tfstate"), encoding="utf-8") as file:
+                applied = any(r.get("type") == "clumio_policy_rule" for r in json.load(file).get("resources", []))
+        except (OSError, ValueError):
+            applied = False
+        if not applied:
+            found.append(folder)
+    return found
 
 
 def applied_folders():

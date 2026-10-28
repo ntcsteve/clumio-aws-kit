@@ -8,7 +8,7 @@ Do [step 1](../1-connect/README.md) first. This folder reads the account, Region
 
 1. Tag what you want protected: `clumio-profile = gold` (or your profile's name).
 2. In this folder, run `cp settings.example terraform.tfvars`, and set the values marked REPLACE.
-3. From the repository root, run `tools/status.py --preflight`: it checks that `1-connect`'s `workloads` covers this folder.
+3. From the repository root, run `tools/status.py --preflight`. This folder adds one protection rule to the organizational unit, and Clumio limits rules per unit (5 in a child unit, 25 in Global, as seen) without showing the limit until you hit it: preflight counts what your folders still need, and fails before you apply if they don't fit.
 4. Here, run `terraform init`, then `terraform plan -out=tfplan`. Read the plan, then run `terraform apply tfplan`.
 
 The plan creates one Clumio policy, `<name>-aurora-<account>-<region>`, and a rule that applies it to the tagged clusters.

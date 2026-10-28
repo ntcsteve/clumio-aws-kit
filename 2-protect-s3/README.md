@@ -8,7 +8,7 @@ Do [step 1](../1-connect/README.md) first. This folder reads the account, Region
 
 1. Tag what you want protected: `clumio-profile = gold` (or your profile's name).
 2. In this folder, run `cp settings.example terraform.tfvars`, and set the values marked REPLACE.
-3. From the repository root, run `tools/status.py --preflight`: it checks that `1-connect`'s `workloads` covers this folder.
+3. From the repository root, run `tools/status.py --preflight`. S3 adds no protection rule: buckets join through a protection group.
 4. Here, run `terraform init`, then `terraform plan -out=tfplan`. Read the plan, then run `terraform apply tfplan`.
 
 The plan creates one Clumio policy, `<name>-s3-<account>-<region>`, and a protection group of the tagged buckets, assigned to it. Clumio's rules don't cover S3, so buckets join through the group.

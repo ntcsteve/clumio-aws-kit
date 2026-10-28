@@ -51,7 +51,7 @@ class FakeClumio:
 
 
 class Preflight(unittest.TestCase):
-    def run_preflight(self, settings=GOOD_SETTINGS, signed_in=ACCOUNT, clumio=None, terraform="1.15.5", env=True):
+    def run_preflight(self, settings=GOOD_SETTINGS, signed_in=ACCOUNT, clumio=None, terraform="1.15.5", env=True, pending=()):
         folder = tempfile.mkdtemp()
         if settings is not None:
             with open(os.path.join(folder, "terraform.tfvars"), "w") as f:
@@ -64,6 +64,7 @@ class Preflight(unittest.TestCase):
             signed_in_account=lambda: signed_in,
             clumio_credentials_set=lambda: env,
             clumio_get=self.clumio.get,
+            pending_rule_folders=lambda: list(pending),
         )
         return status.preflight(world)
 
@@ -141,9 +142,33 @@ class Preflight(unittest.TestCase):
                                      clumio=FakeClumio(**{f"/connections/aws/{ACCOUNT}_eu-north-1": (404, {})}))
         self.assertEqual(self.states(results)["Region"], "FAIL")
 
-    def test_a_full_unit_fails(self):
-        results = self.run_preflight(clumio=FakeClumio(**{"/policies/rules": (200, rules(25))}))
+    def test_a_full_unit_with_nothing_pending_is_a_note(self):
+        # Full can be fine: the person's own folders may have filled it. Say what it means for the next one.
+        results = self.run_preflight(clumio=FakeClumio(**{"/policies/rules": (200, rules(5))}))
+        self.assertEqual(self.states(results)["rule slots"], "NOTE")
+        self.assertIn("refused", self.detail(results, "rule slots"))
+
+    # Live, 2026-10-28: a child unit refused a sixth rule ("Number of rules is limited to 5"), while
+    # Global's limit is 25. Clumio shows no limit before you hit it, so preflight counts what the
+    # 2-protect- folders still need against the limit seen for that kind of unit.
+    def test_folders_that_need_more_rules_than_the_unit_has_left_fail_and_are_named(self):
+        results = self.run_preflight(clumio=FakeClumio(**{"/policies/rules": (200, rules(3))}),
+                                     pending=["2-protect-ec2", "2-protect-ebs", "2-protect-rds"])
         self.assertEqual(self.states(results)["rule slots"], "FAIL")
+        detail = self.detail(results, "rule slots")
+        self.assertIn("2-protect-ebs", detail)
+        self.assertIn("3 of 5", detail)
+
+    def test_folders_that_fit_pass(self):
+        results = self.run_preflight(clumio=FakeClumio(**{"/policies/rules": (200, rules(3))}),
+                                     pending=["2-protect-rds", "2-protect-aurora"])
+        self.assertEqual(self.states(results)["rule slots"], "PASS")
+
+    def test_global_counts_against_its_own_limit(self):
+        results = self.run_preflight(settings=GOOD_SETTINGS.replace(f'"{UNIT}"', '"global"'),
+                                     clumio=FakeClumio(**{"/policies/rules": (200, rules(20, GLOBAL))}),
+                                     pending=["2-protect-ec2", "2-protect-ebs"])
+        self.assertEqual(self.states(results)["rule slots"], "PASS")
 
     def test_rules_of_other_units_are_not_counted(self):
         results = self.run_preflight(clumio=FakeClumio(**{"/policies/rules": (200, rules(25, GLOBAL))}))
