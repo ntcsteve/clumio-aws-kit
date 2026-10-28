@@ -9,6 +9,13 @@ mock_provider "aws" {
   mock_data "aws_region" {
     defaults = { region = "us-west-2" }
   }
+  # No databases in the Region unless a run says otherwise.
+  mock_data "aws_db_instances" {
+    defaults = { instance_identifiers = [] }
+  }
+  mock_data "aws_rds_clusters" {
+    defaults = { cluster_identifiers = [] }
+  }
 }
 mock_provider "clumio" {
   mock_data "clumio_aws_connection" {
@@ -18,6 +25,7 @@ mock_provider "clumio" {
 
 variables {
   name                = "gold"
+  connection_id       = "123456789012_us-west-2"
   account_id          = "123456789012"
   region              = "us-west-2"
   mode                = "trial"
@@ -257,5 +265,146 @@ run "no_volume_rule_unless_asked" {
   assert {
     condition     = length(clumio_policy_rule.volumes) == 0
     error_message = "No volume rule unless ebs_volumes is on: each rule takes a slot in the unit."
+  }
+}
+
+# A shorter PITR window deletes AWS's older automated backups for good, so the plan stops on it,
+# here in the module, so a production repo calling it gets the same stop as deploy/.
+run "a_database_whose_pitr_window_would_shorten_stops_the_plan" {
+  command = plan
+  override_data {
+    target = data.aws_db_instances.tagged[0]
+    values = { instance_identifiers = ["orders"] }
+  }
+  override_data {
+    target = data.aws_db_instance.tagged["orders"]
+    values = { backup_retention_period = 35, db_cluster_identifier = "" }
+  }
+  expect_failures = [clumio_policy.this]
+}
+
+run "allow_shorter_pitr_accepts_a_shorter_window" {
+  command = plan
+  variables {
+    allow_shorter_pitr = true
+  }
+  override_data {
+    target = data.aws_db_instances.tagged[0]
+    values = { instance_identifiers = ["orders"] }
+  }
+  override_data {
+    target = data.aws_db_instance.tagged["orders"]
+    values = { backup_retention_period = 35, db_cluster_identifier = "" }
+  }
+  assert {
+    condition     = local.shorter_pitr == { "RDS instance orders" = 35 }
+    error_message = "The shorter window must still be known, and accepted."
+  }
+}
+
+run "a_longer_or_equal_window_passes" {
+  command = plan
+  override_data {
+    target = data.aws_db_instances.tagged[0]
+    values = { instance_identifiers = ["orders"] }
+  }
+  override_data {
+    target = data.aws_db_instance.tagged["orders"]
+    values = { backup_retention_period = 14, db_cluster_identifier = "" }
+  }
+  assert {
+    condition     = local.shorter_pitr == {}
+    error_message = "A window equal to pitr_retention_days doesn't shorten."
+  }
+}
+
+# An Aurora instance carries its cluster's window, and Clumio protects the cluster: judge the cluster.
+run "an_aurora_instance_is_judged_by_its_cluster" {
+  command = plan
+  override_data {
+    target = data.aws_db_instances.tagged[0]
+    values = { instance_identifiers = ["orders-aurora-1"] }
+  }
+  override_data {
+    target = data.aws_db_instance.tagged["orders-aurora-1"]
+    values = { backup_retention_period = 35, db_cluster_identifier = "orders-aurora" }
+  }
+  assert {
+    condition     = local.shorter_pitr == {}
+    error_message = "An Aurora instance must not count on its own."
+  }
+}
+
+run "a_tagged_aurora_cluster_whose_window_would_shorten_stops_the_plan" {
+  command = plan
+  override_data {
+    target = data.aws_rds_clusters.all[0]
+    values = { cluster_identifiers = ["orders-aurora"] }
+  }
+  override_data {
+    target = data.aws_rds_cluster.all["orders-aurora"]
+    values = { backup_retention_period = 35, engine = "aurora-mysql", tags = { "clumio-profile" = "gold" } }
+  }
+  expect_failures = [clumio_policy.this]
+}
+
+run "untagged_and_unsupported_clusters_are_left_alone" {
+  command = plan
+  override_data {
+    target = data.aws_rds_clusters.all[0]
+    values = { cluster_identifiers = ["other", "docs"] }
+  }
+  override_data {
+    target = data.aws_rds_cluster.all["other"]
+    values = { backup_retention_period = 35, engine = "aurora-postgresql", tags = { team = "x" } }
+  }
+  override_data {
+    target = data.aws_rds_cluster.all["docs"]
+    values = { backup_retention_period = 35, engine = "docdb", tags = { "clumio-profile" = "gold" } }
+  }
+  assert {
+    condition     = local.shorter_pitr == {}
+    error_message = "Only clusters tagged with this profile, of an engine Clumio protects, count."
+  }
+}
+
+run "no_database_reads_without_databases" {
+  command = plan
+  variables {
+    databases = false
+  }
+  assert {
+    condition     = length(data.aws_db_instances.tagged) == 0 && length(data.aws_rds_clusters.all) == 0
+    error_message = "A profile without databases must not read them: the deploy role may not be allowed to."
+  }
+}
+
+# AWS names instances and clusters in separate namespaces, so an instance and a cluster can share a
+# name. Each must be judged on its own: one must never hide the other's shorter window.
+run "an_instance_and_a_cluster_with_the_same_name_are_both_judged" {
+  command = plan
+  variables {
+    allow_shorter_pitr  = true
+    pitr_retention_days = 7
+  }
+  override_data {
+    target = data.aws_db_instances.tagged[0]
+    values = { instance_identifiers = ["orders"] }
+  }
+  override_data {
+    target = data.aws_db_instance.tagged["orders"]
+    values = { backup_retention_period = 35, db_cluster_identifier = "" }
+  }
+  override_data {
+    target = data.aws_rds_clusters.all[0]
+    values = { cluster_identifiers = ["orders"] }
+  }
+  override_data {
+    target = data.aws_rds_cluster.all["orders"]
+    values = { backup_retention_period = 7, engine = "aurora-mysql", tags = { "clumio-profile" = "gold" } }
+  }
+  assert {
+    condition     = local.shorter_pitr == { "RDS instance orders" = 35 }
+    error_message = "The cluster named orders must not hide the instance named orders."
   }
 }

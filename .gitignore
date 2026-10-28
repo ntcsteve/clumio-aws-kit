@@ -1,4 +1,4 @@
-# Your settings: copied from setup/settings.example, never committed
+# Your settings: copied from settings.example, never committed
 terraform.tfvars
 
 # Terraform state, plans and working files. Keep state private: it maps your account's Clumio setup.
@@ -16,6 +16,9 @@ tf-debug.log
 
 # Preview output: one folder per run, for your security team, not for git
 clumio-iam-preview-*/
+
+# Saved status (3-prove): it names your AWS account
+status-*.json
 
 __pycache__/
 .DS_Store

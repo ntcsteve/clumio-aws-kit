@@ -39,7 +39,7 @@ variable "report_emails" {
   }
 }
 
-# Clumio's IAM settings. Checked in ./iam, which setup/preview calls too.
+# Clumio's IAM settings. Checked in ./iam, which 0-check/preview calls too.
 
 variable "iam_prefix" {
   description = "The start of every IAM role and policy name Clumio creates. Empty means Clumio's default names."

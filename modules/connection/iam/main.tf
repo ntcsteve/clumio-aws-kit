@@ -1,5 +1,5 @@
 # Clumio's IAM in one connected account and Region, from Clumio's published template.
-# Two callers: modules/connection, with the real connection, and setup/preview, with stand-ins, so
+# Two callers: modules/connection, with the real connection, and 0-check/preview, with stand-ins, so
 # what the security team previews is exactly what the connection creates.
 
 module "aws_template" {

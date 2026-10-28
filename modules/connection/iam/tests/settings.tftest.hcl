@@ -1,5 +1,5 @@
 # Proves offline that the organization IAM settings are checked before anything is planned.
-# What the IAM itself contains is setup/preview's job (golden tests).
+# What the IAM itself contains is 0-check/preview's job (golden tests).
 # Run: terraform test (in this module; needs Terraform 1.10+). Mock providers: no AWS or Clumio calls.
 
 mock_provider "aws" {

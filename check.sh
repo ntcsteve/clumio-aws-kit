@@ -2,7 +2,7 @@
 # Checks this repository before every commit. Offline: it never calls AWS or Clumio.
 # It reads only what git would ship (tracked files, and new files that .gitignore doesn't exclude),
 # so your own terraform.tfvars, state and .terraform/ never fail it, and never leave your machine.
-# Runs on macOS's stock bash 3.2. Needs git, python3, make, Terraform 1.10+ and the Terraform registry.
+# Runs on macOS's stock bash 3.2. Needs git, python3, Terraform 1.10+ and the Terraform registry.
 # The scans take seconds; the suites take a few minutes.
 #   Scans:
 #   1. shell scripts         every *.sh parses
@@ -12,14 +12,13 @@
 #   4. no credentials        AWS access keys, unredacted session tokens or secret keys, a Clumio token
 #   5. no account numbers    any 12-digit number outside the stand-ins below
 #   6. relative links        every relative link in a Markdown file points at a file that ships
-#   7. setting rules agree   account, Region, unit and mode are checked the same way in setup/, both
+#   7. setting rules agree   account, Region, unit and mode are checked the same way in deploy/, both
 #                            modules and status.py, so a fix to one copy can't silently miss another
 #   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
-#   8. setup                 validates with its lock file; the shipped placeholders stop the plan
-#   9. module tests          each module, setup/ and the proof lab refuse what they must (mock providers)
+#   8. deploy                validates with its lock file; the shipped placeholders stop the plan
+#   9. module tests          each module, deploy/ and the proof lab refuse what they must (mock providers)
 #  10. preview golden tests what the security team sees matches the reviewed output exactly
 #  11. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
-#      Makefile tests        the order make enforces, and its after-checks, against a stand-in terraform
 #  12. self-test             tests/check_test.sh proves each scan passes and fails when it should
 # CHECK_SCANS_ONLY=1 runs the scans only. tests/check_test.sh sets it, so this never loops.
 set -euo pipefail
@@ -38,7 +37,7 @@ COPIES="$(mktemp -d)"
 trap 'rm -rf "$SHIPPED" "$COPIES"' EXIT
 git ls-files -co --exclude-standard -z > "$SHIPPED"
 
-# 1. Shell scripts parse, and they and status.py can run (make calls them directly).
+# 1. Shell scripts parse, and they and status.py can run (the chapters call them directly).
 BAD=""
 while IFS= read -r -d '' file; do
   case "$file" in
@@ -55,14 +54,15 @@ if [ -x proof/verify-evidence.sh ]; then
     || flunk "evidence unchanged since capture (run proof/verify-evidence.sh to see which file)"
 fi
 
-# 2. Terraform files are formatted. Each folder that holds a .tf is checked on its own.
-TF_DIRS="$(tr '\0' '\n' < "$SHIPPED" | grep '\.tf$' | xargs -n1 dirname 2> /dev/null | sort -u || true)"
-if [ -z "$TF_DIRS" ]; then
+# 2. Terraform files that ship are formatted. File by file: checking a folder would also read your
+# own ignored terraform.tfvars, which never ships.
+TF_FILES="$(tr '\0' '\n' < "$SHIPPED" | grep -E '\.(tf|tfvars|tftest\.hcl)$' || true)"
+if [ -z "$TF_FILES" ]; then
   pass "terraform fmt (no .tf files yet)"
 else
   BAD=""
-  for dir in $TF_DIRS; do terraform fmt -check "$dir" > /dev/null 2>&1 || BAD="$BAD $dir"; done
-  [ -z "$BAD" ] && pass "terraform fmt" || flunk "terraform fmt:$BAD (run: terraform fmt <folder>)"
+  for file in $TF_FILES; do terraform fmt -check "$file" > /dev/null 2>&1 || BAD="$BAD $file"; done
+  [ -z "$BAD" ] && pass "terraform fmt" || flunk "terraform fmt:$BAD (run: terraform fmt <file>)"
 fi
 
 # 3 to 7 read file contents, so they share one Python pass. Each prints its own PASS or FAIL line.
@@ -130,17 +130,17 @@ def tf_rules(path):
         rules["mode"] = "^(" + "|".join(re.findall(r'"([^"]+)"', mode.group(1))) + ")$"
     return rules
 
-copies = {path: tf_rules(path) for path in ("setup/variables.tf", "modules/connection/variables.tf", "modules/profile/variables.tf", "proof/lab/variables.tf")
+copies = {path: tf_rules(path) for path in ("deploy/variables.tf", "modules/connection/variables.tf", "modules/profile/variables.tf", "proof/lab/variables.tf")
           if path in shipped_set}
-if "setup/status.py" in shipped_set:
-    shapes = re.search(r"SETTING_SHAPES = \{(.*?)\n\}", open("setup/status.py", encoding="utf-8").read(), re.S)
-    copies["setup/status.py"] = dict(re.findall(r'"(\w+)": \(r"([^"]*)"', shapes.group(1))) if shapes else {}
+if "tools/status.py" in shipped_set:
+    shapes = re.search(r"SETTING_SHAPES = \{(.*?)\n\}", open("tools/status.py", encoding="utf-8").read(), re.S)
+    copies["tools/status.py"] = dict(re.findall(r'"(\w+)": \(r"([^"]*)"', shapes.group(1))) if shapes else {}
 for name in ("account_id", "region", "organizational_unit", "mode"):
     seen = {path: rules[name] for path, rules in copies.items() if name in rules}
     if len(set(seen.values())) > 1:
         findings["setting rules agree"].append(f"{name} differs: " + "; ".join(f"{path} {rule}" for path, rule in sorted(seen.items())))
 for path, rules in copies.items():
-    expected = {"account_id", "region"} | (set() if path.startswith("proof/") else {"mode"}) | ({"organizational_unit"} if path.startswith("setup/") else set())
+    expected = {"account_id", "region"} | (set() if path.startswith("proof/") else {"mode"}) | ({"organizational_unit"} if path.startswith(("deploy/", "tools/")) else set())
     if not expected <= set(rules):
         findings["setting rules agree"].append(f"{path}: can't find the rule for {', '.join(sorted(expected - set(rules)))}")
 
@@ -165,48 +165,46 @@ fi
 # The suites run on a copy of what ships, so local working files never change a result.
 xargs -0 tar -cf - < "$SHIPPED" | tar -xf - -C "$COPIES"
 
-# 8. setup validates with its committed lock file, and the shipped placeholders stop the plan.
-if (cd "$COPIES/setup" && terraform init -backend=false -input=false -lockfile=readonly > /dev/null 2>&1 \
+# 8. deploy/ validates with its committed lock file, and the shipped placeholders stop the plan.
+if (cd "$COPIES/deploy" && terraform init -backend=false -input=false -lockfile=readonly > /dev/null 2>&1 \
     && terraform validate -no-color > /dev/null 2>&1); then
-  pass "setup: terraform validate"
-  out="$(cd "$COPIES/setup" && cp settings.example terraform.tfvars && terraform plan -input=false -no-color 2>&1 || true)"
+  pass "deploy: terraform validate"
+  out="$(cd "$COPIES/deploy" && cp settings.example terraform.tfvars && terraform plan -input=false -no-color 2>&1 || true)"
   MISSING=""
   for setting in account_id region organizational_unit mode; do
     grep -q "Set $setting in terraform.tfvars" <<< "$out" || MISSING="$MISSING $setting"
   done
-  # With those four set, the archive and PITR placeholders must still stop it. Terraform wraps long messages, so join lines.
-  out="$(cd "$COPIES/setup" && sed -e 's/"ACCOUNT-ID-REPLACE-THIS"/"123456789012"/' -e 's/"REGION-REPLACE-THIS"/"us-west-2"/' \
-    -e 's/"UNIT-REPLACE-THIS"/"global"/' -e 's/"MODE-REPLACE-THIS"/"trial"/' settings.example > terraform.tfvars \
+  # With those four set and step 2's example profile uncommented, as the file tells a person to, the
+  # archive and PITR placeholders must still stop it. Terraform wraps long messages, so join lines.
+  out="$(cd "$COPIES/deploy" && sed -e 's/"ACCOUNT-ID-REPLACE-THIS"/"123456789012"/' -e 's/"REGION-REPLACE-THIS"/"us-west-2"/' \
+    -e 's/"UNIT-REPLACE-THIS"/"global"/' -e 's/"MODE-REPLACE-THIS"/"trial"/' \
+    -e '/^profiles = {}$/d' -e '/^# profiles = {$/,/^# }$/s/^# //' settings.example > terraform.tfvars \
     && terraform plan -input=false -no-color 2>&1 | tr '\n' ' ' || true)"
   grep -q "Set archive_months in terraform.tfvars" <<< "$out" || MISSING="$MISSING archive_months"
   grep -q "Set pitr_retention_days in terraform.tfvars" <<< "$out" || MISSING="$MISSING pitr_retention_days"
-  [ -z "$MISSING" ] && pass "setup: the shipped placeholders stop the plan" \
-    || flunk "setup: these placeholders did not stop the plan:$MISSING"
+  [ -z "$MISSING" ] && pass "deploy: the shipped placeholders stop the plan" \
+    || flunk "deploy: these placeholders did not stop the plan:$MISSING"
 else
-  flunk "setup: terraform init or validate (lock file out of date? run them in setup/ to see why)"
+  flunk "deploy: terraform init or validate (lock file out of date? run them in deploy/ to see why)"
 fi
 
 # 9. Each module refuses what it must, with mock providers.
-for module in modules/connection modules/connection/iam modules/profile proof/lab setup; do
+for module in modules/connection modules/connection/iam modules/profile proof/lab deploy; do
   (cd "$COPIES/$module" && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform test -no-color > /dev/null 2>&1) \
     && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
 done
 
 # 10. The preview renders exactly what the security team reviewed.
-"$COPIES/setup/preview/test/test.sh" > /dev/null 2>&1 && pass "setup/preview: golden tests" \
-  || flunk "setup/preview: golden tests (run setup/preview/test/test.sh to see the diff)"
+"$COPIES/0-check/preview/test/test.sh" > /dev/null 2>&1 && pass "0-check/preview: golden tests" \
+  || flunk "0-check/preview: golden tests (run 0-check/preview/test/test.sh to see the diff)"
 
 # 11. status.py's checks, against fake AWS and Clumio answers.
-(cd "$COPIES/setup" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "setup/status.py: tests" \
-  || flunk "setup/status.py: tests (run: python3 -m unittest discover -s tests, in setup/)"
+(cd "$COPIES/tools" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "tools/status.py: tests" \
+  || flunk "tools/status.py: tests (run: python3 -m unittest discover -s tests, in tools/)"
 
 # 11c. The evidence capture masks the account and unit, and writes a manifest shasum verifies.
 (cd "$COPIES/proof" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "proof/capture.py: tests" \
   || flunk "proof/capture.py: tests (run: python3 -m unittest discover -s tests, in proof/)"
-
-# 11b. The order the Makefile enforces, and its checks after each apply, against a stand-in terraform.
-"$COPIES/setup/tests/make_test.sh" > /dev/null 2>&1 && pass "setup/Makefile: tests" \
-  || flunk "setup/Makefile: tests (run setup/tests/make_test.sh to see which case)"
 
 # 12. The scans above, proven against cases that must pass and must fail.
 tests/check_test.sh > /dev/null 2>&1 && pass "self-test: tests/check_test.sh" \

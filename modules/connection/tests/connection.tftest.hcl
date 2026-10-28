@@ -1,5 +1,5 @@
 # Proves offline that the connection module refuses what it must, before anything is created.
-# What Clumio's IAM contains is setup/preview's job (golden tests). Plans only: a production guard
+# What Clumio's IAM contains is 0-check/preview's job (golden tests). Plans only: a production guard
 # refuses destroy, so an applied test could never clean up. Run: terraform test, in this module.
 # Mock providers: no AWS or Clumio calls.
 

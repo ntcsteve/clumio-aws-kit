@@ -18,8 +18,8 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "setup"))
-import status  # noqa: E402  The one Clumio client, shared with make status.
+sys.path.insert(0, os.path.join(HERE, "..", "tools"))
+import status  # noqa: E402  The one Clumio client, shared with tools/status.py.
 
 ACCOUNT_STAND_IN = "123456789012"
 UNIT_STAND_IN = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -144,7 +144,7 @@ def main():
     lab = subprocess.run(["terraform", "output", "-json", "lab"], capture_output=True, text=True, cwd=os.path.join(HERE, "lab"))
     kit = status.terraform_kit()
     if lab.returncode != 0 or kit is None:
-        sys.exit("FAIL: apply proof/lab and setup first: no lab or kit output to read.")
+        sys.exit("FAIL: apply proof/lab and deploy/ first: no lab or kit output to read.")
     lab, region, unit, account = json.loads(lab.stdout), kit["region"], kit["organizational_unit_id"], kit["account_id"]
     missing = missing_lab_outputs(lab)
     if missing:

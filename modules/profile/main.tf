@@ -1,17 +1,42 @@
 # One protection profile: one Clumio policy, applied to every resource tagged clumio-profile = <name>
 # in one account and Region. Databases and EC2 instances join through a rule; S3 buckets through a
-# protection group, because Clumio's rules don't cover S3; volumes on their own through a second rule. Every guard lives here, so production repos that call this
-# module directly get the same checks as setup/.
+# protection group, because Clumio's rules don't cover S3; volumes on their own through a second rule.
+# Every guard lives here, so production repos that call this module directly get the same checks as deploy/.
 # The caller configures both providers; the Clumio provider's organizational unit holds these objects.
 
 data "aws_caller_identity" "signed_in" {}
 data "aws_region" "provider" {}
 
 # The connection this profile protects. Without one, the plan stops here: "AWS connection not found".
-# A caller that creates the connection in the same apply passes depends_on, so this read waits for it.
+# Its arguments come from connection_id, so when the caller creates the connection in the same apply,
+# this one read waits for it. A module-wide depends_on would delay the database reads below too, and
+# their for_each would then fail the plan ("Invalid for_each argument").
 data "clumio_aws_connection" "this" {
-  account_native_id = var.account_id
+  account_native_id = split("_", var.connection_id)[0]
   aws_region        = var.region
+}
+
+# Each tagged database's PITR window today, so a plan that would shorten one stops (see the policy).
+# RDS instances by tag; an Aurora instance is skipped, because its cluster holds the window. Aurora
+# clusters have no tag filter in AWS, so every cluster in the Region is read once per plan: one call
+# each, bounded by the account's cluster quota.
+data "aws_db_instances" "tagged" {
+  count = var.databases ? 1 : 0
+  tags  = { (local.tag.key) = local.tag.value }
+}
+
+data "aws_db_instance" "tagged" {
+  for_each               = toset(var.databases ? data.aws_db_instances.tagged[0].instance_identifiers : [])
+  db_instance_identifier = each.value
+}
+
+data "aws_rds_clusters" "all" {
+  count = var.databases ? 1 : 0
+}
+
+data "aws_rds_cluster" "all" {
+  for_each           = toset(var.databases ? data.aws_rds_clusters.all[0].cluster_identifiers : [])
+  cluster_identifier = each.value
 }
 
 locals {
@@ -26,6 +51,14 @@ locals {
   }
   # What the profile's tag rule matches: databases and EC2 instances. S3 joins by protection group.
   rule_entities = concat(var.databases ? ["aws_rds_instance", "aws_rds_cluster"] : [], var.ec2 ? ["aws_ec2_instance"] : [])
+  # Databases whose window would get shorter, with today's window in days. Keyed by kind and name:
+  # AWS names instances and clusters apart, so one may share another's name.
+  pitr_now = merge(
+    { for name, db in data.aws_db_instance.tagged : "RDS instance ${name}" => db.backup_retention_period if db.db_cluster_identifier == "" },
+    { for name, cluster in data.aws_rds_cluster.all : "Aurora cluster ${name}" => cluster.backup_retention_period
+    if lookup(cluster.tags, local.tag.key, null) == local.tag.value && !contains(["docdb", "neptune"], cluster.engine) },
+  )
+  shorter_pitr = { for name, days in local.pitr_now : name => days if var.databases && days > var.pitr_retention_days }
 }
 
 resource "clumio_policy" "this" {
@@ -75,7 +108,7 @@ resource "clumio_policy" "this" {
   }
 
   # Databases, AWS PITR: Clumio sets each database's PITR window to this, turning it on where it's off.
-  # It also shortens a longer window, deleting AWS's older backups: setup's make plan stops on that.
+  # It also shortens a longer window, deleting AWS's older backups: the last precondition stops that.
   dynamic "operations" {
     for_each = var.databases ? [1] : []
     content {
@@ -203,6 +236,12 @@ resource "clumio_policy" "this" {
       condition     = data.clumio_aws_connection.this.id == "${var.account_id}_${var.region}"
       error_message = "Clumio's connection ${data.clumio_aws_connection.this.id} isn't ${var.account_id} in ${var.region}. Connect that account and Region first (modules/connection)."
     }
+    # Irreversible: a shorter window deletes AWS's older automated backups for good. Stop, unless the
+    # profile accepts it on purpose.
+    precondition {
+      condition     = length(local.shorter_pitr) == 0 || var.allow_shorter_pitr
+      error_message = "Profile ${var.name} would shorten the PITR window of ${join(", ", [for name, days in local.shorter_pitr : "${name} (${days} days now)"])} to ${coalesce(var.pitr_retention_days, 0)} days, and a shorter window deletes AWS's older automated backups for good. Raise pitr_retention_days, or set allow_shorter_pitr = true in profile ${var.name} to accept it."
+    }
   }
 }
 
@@ -246,6 +285,7 @@ resource "clumio_policy_rule" "volumes" {
 # S3 buckets with the tag, now and later. Glacier storage classes are not backed up.
 resource "clumio_protection_group" "s3" {
   count       = var.s3 ? 1 : 0
+  depends_on  = [data.clumio_aws_connection.this] # Created after the connection and its IAM, removed before them, as the policy is.
   name        = local.name
   description = "S3 buckets tagged ${local.tag.key} = ${local.tag.value} in ${var.account_id}/${var.region}"
   bucket_rule = jsonencode(local.scope)

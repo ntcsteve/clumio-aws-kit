@@ -1,0 +1,42 @@
+# Your settings. Copy this file to terraform.tfvars in this folder, then set the first four values:
+#   cp settings.example terraform.tfvars
+# tools/status.py --preflight, 0-check/preview/preview.sh and terraform plan all read terraform.tfvars, so
+# what you check is what you create. Keep each value on one line, as below. terraform.tfvars never leaves your machine.
+
+account_id          = "ACCOUNT-ID-REPLACE-THIS" # your 12-digit AWS account ID; the plan stops if you're signed in to another
+region              = "REGION-REPLACE-THIS"     # where your data is, such as us-west-2
+organizational_unit = "UNIT-REPLACE-THIS"       # "global", or a unit's ID: tools/status.py --preflight lists them
+mode                = "MODE-REPLACE-THIS"       # "trial" (can be torn down, also for a proof of concept) or "production" (refuses destroy)
+
+# Step 2: protect. Leave profiles = {} for step 1, which connects only. For step 2, delete that
+# line and remove the "# " from the start of each line of the example below, then set it.
+# Tag a resource clumio-profile = <name> and that profile protects it.
+# Clumio sets each tagged database's PITR window, up or down; the plan stops if one would get shorter.
+profiles = {}
+
+# profiles = {
+#   gold = {
+#     s3                  = true  # S3 buckets: Backtrack, and a daily SecureVault copy
+#     databases           = true  # RDS and Aurora: AWS PITR, a daily SecureVault copy, and a monthly archive
+#     ec2                 = true  # EC2 instances, with their attached volumes: a daily SecureVault copy
+#     ebs_volumes         = false # volumes on their own, tagged clumio-volume-profile = gold; attached volumes are already in their instance's copy
+#     keep_days           = 30    # daily SecureVault copies, in days; 30 or more when s3 is on
+#     archive_months      = null  # REPLACE: 0 for a trial (no archive), or your retention in months; each copy bills until it expires
+#     pitr_retention_days = null  # REPLACE: 1 to 35 days. Clumio sets this AWS PITR window on every gold database, turning PITR on where it's off
+#     # backtrack_months   = 3    # how far back Backtrack can roll a bucket, in months
+#     # allow_shorter_pitr = true # only to accept a plan that shortens a database's window: that deletes AWS's older backups
+#     # rule_before_id     = "<rule ID>" # only when tools/status.py says another rule claimed these resources first
+#   }
+# }
+
+# Who gets Clumio's daily compliance report for this Region (not yet proven live):
+# report_emails = ["platform-oncall@example.com"]
+
+# Your organization's IAM rules. 0-check/preview/preview.sh shows every role and policy these produce.
+iam_prefix = ""         # such as "platform-clumio", if IAM names must start with a prefix
+iam_path   = "/clumio/" # "/" if your naming rule allows no path
+
+# Only if your organization requires them:
+# role_tags                = { team = "platform" }
+# permissions_boundary_arn = "arn:aws:iam::123456789012:policy/<boundary>"
+# pass_role_deny_list      = ["arn:aws:iam::123456789012:role/<role Clumio must never pass>"]

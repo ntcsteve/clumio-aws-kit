@@ -50,14 +50,14 @@ expect_result() {
 STATE='{"version": 4, "terraform_''version": "1.15.5", "serial": 1, "line''age": "5f1c2e9a-7b3d-4c1e-9a2b-8d7e6f5a4b3c", "outputs": {}, "resources": []}'
 
 expect_result "clean tree passes" pass "" ":"
-expect_result "a real, ignored terraform.tfvars and state are left alone" pass "" \
-  "mkdir -p setup && printf 'account_id = \"$ACCOUNT\"\n' > setup/terraform.tfvars && printf '%s' '$STATE' > setup/terraform.tfstate"
+expect_result "a real, ignored terraform.tfvars (even unformatted) and state are left alone" pass "" \
+  "mkdir -p deploy && printf 'account_id   =  \"$ACCOUNT\"\n' > deploy/terraform.tfvars && printf '%s' '$STATE' > deploy/terraform.tfstate"
 expect_result "a force-added state file fails" fail "FAIL  no state or plan files" \
-  "mkdir -p setup && printf '%s' '$STATE' > setup/terraform.tfstate && git add -f setup/terraform.tfstate"
+  "mkdir -p deploy && printf '%s' '$STATE' > deploy/terraform.tfstate && git add -f deploy/terraform.tfstate"
 expect_result "a state file under another name fails" fail "FAIL  no state or plan files" \
   "printf '%s' '$STATE' > notes.json"
 expect_result "a force-added plan fails" fail "FAIL  no state or plan files" \
-  "mkdir -p setup && printf 'PK' > setup/tfplan && git add -f setup/tfplan"
+  "mkdir -p deploy && printf 'PK' > deploy/tfplan && git add -f deploy/tfplan"
 expect_result "an account number in a doc fails" fail "FAIL  no account numbers" \
   "printf 'Connect account $ACCOUNT first.\n' > notes.md"
 expect_result "a quoted Clumio token fails" fail "FAIL  no credentials" \
@@ -75,7 +75,7 @@ expect_result "a KMS key ID ending in twelve digits passes" pass "" \
 expect_result "a masked access key, as the evidence stores them, passes" pass "" \
   "printf 'accessKeyId: ASIA''XXXXXXXXXXXXXXXX\n' > notes.md"
 expect_result "12-digit runs inside lock-file hashes pass" pass "" \
-  "mkdir -p setup && printf 'provider \"x\" {\n  hashes = [\n    \"zh:$ACCOUNT\",\n  ]\n}\n' > setup/.terraform.lock.hcl"
+  "mkdir -p deploy && printf 'provider \"x\" {\n  hashes = [\n    \"zh:$ACCOUNT\",\n  ]\n}\n' > deploy/.terraform.lock.hcl"
 expect_result "a script that cannot run fails" fail "FAIL  shell scripts parse and are executable" \
   "printf '#!/usr/bin/env bash\necho hi\n' > notes.sh"
 expect_result "a setting rule that drifted in one copy fails" fail "FAIL  setting rules agree" \

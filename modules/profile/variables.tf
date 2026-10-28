@@ -8,6 +8,11 @@ variable "name" {
   }
 }
 
+variable "connection_id" {
+  description = "The Clumio connection this profile protects: modules/connection's connection_id output, or \"<account_id>_<region>\" when the connection lives in another state."
+  type        = string
+}
+
 variable "account_id" {
   description = "The connected AWS account. The plan stops when you're signed in to any other account."
   type        = string
@@ -106,6 +111,12 @@ variable "pitr_retention_days" {
     condition     = !var.databases || (var.pitr_retention_days != null ? var.pitr_retention_days >= 1 && var.pitr_retention_days <= 35 && floor(var.pitr_retention_days) == var.pitr_retention_days : false)
     error_message = "Set pitr_retention_days to 1 to 35 days. Clumio sets this PITR window on every database with this profile, longer or shorter than today, so check their current window first."
   }
+}
+
+variable "allow_shorter_pitr" {
+  description = "Accept a plan that shortens a database's PITR window. A shorter window deletes AWS's older automated backups for good, so the plan stops on it unless this is true."
+  type        = bool
+  default     = false
 }
 
 variable "rule_before_id" {

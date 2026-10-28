@@ -1,6 +1,6 @@
 # Connects one AWS account and Region to Clumio: the connection, Clumio's IAM, and an optional daily
 # compliance report. Every guard lives here, so a production repo that calls this module directly
-# gets the same checks as setup/.
+# gets the same checks as deploy/.
 # The caller configures both providers. The Clumio provider's organizational unit decides which
 # unit the connection, and so the account's resources, belong to.
 
