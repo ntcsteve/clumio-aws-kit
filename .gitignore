@@ -1,0 +1,21 @@
+# Your settings: copied from setup/settings.example, never committed
+terraform.tfvars
+
+# Terraform state, plans and working files. State holds the ExternalId Clumio uses to assume its roles.
+*.tfstate
+*.tfstate.*
+tfplan
+*.tfplan
+.terraform/
+crash.log
+tf-debug.log
+
+# Credentials
+.env
+*.pem
+
+# Preview output: one folder per run, for your security team, not for git
+clumio-iam-preview-*/
+
+__pycache__/
+.DS_Store
