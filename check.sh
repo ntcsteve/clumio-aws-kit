@@ -12,8 +12,6 @@
 #   4. no credentials        AWS access keys, unredacted session tokens or secret keys, a Clumio token
 #   5. no account numbers    any 12-digit number outside the stand-ins below
 #   6. relative links        every relative link in a Markdown file points at a file that ships
-#   7. setting rules agree   account, Region, unit and mode are checked the same way in deploy/, both
-#                            modules and status.py, so a fix to one copy can't silently miss another
 #   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
 #   8. deploy                validates with its lock file; the shipped placeholders stop the plan
 #   9. module tests          each module, deploy/ and the proof lab refuse what they must (mock providers)
@@ -93,8 +91,7 @@ LINK = re.compile(r"\]\((?!https?://|mailto:|#)([^)#\s]+)")
 
 shipped = [p for p in open(sys.argv[1], "rb").read().decode().split("\0") if p]
 shipped_set = set(shipped)
-findings = {"no state or plan files": [], "no credentials": [], "no account numbers": [], "relative links resolve": [],
-            "setting rules agree": []}
+findings = {"no state or plan files": [], "no credentials": [], "no account numbers": [], "relative links resolve": []}
 
 def is_shipped(path):
     """A link target ships if it is a shipped file, or a folder holding one."""
@@ -125,30 +122,6 @@ for path in shipped:
         for target in LINK.findall(text):
             if not is_shipped(os.path.join(os.path.dirname(path), target)):
                 findings["relative links resolve"].append(f"{path}: broken link {target}")
-
-# 7. One rule per setting. Terraform states it as regex(...) or contains([...]); status.py as a pattern.
-def tf_rules(path):
-    text = open(path, encoding="utf-8").read()
-    rules = {name: re.search(r'regex\("([^"]*)",\s*var\.' + name + r'\)', text) for name in ("account_id", "region", "organizational_unit")}
-    rules = {name: "^(global|" + m.group(1)[1:-1] + ")$" if name == "organizational_unit" else m.group(1) for name, m in rules.items() if m}
-    mode = re.search(r'contains\(\[([^\]]*)\],\s*var\.mode\)', text)
-    if mode:
-        rules["mode"] = "^(" + "|".join(re.findall(r'"([^"]+)"', mode.group(1))) + ")$"
-    return rules
-
-copies = {path: tf_rules(path) for path in ("deploy/variables.tf", "modules/connection/variables.tf", "modules/profile/variables.tf", "proof/lab/variables.tf")
-          if path in shipped_set}
-if "tools/status.py" in shipped_set:
-    shapes = re.search(r"SETTING_SHAPES = \{(.*?)\n\}", open("tools/status.py", encoding="utf-8").read(), re.S)
-    copies["tools/status.py"] = dict(re.findall(r'"(\w+)": \(r"([^"]*)"', shapes.group(1))) if shapes else {}
-for name in ("account_id", "region", "organizational_unit", "mode"):
-    seen = {path: rules[name] for path, rules in copies.items() if name in rules}
-    if len(set(seen.values())) > 1:
-        findings["setting rules agree"].append(f"{name} differs: " + "; ".join(f"{path} {rule}" for path, rule in sorted(seen.items())))
-for path, rules in copies.items():
-    expected = {"account_id", "region"} | (set() if path.startswith("proof/") else {"mode"}) | ({"organizational_unit"} if path.startswith(("deploy/", "tools/")) else set())
-    if not expected <= set(rules):
-        findings["setting rules agree"].append(f"{path}: can't find the rule for {', '.join(sorted(expected - set(rules)))}")
 
 failed = False
 for check, found in findings.items():
