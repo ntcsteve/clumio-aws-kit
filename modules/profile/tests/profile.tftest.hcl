@@ -210,6 +210,21 @@ run "the_rule_can_be_ranked_ahead_of_another" {
   }
 }
 
+# The rules ignore Clumio's own reordering (before_rule_id), so a rule_before_id set after creation
+# would be ignored too, and status's advice for OTHER would do nothing. Its own marker carries the
+# setting, and a change to the marker replaces the rules (replace_triggered_by), placing them anew.
+run "a_new_rule_before_id_has_a_marker_that_replaces_the_rules" {
+  command = plan
+  variables {
+    rule_before_id = "rule-that-would-win"
+    ebs_volumes    = true
+  }
+  assert {
+    condition     = terraform_data.rule_position.input == "rule-that-would-win"
+    error_message = "rule_before_id must live in the marker the rules are replaced by."
+  }
+}
+
 run "ec2_joins_the_profiles_tag_rule_and_the_policy" {
   command = plan
   variables {

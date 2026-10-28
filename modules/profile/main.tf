@@ -245,6 +245,12 @@ resource "clumio_policy" "this" {
   }
 }
 
+# Where the person placed the rules (rule_before_id). The rules ignore Clumio's own reordering, so
+# they'd ignore a new rule_before_id too: instead, a change here replaces them, placed anew.
+resource "terraform_data" "rule_position" {
+  input = var.rule_before_id
+}
+
 # Databases and EC2 instances with the tag. Clumio applies the first rule that matches, so a rule
 # ranked higher can claim them first: status.py names it, and rule_before_id moves this one up.
 resource "clumio_policy_rule" "tagged" {
@@ -259,6 +265,8 @@ resource "clumio_policy_rule" "tagged" {
     # whenever anyone adds, moves or removes a rule. The position is a choice made at creation, not
     # a value to hold: without this, every plan would show a change and apply would fight the unit.
     ignore_changes = [before_rule_id]
+    # A rule_before_id the person sets later still takes effect: the rule is replaced, placed anew.
+    replace_triggered_by = [terraform_data.rule_position]
   }
 }
 
@@ -278,7 +286,8 @@ resource "clumio_policy_rule" "volumes" {
   })
 
   lifecycle {
-    ignore_changes = [before_rule_id] # As for the tag rule above: Clumio rewrites positions.
+    ignore_changes       = [before_rule_id]               # As for the tag rule above: Clumio rewrites positions,
+    replace_triggered_by = [terraform_data.rule_position] # and a new rule_before_id replaces the rule.
   }
 }
 

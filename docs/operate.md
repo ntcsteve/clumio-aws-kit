@@ -31,7 +31,7 @@ Start with `tools/status.py --preflight`. It checks the tools, your settings, yo
 | OURS | This profile's policy protects it, and a backup exists. | Nothing. |
 | WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. |
 | NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. | Run `tools/status.py` again in an hour. |
-| OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in the profile to that rule's ID, then plan and apply. |
+| OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in the profile to that rule's ID, then plan and apply. The plan replaces the profile's rules, placed ahead of that one. |
 | BAD_VALUE | Its `clumio-profile` tag names no profile here, such as a typo. | Fix the tag. |
 | DOUBLE | A volume tagged `clumio-volume-profile` is attached to an instance the profile already protects, and an instance's backup already holds its volumes. | Remove the volume's `clumio-volume-profile` tag, or you pay for two copies. |
 | OFF | Its profile doesn't protect that kind of resource, or a volume carries `clumio-profile` but no attached instance does. | Turn the workload on in the profile, or tag it with another profile. A volume on its own joins with `clumio-volume-profile`. |
