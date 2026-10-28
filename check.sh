@@ -25,6 +25,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 FAILED=0
+# Each suite runs terraform init in a fresh copy. Without a shared plugin cache, every init downloads
+# the providers again, about 3 minutes each (measured 2026-10-28). The cache is local and ignored by git.
+# The copies are thrown away, so letting the cache stand in for their new lock files is safe here.
+export TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-$PWD/.terraform-plugin-cache}"
+export TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE=true
+mkdir -p "$TF_PLUGIN_CACHE_DIR"
 pass() { printf 'PASS  %s\n' "$1"; }
 flunk() { printf 'FAIL  %s\n' "$1"; FAILED=1; }
 

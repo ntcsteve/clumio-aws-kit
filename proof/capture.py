@@ -7,7 +7,7 @@ protection and backups, for S3, RDS, Aurora, EC2 and EBS. Read-only: it only des
 Run after the lab is applied and protected, signed in to the lab's account, with CLUMIO_API_TOKEN and
 CLUMIO_API_BASE_URL exported. Reads the lab's names from proof/lab's Terraform output. Writes
 proof/evidence/<set>/<capture name>-<UTC time>/: one raw JSON answer per file, the account ID and
-the organizational unit's ID masked as stand-ins, and _sha256.txt. Name restored databases to
+the organizational unit's ID and Clumio's own two AWS accounts masked as stand-ins, and _sha256.txt. Name restored databases to
 capture their key and tags too.
 """
 import datetime
@@ -21,14 +21,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "tools"))
 import status  # noqa: E402  The one Clumio client, shared with tools/status.py.
 
-ACCOUNT_STAND_IN = "123456789012"
-UNIT_STAND_IN = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-
-
 def aws(region, *args):
     """One read-only AWS CLI call, as parsed JSON. A failed call stops the capture: half a capture
-    would read as evidence of absence."""
-    answer = subprocess.run(["aws", *args, "--region", region, "--output", "json"], capture_output=True, text=True, timeout=120)
+    would read as evidence of absence. Each call is bounded: the CLI's own defaults (a 60-second read
+    timeout, and retries) let one network stall run past 120 seconds, live on 2026-10-28."""
+    try:
+        answer = subprocess.run(["aws", *args, "--region", region, "--output", "json",
+                                 "--cli-connect-timeout", "10", "--cli-read-timeout", "30"], capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        sys.exit(f"FAIL: aws {' '.join(args)} didn't answer in 120 seconds. Nothing was saved. Run the capture again.")
     if answer.returncode != 0:
         sys.exit(f"FAIL: aws {' '.join(args)}: {answer.stderr.strip()}")
     return json.loads(answer.stdout or "{}")
@@ -117,12 +118,12 @@ def bucket_facts(region, bucket, unit):
     return facts
 
 
-def write_capture(folder, files, account, unit):
-    """Writes each answer with the account and unit masked, then the manifest. Returns the manifest."""
+def write_capture(folder, files, found):
+    """Writes each answer with every real ID in found masked, then the manifest. Returns the manifest."""
     os.makedirs(folder)
     lines = []
     for name, answer in sorted(files.items()):
-        text = json.dumps(answer, indent=1, sort_keys=True, default=str).replace(account, ACCOUNT_STAND_IN).replace(unit, UNIT_STAND_IN) + "\n"
+        text = status.mask(json.dumps(answer, indent=1, sort_keys=True, default=str), found) + "\n"
         with open(os.path.join(folder, f"{name}.json"), "w") as out:
             out.write(text)
         lines.append(f"{hashlib.sha256(text.encode()).hexdigest()}  {name}.json")
@@ -162,7 +163,10 @@ def main():
         files.update({f"ebs-{label}-{fact}": value for fact, value in volume_facts(region, volume_id, unit).items()})
     when = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     folder = os.path.join(HERE, "evidence", evidence_set, f"{capture}-{when}")
-    write_capture(folder, files, account, unit)
+    found = status.masks(status.real_world(), kit)
+    if found is None:
+        sys.exit("FAIL: Clumio didn't answer for the connection, so its accounts can't be masked. Nothing was saved. Run again.")
+    write_capture(folder, files, found)
     print(f"Wrote {len(files)} answers to {folder}. Read them, then run proof/verify-evidence.sh.")
 
 

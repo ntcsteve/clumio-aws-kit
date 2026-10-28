@@ -4,8 +4,8 @@ shapes, not only against fakes we wrote. Read-only: it calls status.py's own rea
 
   python3 tools/tests/record_fixtures.py <name>     after deploy/ is applied, signed in, token exported
 
-Writes tests/fixtures/<name>.json. The account ID and the organizational unit's ID are masked as
-stand-ins everywhere, keys included, so the recording replays consistently. check.sh refuses any
+Writes tests/fixtures/<name>.json. The account ID, the organizational unit's ID and Clumio's own two
+AWS accounts are masked as stand-ins everywhere, keys included, so the recording replays consistently. check.sh refuses any
 other 12-digit number. Read the file before committing it.
 """
 import json
@@ -14,9 +14,6 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import status  # noqa: E402
-
-ACCOUNT_STAND_IN = "123456789012"
-UNIT_STAND_IN = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
 def record(world):
@@ -65,14 +62,15 @@ def main():
             status.preview(recording)
         except status.RemovalPlan:
             pass  # A teardown's plan: nothing to preview, and nothing more to record.
-    kit = answers["kit"]
-    text = json.dumps(answers, indent=1, sort_keys=True)
-    text = text.replace(kit["account_id"], ACCOUNT_STAND_IN).replace(kit["organizational_unit_id"], UNIT_STAND_IN)
+    found = status.masks(status.real_world(), answers["kit"])
+    if found is None:
+        sys.exit("FAIL: Clumio didn't answer for the connection, so its accounts can't be masked. Nothing was saved. Run again.")
+    text = status.mask(json.dumps(answers, indent=1, sort_keys=True), found)
     path = os.path.join(status.HERE, "tests", "fixtures", f"{sys.argv[1]}.json")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as out:
         out.write(text + "\n")
-    print(f"Wrote {path}. Read it before committing: account and unit are masked, everything else is as Clumio and AWS answered.")
+    print(f"Wrote {path}. Read it before committing: accounts and unit are masked, everything else is as Clumio and AWS answered.")
 
 
 if __name__ == "__main__":

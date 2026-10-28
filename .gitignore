@@ -7,6 +7,7 @@ terraform.tfvars
 tfplan
 *.tfplan
 .terraform/
+.terraform-plugin-cache/
 crash.log
 tf-debug.log
 

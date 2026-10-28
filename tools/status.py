@@ -450,6 +450,32 @@ def when(timestamp):
     return timestamp[:16].replace("T", " ") + " UTC" if timestamp else ""
 
 
+# --- Masks: what a saved answer must never carry --------------------------------------------------
+
+ACCOUNT_STAND_IN = "123456789012"
+UNIT_STAND_IN = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+# Clumio's own two AWS accounts appear in the connection's answer, and in what Clumio shares with this
+# account. Stand-ins from check.sh's allowlist.
+CLUMIO_ACCOUNT_STAND_INS = {"clumio_aws_account_id": "111111111111", "data_plane_account_id": "222222222222"}
+
+
+def masks(world, kit):
+    """{real ID: stand-in} for this account, the unit, and Clumio's two accounts, or None when Clumio
+    didn't answer for the connection: without it, Clumio's accounts are unknown and a save could leak them."""
+    status_code, connection = world.clumio_get(f"/connections/aws/{kit['account_id']}_{kit['region']}")
+    if status_code != 200:
+        return None
+    found = {kit["account_id"]: ACCOUNT_STAND_IN, kit["organizational_unit_id"]: UNIT_STAND_IN}
+    found.update({connection[field]: stand_in for field, stand_in in CLUMIO_ACCOUNT_STAND_INS.items() if connection.get(field)})
+    return found
+
+
+def mask(text, found):
+    for real, stand_in in found.items():
+        text = text.replace(real, stand_in)
+    return text
+
+
 # --- Preview: what the saved plan will protect ---------------------------------------------------
 
 WILL_PROTECT = {"s3": "Backtrack, and a daily SecureVault copy",
