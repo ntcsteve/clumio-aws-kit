@@ -18,7 +18,7 @@ import status  # noqa: E402
 
 def record(world):
     """Wraps each reader so every answer is kept: Clumio by path and unit, AWS by Region."""
-    answers = {"clumio": {}, "tagged_resources": {}, "databases": {}, "volumes": {}, "kit": None, "plan_variables": None}
+    answers = {"clumio": {}, "tagged_resources": {}, "databases": {}, "volumes": {}, "instances": {}, "kit": None, "plan_variables": None}
 
     def clumio_get(path, unit=None):
         answer = world.clumio_get(path, unit=unit)
@@ -37,6 +37,10 @@ def record(world):
         answers["volumes"][region] = world.volumes(region)
         return answers["volumes"][region]
 
+    def instances(region):
+        answers["instances"][region] = sorted(world.instances(region))
+        return set(answers["instances"][region])
+
     def kit():
         answers["kit"] = world.kit()
         return answers["kit"]
@@ -47,7 +51,7 @@ def record(world):
         return plan
 
     recording = status.World(world.settings_path, world.terraform_version, world.aws_cli_found, world.signed_in_account,
-                             world.clumio_credentials_set, clumio_get, kit, saved_plan, tagged_resources, databases, volumes)
+                             world.clumio_credentials_set, clumio_get, kit, saved_plan, tagged_resources, databases, volumes, instances)
     return recording, answers
 
 

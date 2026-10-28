@@ -99,6 +99,7 @@ class Coverage(unittest.TestCase):
         self.resources = []
         self.dbs = {}  # name -> {"pitr": days, "cluster": cluster name or None}
         self.vols = {}  # volume ID -> {"instance": the instance it's attached to, or None}
+        self.live_instances = set()  # instance IDs AWS describes as not terminated
         self.kit = dict(KIT)
         self.plan = None
 
@@ -108,7 +109,7 @@ class Coverage(unittest.TestCase):
             signed_in_account=lambda: ACCOUNT, clumio_credentials_set=lambda: True, clumio_get=self.clumio.get,
             kit=lambda: self.kit, saved_plan=lambda: self.plan,
             tagged_resources=lambda region: self.resources, databases=lambda region: self.dbs,
-            volumes=lambda region: self.vols)
+            volumes=lambda region: self.vols, instances=lambda region: self.live_instances)
 
     def add_db(self, name, policy=POLICY, rule=RULE, backup=None, kind="db", pitr=7, cluster=None):
         self.resources.append(database(name, kind=kind))
@@ -129,6 +130,7 @@ class Coverage(unittest.TestCase):
 
     def add_instance(self, instance_id, policy=POLICY, backup=None, value="gold"):
         self.resources.append(instance(instance_id, value))
+        self.live_instances.add(instance_id)
         self.clumio.lists["/datasources/aws/ec2-instances"].append(
             {"id": f"id-{instance_id}", "instance_native_id": instance_id, "account_native_id": ACCOUNT, "aws_region": REGION,
              "is_deleted": False, "protection_info": {"policy_id": policy, "rule_id": RULE}, "last_backup_timestamp": backup})
@@ -278,6 +280,7 @@ class Coverage(unittest.TestCase):
         self.plan = self.plan_with(gold={"s3": True, "databases": True, "ec2": True, "ebs_volumes": True, "pitr_retention_days": 3})
         self.resources = [instance("i-0abc"), volume("vol-0bbb")]
         self.vols = {"vol-0bbb": {"instance": "i-0abc"}}
+        self.live_instances = {"i-0abc"}
         states = {line["name"]: line["state"] for line in status.preview(self.world())}
         self.assertEqual(states, {"i-0abc": "WILL_PROTECT", "vol-0bbb": "DOUBLE"})
 
@@ -318,6 +321,14 @@ class Coverage(unittest.TestCase):
         self.resources.append(database("cluster-brutmag4u7oebrgdzwkgfjyhxu", kind="cluster"))
         records, _ = status.coverage(self.world())
         self.assertEqual([r["name"] for r in records], ["orders-cluster"])
+
+    # Live, 2026-10-28: an hour after a teardown, AWS's tagging API still listed the lab's terminated
+    # instances and deleted volumes, and status showed them as NOT_YET and OFF. Only what AWS describes
+    # as existing is checked.
+    def test_what_the_tagging_api_lists_but_aws_says_is_gone_is_left_out(self):
+        self.resources = [instance("i-gone"), volume("vol-gone"), database("old-db")]
+        records, _ = status.coverage(self.world())
+        self.assertEqual(records, [])
 
     # --- --preview, after terraform plan -out=tfplan ---
 

@@ -59,6 +59,7 @@ class World:
     tagged_resources: Optional[Callable[[str], list]] = None  # the tagging API's mappings in a Region
     databases: Optional[Callable[[str], dict]] = None  # name -> {"pitr": days, "cluster": its Aurora cluster or None}
     volumes: Optional[Callable[[str], dict]] = None  # volume ID -> {"instance": the instance it's attached to, or None}
+    instances: Optional[Callable[[str], set]] = None  # IDs of the instances AWS describes as not terminated
 
 
 # --- Preflight -----------------------------------------------------------------------------------
@@ -265,13 +266,17 @@ def tagged(world, region):
         key = VOLUME_TAG_KEY if parsed and parsed[0] == "ebs-volume" and VOLUME_TAG_KEY in tags else TAG_KEY
         if parsed and key in tags:
             items.append((parsed[0], parsed[1], tags[key], key))
-    # AWS's tagging API also lists each Aurora cluster under its resource ID (cluster:cluster-<id>,
-    # lowercase), next to its name (read live, 2026-10-28). It's the same cluster: keep the name.
-    resource_ids = {(db.get("resource_id") or "").lower() for db in databases.values()} - {""}
-    items = [item for item in items if not (item[0] == "rds-cluster" and item[1] in resource_ids)]
+    # The tagging API isn't the list of what exists (read live, 2026-10-28): it lists each Aurora
+    # cluster a second time, under its resource ID, and keeps listing terminated instances and deleted
+    # volumes for a while. Keep only what AWS's own describe calls say exists. Buckets are taken as listed.
+    kinds = {kind for kind, _, _, _ in items}
+    volumes = world.volumes(region) if "ebs-volume" in kinds else {}
+    existing = {"rds-instance": databases, "rds-cluster": databases, "ebs-volume": volumes,
+                "ec2-instance": world.instances(region) if "ec2-instance" in kinds else set()}
+    items = [item for item in items if item[0] == "s3" or item[1] in existing[item[0]]]
     tagged_clusters = {name for kind, name, _, _ in items if kind == "rds-cluster"}
     context = {"instance_profiles": {name: value for kind, name, value, _ in items if kind == "ec2-instance"},
-               "volumes": world.volumes(region) if any(kind == "ebs-volume" for kind, _, _, _ in items) else {},
+               "volumes": volumes,
                "clusters": {name: db["cluster"] for name, db in databases.items() if db.get("cluster")},
                "engines": {name: db.get("engine", "") for name, db in databases.items()}}
     keep = [item for item in items
@@ -576,6 +581,7 @@ def real_world():
         tagged_resources=aws_tagged_resources,
         databases=aws_databases,
         volumes=aws_volumes,
+        instances=aws_instances,
     )
 
 
@@ -620,14 +626,23 @@ def aws_volumes(region):
     return {v["VolumeId"]: {"instance": next((a["InstanceId"] for a in v.get("Attachments", [])), None)} for v in answer.get("Volumes", [])}
 
 
+def aws_instances(region):
+    """The IDs of the instances in the Region that aren't terminated or being terminated."""
+    answer = run_json(["aws", "ec2", "describe-instances", "--region", region, "--filters",
+                       "Name=instance-state-name,Values=pending,running,stopping,stopped", "--query",
+                       "Reservations[].Instances[].InstanceId", "--output", "json"], timeout=120)
+    if answer is None:
+        raise AwsUnavailable(f"AWS didn't list the instances in {region}. Check your sign-in, then run again.")
+    return set(answer)
+
+
 def aws_databases(region):
-    """Each database's PITR window, the Aurora cluster an instance belongs to, and a cluster's resource ID."""
+    """Each database's PITR window, and the Aurora cluster an instance belongs to."""
     instances = run_json(["aws", "rds", "describe-db-instances", "--region", region, "--output", "json"], timeout=120)
     clusters = run_json(["aws", "rds", "describe-db-clusters", "--region", region, "--output", "json"], timeout=120)
     if instances is None or clusters is None:
         raise AwsUnavailable(f"AWS didn't list the databases in {region}. Check your sign-in, then run again.")
-    found = {c["DBClusterIdentifier"]: {"pitr": c.get("BackupRetentionPeriod"), "cluster": None, "engine": c.get("Engine", ""),
-                                        "resource_id": c.get("DbClusterResourceId", "")}
+    found = {c["DBClusterIdentifier"]: {"pitr": c.get("BackupRetentionPeriod"), "cluster": None, "engine": c.get("Engine", "")}
              for c in clusters.get("DBClusters", [])}
     for i in instances.get("DBInstances", []):
         found[i["DBInstanceIdentifier"]] = {"pitr": i.get("BackupRetentionPeriod"), "cluster": i.get("DBClusterIdentifier"),
