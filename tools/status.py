@@ -345,7 +345,7 @@ def check_in_clumio(world, kit, item):
     if kind == "s3":
         return check_bucket(world, kit, name, value, profile)
     asset = find_database(world, kit, name) if kind.startswith("rds") else find_asset(world, kit, kind, name)
-    problem = ownership_problem(world, kind, name, value, profile, asset)
+    problem = ownership_problem(world, kind, name, value, profile, asset, kit["organizational_unit_id"])
     if problem:
         return problem
     if kind.startswith("rds"):
@@ -356,7 +356,7 @@ def check_in_clumio(world, kit, item):
     return protected(kind, name, value, asset.get("last_backup_timestamp") or "")
 
 
-def ownership_problem(world, kind, name, value, profile, asset):
+def ownership_problem(world, kind, name, value, profile, asset, unit):
     """UNKNOWN, NOT_YET or OTHER for an asset Clumio returned; None when our policy protects it."""
     if asset is None:
         return record(kind, name, value, "UNKNOWN", "Clumio didn't answer. Run again; if it persists, check the token.")
@@ -366,7 +366,7 @@ def ownership_problem(world, kind, name, value, profile, asset):
     if not info.get("policy_id"):
         return record(kind, name, value, "NOT_YET", "Clumio found it, but no policy applies yet. Run again in a few minutes.")
     if info["policy_id"] != profile["policy_id"]:
-        return record(kind, name, value, "OTHER", claimed_by(world, info))
+        return record(kind, name, value, "OTHER", claimed_by(world, info, unit))
     return None
 
 
@@ -398,7 +398,7 @@ def check_bucket(world, kit, name, value, profile):
         return record("s3", name, value, "NOT_YET", "Clumio hasn't added it to this profile's protection group yet. "
                       "A bucket joins once Clumio's daily inventory sees its tag, up to a day: run again later.")
     if (asset.get("protection_info") or {}).get("policy_id") != profile["policy_id"]:
-        return record("s3", name, value, "OTHER", claimed_by(world, asset.get("protection_info") or {}))
+        return record("s3", name, value, "OTHER", claimed_by(world, asset.get("protection_info") or {}, kit["organizational_unit_id"]))
     return protected("s3", name, value, asset.get("last_backup_timestamp") or "")
 
 
@@ -409,11 +409,12 @@ def protected(kind, name, value, latest):
                   "If it still waits after a day, look in Clumio's Tasks for it.")
 
 
-def claimed_by(world, info):
-    """Who applied another policy: a rule, by name, or a direct assignment."""
+def claimed_by(world, info, unit):
+    """Who applied another policy: a rule, by name, or a direct assignment. A rule is found only in its
+    unit's context (live, 2026-10-28: 404 without it)."""
     if not info.get("rule_id"):
         return "another policy was assigned to it directly in Clumio. Remove that assignment, or ask whoever made it."
-    status_code, rule = world.clumio_get(f"/policies/rules/{info['rule_id']}")
+    status_code, rule = world.clumio_get(f"/policies/rules/{info['rule_id']}", unit=unit)
     rule_name = rule.get("name") if status_code == 200 else info["rule_id"]
     return (f'rule "{rule_name}" claimed it first: Clumio applies the highest-ranked rule that matches. '
             "Remove the tag that rule matches, ask its owner, or rank this profile's rule higher (rule_before_id).")

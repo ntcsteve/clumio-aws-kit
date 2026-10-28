@@ -66,6 +66,9 @@ class FakeClumio:
         bare, _, query = path.partition("?")
         if bare in self.broken:
             return 500, {}
+        # Live, 2026-10-28: a rule in a unit is found only in that unit's context; without it, 404.
+        if bare.startswith("/policies/rules/") and unit != UNIT:
+            return 404, {}
         if bare in self.single:
             return self.single[bare]
         if bare not in self.lists:
