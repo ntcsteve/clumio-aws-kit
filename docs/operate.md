@@ -75,4 +75,5 @@ The production guards refuse every destroy, so retiring production is a delibera
    ```
 
 2. Set `mode = "trial"` in `deploy/terraform.tfvars`.
-3. Take it down as a trial: [Take a trial down](#take-a-trial-down).
+3. Record the new mode: `terraform plan -out=tfplan`, then `terraform apply tfplan`. The plan changes no resources, only the mode Terraform records, which `tools/status.py --teardown` reads. Without this step it still says production, and refuses.
+4. Take it down as a trial: [Take a trial down](#take-a-trial-down).
