@@ -1,1 +1,0 @@
-amkcmk E0 object, key: aws/s3

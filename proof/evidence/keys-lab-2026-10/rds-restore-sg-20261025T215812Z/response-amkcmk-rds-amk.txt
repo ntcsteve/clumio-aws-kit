@@ -1,3 +1,0 @@
-{"errors":[{"error_code":341,"error_message":"An invalid subnet group name parameter was provided: 'default'."}]}
-
-HTTP 400
