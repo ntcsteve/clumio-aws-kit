@@ -20,6 +20,9 @@ mock_provider "aws" {
   mock_data "aws_ssm_parameter" {
     defaults = { value = "ami-0123456789abcdef0" }
   }
+  mock_resource "aws_kms_key" {
+    defaults = { arn = "arn:aws:kms:us-west-2:123456789012:key/00000000-0000-0000-0000-000000000000" } # apply runs need a valid ARN
+  }
 }
 mock_provider "random" {}
 
@@ -132,6 +135,20 @@ run "instances_and_volumes_are_encrypted_and_reachable_by_no_one" {
   assert {
     condition     = alltrue([for i in aws_instance.ec2 : i.root_block_device[0].encrypted && i.associate_public_ip_address == false && i.metadata_options[0].http_tokens == "required"])
     error_message = "Instances must have encrypted root volumes, no public IP, and IMDSv2 only."
+  }
+}
+
+# proof/capture.py reads instances and volumes from this output: without them it would capture no
+# EC2 or EBS evidence. Apply with the mock provider, so every ID is known.
+run "the_output_names_every_instance_and_volume_for_the_capture" {
+  command = apply
+  assert {
+    condition     = join(",", keys(output.lab.instances)) == "amk,cmk" && output.lab.instances["amk"] == aws_instance.ec2["amk"].id
+    error_message = "The lab output must name each instance's ID by its key, for proof/capture.py."
+  }
+  assert {
+    condition     = join(",", keys(output.lab.volumes)) == "amk,cmk,double" && output.lab.volumes["cmk"] == aws_ebs_volume.own["cmk"].id
+    error_message = "The lab output must name each volume's ID by its key, for proof/capture.py."
   }
 }
 

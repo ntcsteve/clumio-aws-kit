@@ -131,6 +131,12 @@ def write_capture(folder, files, account, unit):
     return lines
 
 
+def missing_lab_outputs(lab):
+    """The parts of proof/lab's output this capture reads, and lab doesn't have. A missing part must
+    stop the capture: skipping it would save evidence with that workload silently left out."""
+    return [part for part in ("bucket", "rds_amk", "auroras", "instances", "volumes") if part not in lab]
+
+
 def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
@@ -140,6 +146,9 @@ def main():
     if lab.returncode != 0 or kit is None:
         sys.exit("FAIL: apply proof/lab and setup first: no lab or kit output to read.")
     lab, region, unit, account = json.loads(lab.stdout), kit["region"], kit["organizational_unit_id"], kit["account_id"]
+    missing = missing_lab_outputs(lab)
+    if missing:
+        sys.exit(f"FAIL: proof/lab's output has no {', '.join(missing)}. In proof/lab, plan and apply the current code, then capture again.")
     files = {}
     if lab["bucket"]:
         files.update({f"s3-{name}": value for name, value in bucket_facts(region, lab["bucket"], unit).items()})
@@ -147,9 +156,9 @@ def main():
     databases += [(name, True) for name in lab["auroras"].values()] + [(name, True) for name in restored]
     for name, cluster in databases:
         files.update({f"{name}-{fact}": value for fact, value in database_facts(region, name, cluster, unit, account).items()})
-    for label, instance_id in sorted(lab.get("instances", {}).items()):
+    for label, instance_id in sorted(lab["instances"].items()):
         files.update({f"ec2-{label}-{fact}": value for fact, value in instance_facts(region, instance_id, unit).items()})
-    for label, volume_id in sorted(lab.get("volumes", {}).items()):
+    for label, volume_id in sorted(lab["volumes"].items()):
         files.update({f"ebs-{label}-{fact}": value for fact, value in volume_facts(region, volume_id, unit).items()})
     when = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     folder = os.path.join(HERE, "evidence", evidence_set, f"{capture}-{when}")

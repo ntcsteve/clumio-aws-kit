@@ -37,5 +37,15 @@ class WriteCapture(unittest.TestCase):
             capture.write_capture(self.folder, {"x": {}}, ACCOUNT, UNIT)
 
 
+class LabOutput(unittest.TestCase):
+    def test_a_lab_output_without_instances_or_volumes_is_named(self):
+        # An older lab output lacked these, and the capture then saved no EC2 or EBS evidence at all.
+        self.assertEqual(capture.missing_lab_outputs({"bucket": "b", "rds_amk": "r", "auroras": {}}), ["instances", "volumes"])
+
+    def test_a_full_lab_output_passes(self):
+        lab = {"bucket": None, "rds_amk": None, "auroras": {}, "instances": {}, "volumes": {}}
+        self.assertEqual(capture.missing_lab_outputs(lab), [])
+
+
 if __name__ == "__main__":
     unittest.main()
