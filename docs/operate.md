@@ -27,7 +27,7 @@ Start with `make preflight`. It checks the tools, your settings, your AWS sign-i
 | OURS | This profile's policy protects it, and a backup exists. | Nothing. |
 | WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. |
 | NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. | Run `make status` again in an hour. |
-| OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule higher (`rule_before_id` in the module). |
+| OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in the profile to that rule's ID, then `make plan` and `make apply`. |
 | BAD_VALUE | Its `clumio-profile` tag names no profile here, such as a typo. | Fix the tag. |
 | OFF | Its profile doesn't protect that kind of resource. | Turn the workload on in the profile, or tag it with another profile. |
 | UNKNOWN | AWS or Clumio didn't answer, so nothing is assumed. | Check your sign-in and token, then run it again. |

@@ -1,0 +1,39 @@
+variable "account_id" {
+  description = "A test AWS account. The lab creates billable resources: never point it at production."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.account_id))
+    error_message = "Set account_id in terraform.tfvars to your test account's 12-digit ID."
+  }
+}
+
+variable "region" {
+  description = "The AWS Region connected in setup/, such as us-west-2."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z]{2}(-gov|-iso[a-z]*)?-[a-z]+-[0-9]$", var.region))
+    error_message = "Set region in terraform.tfvars to the Region connected in setup/, such as us-west-2."
+  }
+}
+
+variable "profile" {
+  description = "The profile in setup/ that should protect the lab: every part is tagged clumio-profile = <profile>."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{0,29}$", var.profile))
+    error_message = "Set profile in terraform.tfvars to a profile name from setup/, such as \"gold\"."
+  }
+}
+
+variable "parts" {
+  description = "What to build. s3: a versioned bucket with an aws/s3 object and a lab-key object. rds-amk: RDS Postgres on aws/rds. aurora-amk and aurora-cmk: Aurora MySQL on aws/rds, and on the lab key. bad-tag: a bucket whose tag names no profile."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.parts) > 0 && alltrue([for p in var.parts : contains(["s3", "rds-amk", "aurora-amk", "aurora-cmk", "bad-tag"], p)])
+    error_message = "parts must be one or more of \"s3\", \"rds-amk\", \"aurora-amk\", \"aurora-cmk\", \"bad-tag\"."
+  }
+}

@@ -10,7 +10,11 @@ mock_provider "aws" {
     defaults = { region = "us-west-2" }
   }
 }
-mock_provider "clumio" {}
+mock_provider "clumio" {
+  mock_data "clumio_aws_connection" {
+    defaults = { id = "123456789012_us-west-2" }
+  }
+}
 
 variables {
   name                = "gold"
@@ -170,5 +174,27 @@ run "production_has_the_guard" {
   assert {
     condition     = length(terraform_data.production_guard) == 1
     error_message = "Production must carry the guard that refuses destroy."
+  }
+}
+
+# Old step 2 looked the connection up before protecting anything. Clumio's own lookup stops the plan
+# with "AWS connection not found"; this guards that what it found is this account and Region.
+run "a_connection_for_another_account_or_region_is_refused" {
+  command = plan
+  override_data {
+    target = data.clumio_aws_connection.this
+    values = { id = "111111111111_us-west-2" }
+  }
+  expect_failures = [clumio_policy.this]
+}
+
+run "the_rule_can_be_ranked_ahead_of_another" {
+  command = plan
+  variables {
+    rule_before_id = "rule-that-would-win"
+  }
+  assert {
+    condition     = clumio_policy_rule.databases[0].before_rule_id == "rule-that-would-win"
+    error_message = "rule_before_id must place this profile's rule ahead of the named rule."
   }
 }

@@ -1,0 +1,7 @@
+# The proof lab's settings. Copy this file to terraform.tfvars in this folder, then set the values.
+# A TEST account only: the lab creates billable resources (about $4 a day with every part).
+
+account_id = "ACCOUNT-ID-REPLACE-THIS" # the test account connected in setup/
+region     = "REGION-REPLACE-THIS"     # the Region connected in setup/
+profile    = "PROFILE-REPLACE-THIS"    # a profile from setup/, such as "gold"
+parts      = ["s3", "rds-amk", "aurora-amk", "aurora-cmk", "bad-tag"]

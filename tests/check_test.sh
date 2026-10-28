@@ -61,6 +61,12 @@ expect_result "an account number in a doc fails" fail "FAIL  no account numbers"
   "printf 'Connect account $ACCOUNT first.\n' > notes.md"
 expect_result "an access key fails" fail "FAIL  no credentials" \
   "printf 'aws_access_key_id = $ACCESS_KEY\n' > notes.md"
+expect_result "an account number inside a hyphenated name fails" fail "FAIL  no account numbers" \
+  "printf 'bucket: orders-$ACCOUNT-us-west-2\n' > notes.md"
+expect_result "a KMS key ID ending in twelve digits passes" pass "" \
+  "printf 'key/c303ff3d-1ef3-46f6-ad72-918273645546\n' > notes.md"
+expect_result "a masked access key, as the evidence stores them, passes" pass "" \
+  "printf 'accessKeyId: ASIA''XXXXXXXXXXXXXXXX\n' > notes.md"
 expect_result "12-digit runs inside lock-file hashes pass" pass "" \
   "mkdir -p setup && printf 'provider \"x\" {\n  hashes = [\n    \"zh:$ACCOUNT\",\n  ]\n}\n' > setup/.terraform.lock.hcl"
 expect_result "a script that cannot run fails" fail "FAIL  shell scripts parse and are executable" \

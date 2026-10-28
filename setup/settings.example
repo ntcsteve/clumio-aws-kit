@@ -18,6 +18,7 @@ profiles = {
     archive_months      = 12   # monthly database archive, in months; 0 turns it off; under 12 costs an early-deletion fee
     backtrack_months    = 3    # how far back Backtrack can roll a bucket, in months
     pitr_retention_days = null # REPLACE: 1 to 35 days. Clumio sets it on every gold database, longer or shorter than today
+    # rule_before_id    = "<rule ID>" # only when make status says another rule claimed these databases first
   }
 }
 

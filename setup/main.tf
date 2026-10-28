@@ -49,6 +49,7 @@ module "profile" {
   archive_months      = each.value.archive_months
   backtrack_months    = each.value.backtrack_months
   pitr_retention_days = each.value.pitr_retention_days
+  rule_before_id      = each.value.rule_before_id
 }
 
 # What status.py reads to tell this folder's protection from anyone else's.

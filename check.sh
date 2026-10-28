@@ -7,6 +7,7 @@
 #   Scans:
 #   1. shell scripts         every *.sh parses
 #   2. terraform fmt         every .tf is formatted
+#      evidence              every capture in proof/evidence matches its checksums
 #   3. no state or plans     by name, and by content (a renamed state file still holds "lineage")
 #   4. no credentials        AWS access keys, unredacted session tokens or secret keys, a Clumio token
 #   5. no account numbers    any 12-digit number outside the stand-ins below
@@ -15,7 +16,7 @@
 #                            modules and status.py, so a fix to one copy can't silently miss another
 #   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
 #   8. setup                 validates with its lock file; the shipped placeholders stop the plan
-#   9. module tests          each module refuses what it must (mock providers)
+#   9. module tests          each module, and the proof lab, refuses what it must (mock providers)
 #  10. preview golden tests what the security team sees matches the reviewed output exactly
 #  11. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
 #      Makefile tests        the order make enforces, and its after-checks, against a stand-in terraform
@@ -48,6 +49,12 @@ done < "$SHIPPED"
 [ -z "$BAD" ] && pass "shell scripts parse and are executable" \
   || flunk "shell scripts parse and are executable:$BAD (run: bash -n <file>; chmod +x <file>)"
 
+# 2b. Evidence is unchanged since capture: every folder matches its _sha256.txt.
+if [ -x proof/verify-evidence.sh ]; then
+  proof/verify-evidence.sh > /dev/null 2>&1 && pass "evidence unchanged since capture" \
+    || flunk "evidence unchanged since capture (run proof/verify-evidence.sh to see which file)"
+fi
+
 # 2. Terraform files are formatted. Each folder that holds a .tf is checked on its own.
 TF_DIRS="$(tr '\0' '\n' < "$SHIPPED" | grep '\.tf$' | xargs -n1 dirname 2> /dev/null | sort -u || true)"
 if [ -z "$TF_DIRS" ]; then
@@ -64,12 +71,15 @@ import os, re, sys
 
 # Stand-ins the docs may use for an AWS account. Anything else with 12 digits is treated as real.
 # 000000000000 is the tail of Clumio's Global unit ID, 00000000-0000-0000-0000-000000000000.
-STAND_INS = {"123456789012", "111111111111", "222222222222", "333333333333", "000000000000"}
+# 137112412989 is Amazon's own account, the public owner of Amazon Linux images (in the EC2 evidence).
+STAND_INS = {"123456789012", "111111111111", "222222222222", "333333333333", "000000000000", "137112412989"}
 STATE_NAME = re.compile(r"(^|/)([^/]*\.tfstate(\.[^/]*)?|tfplan|[^/]*\.tfplan)$")
-ACCESS_KEY = re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")
+ACCESS_KEY = re.compile(r"\b(?:AKIA|ASIA)(?!X{16}\b)[A-Z0-9]{16}\b")  # ASIAXXXXXXXXXXXXXXXX is the evidence's masked form
 SECRET_FIELD = re.compile(r'"(?:sessionToken|SessionToken|secretAccessKey|SecretAccessKey)"\s*:\s*"(?!REDACTED")[^"]+"')
 CLUMIO_TOKEN = re.compile(r"CLUMIO_API_TOKEN=[A-Za-z0-9._-]{20,}")
-ACCOUNT = re.compile(r"(?<![0-9A-Za-z])\d{12}(?![0-9A-Za-z])")
+# Twelve digits on their own. A UUID's last group can be all digits (a KMS key ID): skip only that,
+# so an account inside a name such as orders-<account>-us-west-2 is still caught.
+ACCOUNT = re.compile(r"(?<![0-9A-Za-z])(?<![0-9a-fA-F]{4}-)\d{12}(?![0-9A-Za-z])")
 LOCK_HASH = re.compile(r'^\s*"(?:h1|zh):')
 LINK = re.compile(r"\]\((?!https?://|mailto:|#)([^)#\s]+)")
 
@@ -118,7 +128,7 @@ def tf_rules(path):
         rules["mode"] = "^(" + "|".join(re.findall(r'"([^"]+)"', mode.group(1))) + ")$"
     return rules
 
-copies = {path: tf_rules(path) for path in ("setup/variables.tf", "modules/connection/variables.tf", "modules/profile/variables.tf")
+copies = {path: tf_rules(path) for path in ("setup/variables.tf", "modules/connection/variables.tf", "modules/profile/variables.tf", "proof/lab/variables.tf")
           if path in shipped_set}
 if "setup/status.py" in shipped_set:
     shapes = re.search(r"SETTING_SHAPES = \{(.*?)\n\}", open("setup/status.py", encoding="utf-8").read(), re.S)
@@ -128,7 +138,7 @@ for name in ("account_id", "region", "organizational_unit", "mode"):
     if len(set(seen.values())) > 1:
         findings["setting rules agree"].append(f"{name} differs: " + "; ".join(f"{path} {rule}" for path, rule in sorted(seen.items())))
 for path, rules in copies.items():
-    expected = {"account_id", "region", "mode"} | ({"organizational_unit"} if path.startswith("setup/") else set())
+    expected = {"account_id", "region"} | (set() if path.startswith("proof/") else {"mode"}) | ({"organizational_unit"} if path.startswith("setup/") else set())
     if not expected <= set(rules):
         findings["setting rules agree"].append(f"{path}: can't find the rule for {', '.join(sorted(expected - set(rules)))}")
 
@@ -174,7 +184,7 @@ else
 fi
 
 # 9. Each module refuses what it must, with mock providers.
-for module in modules/connection modules/connection/iam modules/profile; do
+for module in modules/connection modules/connection/iam modules/profile proof/lab; do
   (cd "$COPIES/$module" && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform test -no-color > /dev/null 2>&1) \
     && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
 done
@@ -186,6 +196,10 @@ done
 # 11. status.py's checks, against fake AWS and Clumio answers.
 (cd "$COPIES/setup" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "setup/status.py: tests" \
   || flunk "setup/status.py: tests (run: python3 -m unittest discover -s tests, in setup/)"
+
+# 11c. The evidence capture masks the account and unit, and writes a manifest shasum verifies.
+(cd "$COPIES/proof" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "proof/capture.py: tests" \
+  || flunk "proof/capture.py: tests (run: python3 -m unittest discover -s tests, in proof/)"
 
 # 11b. The order the Makefile enforces, and its checks after each apply, against a stand-in terraform.
 "$COPIES/setup/tests/make_test.sh" > /dev/null 2>&1 && pass "setup/Makefile: tests" \

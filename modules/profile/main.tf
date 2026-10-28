@@ -7,6 +7,13 @@
 data "aws_caller_identity" "signed_in" {}
 data "aws_region" "provider" {}
 
+# The connection this profile protects. Without one, the plan stops here: "AWS connection not found".
+# A caller that creates the connection in the same apply passes depends_on, so this read waits for it.
+data "clumio_aws_connection" "this" {
+  account_native_id = var.account_id
+  aws_region        = var.region
+}
+
 locals {
   tag  = { key = "clumio-profile", value = var.name }
   name = "${var.name}-${var.account_id}-${var.region}" # Unique in the tenant: one profile per account and Region.
@@ -139,6 +146,10 @@ resource "clumio_policy" "this" {
     precondition {
       condition     = data.aws_region.provider.region == var.region
       error_message = "The AWS provider uses Region ${data.aws_region.provider.region}, but region is ${var.region}. Set the provider's region to ${var.region}."
+    }
+    precondition {
+      condition     = data.clumio_aws_connection.this.id == "${var.account_id}_${var.region}"
+      error_message = "Clumio's connection ${data.clumio_aws_connection.this.id} isn't ${var.account_id} in ${var.region}. Connect that account and Region first (modules/connection)."
     }
   }
 }

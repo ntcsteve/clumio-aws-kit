@@ -51,6 +51,7 @@ variable "profiles" {
     archive_months      = optional(number, 12) # monthly database archive, in months; 0 turns it off
     backtrack_months    = optional(number, 3)  # how far back Backtrack can roll a bucket, in months
     pitr_retention_days = optional(number)     # required with databases: Clumio sets this PITR window on every database
+    rule_before_id      = optional(string, "") # rank this profile's rule ahead of another rule that would claim its databases
   }))
 
   # Checked here too, so the shipped placeholder stops the plan before the providers are even set up.
