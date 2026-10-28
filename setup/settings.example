@@ -8,6 +8,19 @@ region              = "REGION-REPLACE-THIS"     # where your data is, such as us
 organizational_unit = "UNIT-REPLACE-THIS"       # "global", or a unit's ID: make preflight lists them
 mode                = "MODE-REPLACE-THIS"       # "trial" (can be torn down, also for a proof of concept) or "production" (refuses destroy)
 
+# Protection profiles. Tag a resource clumio-profile = <name> and that profile protects it.
+# make plan shows each tagged database's PITR window now, and after: Clumio sets it, up or down.
+profiles = {
+  gold = {
+    s3                  = true # S3 buckets: Backtrack, and a daily SecureVault copy
+    databases           = true # RDS and Aurora: AWS PITR, a daily SecureVault copy, a monthly archive
+    keep_days           = 30   # daily SecureVault copies, in days; 30 or more when s3 is on
+    archive_months      = 12   # monthly database archive, in months; 0 turns it off; under 12 costs an early-deletion fee
+    backtrack_months    = 3    # how far back Backtrack can roll a bucket, in months
+    pitr_retention_days = null # REPLACE: 1 to 35 days. Clumio sets it on every gold database, longer or shorter than today
+  }
+}
+
 # Who gets Clumio's daily compliance report for this Region (not yet proven live):
 # report_emails = ["platform-oncall@example.com"]
 

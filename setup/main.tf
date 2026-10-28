@@ -33,6 +33,41 @@ module "connection" {
   pass_role_deny_list      = var.pass_role_deny_list
 }
 
+# One profile per entry in profiles. Protection waits for Clumio's IAM, and on destroy goes first.
+module "profile" {
+  source     = "../modules/profile"
+  for_each   = var.profiles
+  depends_on = [module.connection]
+
+  name                = each.key
+  account_id          = var.account_id
+  region              = var.region
+  mode                = var.mode
+  s3                  = each.value.s3
+  databases           = each.value.databases
+  keep_days           = each.value.keep_days
+  archive_months      = each.value.archive_months
+  backtrack_months    = each.value.backtrack_months
+  pitr_retention_days = each.value.pitr_retention_days
+}
+
+# What status.py reads to tell this folder's protection from anyone else's.
+output "kit" {
+  value = {
+    account_id             = module.connection.account_id
+    region                 = module.connection.region
+    organizational_unit_id = module.connection.organizational_unit_id
+    mode                   = var.mode
+    profiles = { for name, profile in module.profile : name => {
+      tag                 = profile.tag
+      policy_id           = profile.policy_id
+      rule_id             = profile.rule_id
+      protection_group_id = profile.protection_group_id
+      workloads           = profile.workloads
+    } }
+  }
+}
+
 output "next_step" {
-  value = "Connected ${module.connection.account_id}/${module.connection.region} in unit ${module.connection.organizational_unit_id} (${var.mode})."
+  value = "Connected ${module.connection.account_id}/${module.connection.region} in unit ${module.connection.organizational_unit_id} (${var.mode}), with ${length(var.profiles)} profile(s). Tag resources clumio-profile = <profile>, then run make status."
 }

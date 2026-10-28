@@ -15,7 +15,7 @@
 #   7. setup                 validates with its lock file; the shipped placeholders stop the plan
 #   8. module tests          each module refuses what it must (mock providers)
 #   9. preview golden tests  what the security team sees matches the reviewed output exactly
-#  10. status tests          status.py's checks, against fake AWS and Clumio answers
+#  10. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
 #      Makefile tests        the order make enforces, and its after-checks, against a stand-in terraform
 #  11. self-test             tests/check_test.sh proves each scan passes and fails when it should
 # CHECK_SCANS_ONLY=1 runs the scans only. tests/check_test.sh sets it, so this never loops.
@@ -135,6 +135,11 @@ if (cd "$COPIES/setup" && terraform init -backend=false -input=false -lockfile=r
   for setting in account_id region organizational_unit mode; do
     grep -q "Set $setting in terraform.tfvars" <<< "$out" || MISSING="$MISSING $setting"
   done
+  # With those four set, the PITR placeholder must still stop it. Terraform wraps long messages, so join lines.
+  out="$(cd "$COPIES/setup" && sed -e 's/"ACCOUNT-ID-REPLACE-THIS"/"123456789012"/' -e 's/"REGION-REPLACE-THIS"/"us-west-2"/' \
+    -e 's/"UNIT-REPLACE-THIS"/"global"/' -e 's/"MODE-REPLACE-THIS"/"trial"/' settings.example > terraform.tfvars \
+    && terraform plan -input=false -no-color 2>&1 | tr '\n' ' ' || true)"
+  grep -q "Set pitr_retention_days in terraform.tfvars" <<< "$out" || MISSING="$MISSING pitr_retention_days"
   [ -z "$MISSING" ] && pass "setup: the shipped placeholders stop the plan" \
     || flunk "setup: these placeholders did not stop the plan:$MISSING"
 else
@@ -142,7 +147,7 @@ else
 fi
 
 # 8. Each module refuses what it must, with mock providers.
-for module in modules/connection modules/connection/iam; do
+for module in modules/connection modules/connection/iam modules/profile; do
   (cd "$COPIES/$module" && terraform init -backend=false -input=false > /dev/null 2>&1 && terraform test -no-color > /dev/null 2>&1) \
     && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
 done

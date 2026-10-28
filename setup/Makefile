@@ -5,15 +5,17 @@
 #   make preflight    read-only: tools, settings, AWS sign-in, Clumio token, unit, Region, rule slots
 #   make preview      read-only: every IAM role Clumio gets, and whether the deploy role may create it
 #                     (make preview DEPLOY_ROLE=<role ARN> checks that role instead of your sign-in)
-#   make plan         saves a plan of your settings, and shows it. Read it, then make apply.
-#   make teardown     saves a plan that removes everything this folder created. Production refuses.
-#   make apply        applies the saved plan, then checks the result
+#   make plan         saves a plan of your settings, shows it, then what it will protect, by tag
+#   make apply        applies the saved plan, checks the result, then runs make status
+#   make status       read-only: who protects each tagged resource, and its last backup
+#   make teardown     checks nothing is running, then saves a plan that removes everything this
+#                     folder created. Production refuses. Then make apply.
 
 SHELL := /bin/bash
-.PHONY: help preflight preview plan teardown apply
+.PHONY: help preflight preview plan apply status teardown
 
 help:
-	@sed -n '5,10p' Makefile | sed 's/^# //'
+	@sed -n '5,13p' Makefile | sed 's/^# //'
 
 preflight:
 	@./status.py --preflight
@@ -26,11 +28,18 @@ plan:
 	@terraform init -input=false -lockfile=readonly > /dev/null
 	@terraform plan -input=false -out=tfplan
 	@echo
-	@echo "Next: read the plan above. If it is what you expect, run: make apply"
+	@./status.py --preview || true
+	@echo
+	@echo "Next: read the plan, and what it protects. If both are what you expect, run: make apply"
 
-# In production, the guard refuses here, before any plan is saved.
+status:
+	@./status.py
+
+# status.py refuses in production, and while Clumio is still backing up these resources: removing
+# protection mid-backup leaves its tasks stuck. The guard in Terraform refuses production as well.
 teardown:
 	@rm -f tfplan teardown.tfplan
+	@./status.py --teardown
 	@terraform init -input=false -lockfile=readonly > /dev/null
 	@terraform plan -destroy -input=false -out=teardown.tfplan
 	@echo
@@ -47,7 +56,7 @@ apply:
 	  terraform apply -input=false tfplan; result=$$?; rm -f tfplan; [ $$result -eq 0 ] || exit $$result; \
 	  echo; echo "Checking that a new plan shows no changes..."; \
 	  terraform plan -input=false -detailed-exitcode > /dev/null; result=$$?; \
-	  if [ $$result -eq 0 ]; then echo "PASS  No changes: Clumio and AWS match your settings."; \
+	  if [ $$result -eq 0 ]; then echo "PASS  No changes: Clumio and AWS match your settings."; echo; ./status.py; \
 	  elif [ $$result -eq 2 ]; then echo "FAIL  A new plan still shows changes. An interrupted apply can need a second pass: run make plan, read it, make apply."; exit 1; \
 	  else echo "FAIL  The check plan failed. Run make plan to see why."; exit 1; fi; \
 	else \

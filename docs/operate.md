@@ -18,12 +18,32 @@ Start with `make preflight`. It checks the tools, your settings, your AWS sign-i
 | *error_code 367*, from `make teardown` | Your Clumio tenant can't delete connections. Keep the connection, or ask Clumio support. |
 | Anything else | Run again with `TF_LOG=DEBUG TF_LOG_PATH=./tf-debug.log`. The log can hold secrets: check it before you share it. |
 
+## Read make status
+
+`make status` lists every bucket, RDS instance and Aurora cluster in the Region tagged `clumio-profile`, with its last backup. It reads AWS and Clumio, and changes nothing. `make apply` runs it at the end.
+
+| State | What it means | What to do |
+|---|---|---|
+| OURS | This profile's policy protects it, and a backup exists. | Nothing. |
+| WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. |
+| NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. | Run `make status` again in an hour. |
+| OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule higher (`rule_before_id` in the module). |
+| BAD_VALUE | Its `clumio-profile` tag names no profile here, such as a typo. | Fix the tag. |
+| OFF | Its profile doesn't protect that kind of resource. | Turn the workload on in the profile, or tag it with another profile. |
+| UNKNOWN | AWS or Clumio didn't answer, so nothing is assumed. | Check your sign-in and token, then run it again. |
+
+The first line checks that the connection sits in the organizational unit set in `terraform.tfvars`. If it doesn't, the profiles' rules can't match anything.
+
+Exit codes, for scripts and CI: 0 nothing to do, 1 a person must act, 2 AWS or Clumio didn't answer. `./status.py --json` prints the same lines as JSON.
+
+`make plan` shows, after the plan, what it will protect: each tagged resource, and each database's PITR window now and after, marked SHORTER when Clumio will cut it.
+
 ## Take a trial down
 
-1. Run `make teardown`. It saves a plan that removes everything this folder created, and shows it. With `mode = "production"` it stops before saving anything.
+1. Run `make teardown`. It first checks that Clumio isn't backing up these resources, then saves a plan that removes everything this folder created, and shows it. With `mode = "production"`, or while a backup runs, it stops before saving anything.
 2. Read the plan, then run `make apply`. It applies that plan, then checks that nothing is left in Terraform's state.
 
-Backups Clumio already made stay until their retention ends.
+Backups Clumio already made stay until their retention ends. Each database keeps the PITR window Clumio set: `make teardown` lists them, so you can set them back yourself.
 
 ## If you run Terraform directly
 

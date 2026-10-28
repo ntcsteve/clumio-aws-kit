@@ -42,6 +42,24 @@ variable "mode" {
   }
 }
 
+variable "profiles" {
+  description = "Protection profiles, by name. Resources tagged clumio-profile = <name> get that profile's protection. Checked in modules/profile."
+  type = map(object({
+    s3                  = bool                 # S3 buckets: Backtrack, and a daily SecureVault copy
+    databases           = bool                 # RDS and Aurora: AWS PITR, a daily SecureVault copy, a monthly archive
+    keep_days           = number               # daily SecureVault copies, in days; 30 or more when s3 is on
+    archive_months      = optional(number, 12) # monthly database archive, in months; 0 turns it off
+    backtrack_months    = optional(number, 3)  # how far back Backtrack can roll a bucket, in months
+    pitr_retention_days = optional(number)     # required with databases: Clumio sets this PITR window on every database
+  }))
+
+  # Checked here too, so the shipped placeholder stops the plan before the providers are even set up.
+  validation {
+    condition     = alltrue([for profile in values(var.profiles) : !profile.databases || profile.pitr_retention_days != null])
+    error_message = "Set pitr_retention_days in terraform.tfvars, 1 to 35 days, for every profile with databases = true. Clumio sets that PITR window on each of its databases, longer or shorter than today."
+  }
+}
+
 variable "report_emails" {
   description = "Who gets Clumio's daily compliance report for this Region. Empty means no report."
   type        = list(string)

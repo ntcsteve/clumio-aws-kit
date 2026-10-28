@@ -9,11 +9,12 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 
 | Path | What it is |
 |---|---|
-| `setup/` | The first-time path: one settings file (`terraform.tfvars`, from `settings.example`) and the `make` commands. Connects one account and Region |
-| `setup/status.py` | Read-only checks; `make preflight` runs it |
+| `setup/` | The first-time path: one settings file (`terraform.tfvars`, from `settings.example`) and the `make` commands. Connects one account and Region, and applies its profiles |
+| `setup/status.py` | Read-only checks: preflight, what a plan will protect, who protects each tagged resource, and whether teardown is safe |
 | `setup/preview/` | Shows every IAM role and policy before anything exists, and checks the deploy role. Its golden tests are what security reviewed |
 | `modules/connection/` | The product: the connection, Clumio's IAM (`iam/`), the compliance report, and every guard. Production calls it from its own repo |
-| `docs/operate.md` | Errors and what to do, and taking a trial down |
+| `modules/profile/` | The product: one protection profile, one Clumio policy for everything tagged `clumio-profile = <name>`, with its guards |
+| `docs/operate.md` | Errors and what to do, reading `make status`, and taking a trial down |
 | `check.sh` | Offline checks of this repository. Ends with `ALL CHECKS PASS` |
 | `tests/check_test.sh` | Proves each scan in `check.sh` passes and fails when it should |
 
@@ -27,7 +28,7 @@ This repository is being built in stages. Each stage adds its folders to this ma
 4. **Never print a secret.** The secret here is `CLUMIO_API_TOKEN`: never print it or other environment variables. The person exports it in the shell that starts you. Terraform never writes it to state or plans. The connection's ExternalId isn't a secret (AWS says so: anyone who can read the role can see it), so plans may show it.
 5. **One Clumio tenant per state.** A token from another tenant can't see what this state created, so Terraform would create a second set.
 6. **Never change `account_id`, `region` or `organizational_unit` in an applied `setup/`.** Copy the folder for another target instead.
-7. **The kit never deletes data.** Teardown is `make teardown`, then `make apply` after the person has read the plan. It refuses in production.
+7. **The kit never deletes data.** Teardown is `make teardown`, then `make apply` after the person has read the plan. It refuses in production, and while Clumio is backing up these resources.
 8. **The person does the console steps:** the Clumio console, the AWS sign-in, and creating the token.
 
 ## Changing this repository
