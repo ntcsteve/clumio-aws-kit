@@ -103,6 +103,21 @@ run "a_report_with_emails" {
   }
 }
 
+# Live, 2026-10-28: Clumio refused a group of only {type = "aws", region}, "Region-only group filter
+# is not supported for MS SQL on EC2". The group names this account's Clumio environment instead. Its
+# ID exists only once Clumio's IAM does, so a plan can show the read, and the live apply proves the
+# rest (stage 2d).
+run "the_report_reads_this_accounts_clumio_environment" {
+  command = plan
+  variables {
+    report_emails = ["platform-oncall@example.com"]
+  }
+  assert {
+    condition     = length(data.clumio_aws_environment.this) == 1
+    error_message = "The report must be scoped by this account's Clumio environment, never by a Region alone."
+  }
+}
+
 run "a_malformed_email_is_refused" {
   command = plan
   variables {

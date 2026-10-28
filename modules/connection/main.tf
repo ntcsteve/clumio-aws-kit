@@ -51,8 +51,17 @@ resource "terraform_data" "production_guard" {
   }
 }
 
+# This account's Clumio environment in this Region: what the report covers. It exists once Clumio's
+# IAM is in place, so the read waits for it.
+data "clumio_aws_environment" "this" {
+  count             = length(var.report_emails) > 0 ? 1 : 0
+  account_native_id = clumio_aws_connection.this.account_native_id
+  aws_region        = clumio_aws_connection.this.aws_region
+  depends_on        = [module.iam]
+}
+
 # Backups that fail quietly are found during an incident. This report says, by email, whether every
-# asset in this Region has a backup each day, kept at least 7 days.
+# asset in this account and Region has a backup each day, kept at least 7 days.
 resource "clumio_report_configuration" "daily_backups" {
   count       = length(var.report_emails) > 0 ? 1 : 0
   name        = "daily-backups-${var.account_id}-${var.region}"
@@ -81,9 +90,12 @@ resource "clumio_report_configuration" "daily_backups" {
     }
     filters {
       asset {
+        # The environment, which is this account in this Region. Clumio refuses a Region-only group
+        # ("not supported for MS SQL on EC2"), and an id with a region ("cannot be used together"),
+        # both live, 2026-10-28.
         groups {
-          type   = "aws"
-          region = var.region
+          type = "aws"
+          id   = data.clumio_aws_environment.this[0].id
         }
       }
     }
