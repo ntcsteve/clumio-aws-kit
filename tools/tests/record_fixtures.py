@@ -15,6 +15,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import status  # noqa: E402
 
+TENANT_WIDE = ("/policies/definitions", "/datasources/protection-groups")
+
 
 def record(world):
     """Wraps each reader so every answer is kept: Clumio by path and unit, AWS by Region."""
@@ -22,7 +24,15 @@ def record(world):
 
     def clumio_get(path, unit=None):
         answer = world.clumio_get(path, unit=unit)
-        answers["clumio"][f"{unit or ''} {path}"] = list(answer)
+        saved = answer
+        # The policy and protection-group lists cover the whole tenant: other teams' names, accounts and
+        # tags. Keep only this kit's items, the only ones status.py reads (live, 2026-10-28).
+        if path.split("?")[0] in TENANT_WIDE and answers["kit"]:
+            pattern = status.kit_name_pattern(answers["kit"])
+            status_code, body = answer
+            items = [item for item in (body.get("_embedded") or {}).get("items", []) if pattern.match(item.get("name") or "")]
+            saved = (status_code, {**{k: v for k, v in body.items() if k != "_links"}, "_embedded": {"items": items}})
+        answers["clumio"][f"{unit or ''} {path}"] = list(saved)
         return answer
 
     def tagged_resources(region):

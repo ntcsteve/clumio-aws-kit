@@ -270,11 +270,16 @@ def coverage(world):
     return records, check_connection_unit(world, kit)
 
 
+def kit_name_pattern(kit):
+    """The names modules/protect gives policies and groups in this account and Region: profile, workload."""
+    return re.compile(r"^([a-z0-9][a-z0-9-]*)-(s3|rds|aurora|ec2|ebs)-" + re.escape(f"{kit['account_id']}-{kit['region']}") + "$")
+
+
 def kit_profiles(world, kit):
     """{profile: {workload: policy ID, "s3_group": group ID}}: the kit's policies, found by the names
     modules/protect gives them, <profile>-<workload>-<account>-<region>, in the unit. Another team's
     policy, or another account's or Region's, never matches. Raises ClumioUnavailable."""
-    pattern = re.compile(r"^([a-z0-9][a-z0-9-]*)-(s3|rds|aurora|ec2|ebs)-" + re.escape(f"{kit['account_id']}-{kit['region']}") + "$")
+    pattern = kit_name_pattern(kit)
     unit = kit["organizational_unit_id"]
     policies = clumio_items(world, "/policies/definitions", None, unit, complete=True)
     groups = clumio_items(world, "/datasources/protection-groups", None, unit, complete=True)
