@@ -265,6 +265,10 @@ def tagged(world, region):
         key = VOLUME_TAG_KEY if parsed and parsed[0] == "ebs-volume" and VOLUME_TAG_KEY in tags else TAG_KEY
         if parsed and key in tags:
             items.append((parsed[0], parsed[1], tags[key], key))
+    # AWS's tagging API also lists each Aurora cluster under its resource ID (cluster:cluster-<id>,
+    # lowercase), next to its name (read live, 2026-10-28). It's the same cluster: keep the name.
+    resource_ids = {(db.get("resource_id") or "").lower() for db in databases.values()} - {""}
+    items = [item for item in items if not (item[0] == "rds-cluster" and item[1] in resource_ids)]
     tagged_clusters = {name for kind, name, _, _ in items if kind == "rds-cluster"}
     context = {"instance_profiles": {name: value for kind, name, value, _ in items if kind == "ec2-instance"},
                "volumes": world.volumes(region) if any(kind == "ebs-volume" for kind, _, _, _ in items) else {},
@@ -591,12 +595,13 @@ def aws_volumes(region):
 
 
 def aws_databases(region):
-    """Each database's PITR window, and the Aurora cluster an instance belongs to."""
+    """Each database's PITR window, the Aurora cluster an instance belongs to, and a cluster's resource ID."""
     instances = run_json(["aws", "rds", "describe-db-instances", "--region", region, "--output", "json"], timeout=120)
     clusters = run_json(["aws", "rds", "describe-db-clusters", "--region", region, "--output", "json"], timeout=120)
     if instances is None or clusters is None:
         raise AwsUnavailable(f"AWS didn't list the databases in {region}. Check your sign-in, then run again.")
-    found = {c["DBClusterIdentifier"]: {"pitr": c.get("BackupRetentionPeriod"), "cluster": None, "engine": c.get("Engine", "")}
+    found = {c["DBClusterIdentifier"]: {"pitr": c.get("BackupRetentionPeriod"), "cluster": None, "engine": c.get("Engine", ""),
+                                        "resource_id": c.get("DbClusterResourceId", "")}
              for c in clusters.get("DBClusters", [])}
     for i in instances.get("DBInstances", []):
         found[i["DBInstanceIdentifier"]] = {"pitr": i.get("BackupRetentionPeriod"), "cluster": i.get("DBClusterIdentifier"),

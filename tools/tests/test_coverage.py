@@ -310,6 +310,15 @@ class Coverage(unittest.TestCase):
         self.assertEqual(states["docs-cluster"], "OFF")
         self.assertIn("not supported", records[0]["detail"])
 
+    # Read live on 2026-10-28: for each tagged Aurora cluster, AWS's tagging API also returns an ARN
+    # named by the cluster's resource ID (cluster:cluster-<id>, lowercase). It's the same cluster.
+    def test_a_clusters_resource_id_arn_is_the_same_cluster_not_another(self):
+        self.add_db("orders-cluster", kind="cluster")
+        self.dbs["orders-cluster"]["resource_id"] = "cluster-BRUTMAG4U7OEBRGDZWKGFJYHXU"
+        self.resources.append(database("cluster-brutmag4u7oebrgdzwkgfjyhxu", kind="cluster"))
+        records, _ = status.coverage(self.world())
+        self.assertEqual([r["name"] for r in records], ["orders-cluster"])
+
     # --- --preview, after terraform plan -out=tfplan ---
 
     def plan_with(self, **profiles):
