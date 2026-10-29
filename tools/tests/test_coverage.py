@@ -224,6 +224,10 @@ class Coverage(unittest.TestCase):
         states, records, unit = self.states()
         self.assertEqual(states["orders-docs"], "BAD_VALUE")
         self.assertIn("gold", records[0]["detail"])
+        # A right tag reads the same once its folder is destroyed (stage 2g teardown), so the advice
+        # names both ways out, never only "fix the tag".
+        self.assertIn('2-protect- folder with name = "gld"', records[0]["detail"])
+        self.assertIn("or fix or remove the tag", records[0]["detail"])
         self.assertEqual(status.coverage_exit_code(records, unit), 1)
 
     def test_a_bucket_in_a_profile_without_s3_is_off(self):

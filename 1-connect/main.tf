@@ -34,7 +34,7 @@ module "connection" {
 }
 
 # What the 2-protect- folders read (terraform_remote_state), so their account, Region, unit and mode
-# always match this connection's, and what tools/status.py checks against.
+# always match this connection's.
 output "kit" {
   value = {
     account_id             = module.connection.account_id

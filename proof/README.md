@@ -12,7 +12,7 @@ proof/verify-evidence.sh
 
 It checks every capture against its `_sha256.txt` and ends with `RESULT: OK`. It also prints a root hash of all manifests: keep it somewhere outside this repository, and compare it later to see whether any manifest changed.
 
-An earlier lab run (2026-10-25 to 27) proved S3, RDS and EC2 backups and restores under AWS-managed and customer-managed keys, including restores to another Region and a key policy that denies Clumio. Its evidence lives in its own public repository, [get-started-clumio-byok](https://github.com/ntcsteve/get-started-clumio-byok/tree/4a6dc5d), at commit `4a6dc5d` (v1.0.0), with its own `scripts/verify-evidence.sh`. Key behavior belongs to Clumio and AWS, not to this kit's code, so that run still answers the keys question; `evidence/keys-lab-2026-10-28/` adds this kit's own run, including Aurora.
+An earlier lab run (2026-10-25 to 27) proved S3, RDS and EC2 backups and restores under AWS-managed and customer-managed keys, including restores to another Region and a key policy that denies Clumio. Its evidence lives in its own public repository, [get-started-clumio-byok](https://github.com/ntcsteve/get-started-clumio-byok/tree/4a6dc5d), at commit `4a6dc5d` (v1.0.0), with its own `scripts/verify-evidence.sh`. Key behavior belongs to Clumio and AWS, not to this kit's code, so that run still answers the keys question; `evidence/keys-lab-2026-10-28/` adds this kit's own run, including Aurora. `evidence/archive-lab-2026-10-29/` shows one Aurora cluster with PITR, a SecureVault Standard copy and a SecureVault Archive copy, from one `2-protect-aurora` policy.
 
 ## The lab
 

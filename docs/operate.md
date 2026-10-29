@@ -32,12 +32,12 @@ Start with `tools/status.py --preflight`. It checks the tools, your settings, yo
 | WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. |
 | NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. | Run `tools/status.py` again in an hour; for a bucket, allow up to a day. |
 | OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in that `2-protect-` folder to the rule's ID, which the line shows, then plan and apply. The plan replaces the folder's rule, placed ahead of that one. |
-| BAD_VALUE | Its `clumio-profile` tag names no profile here, such as a typo. | Fix the tag. |
+| BAD_VALUE | Its `clumio-profile` tag names no profile applied here: a typo, or that profile's `2-protect-` folder isn't applied, or was taken down. | Apply that folder, or fix or remove the tag. |
 | DOUBLE | A volume tagged `clumio-volume-profile` is attached to an instance the profile already protects, and an instance's backup already holds its volumes. | Remove the volume's `clumio-volume-profile` tag, or you pay for two copies. |
 | OFF | No `2-protect-` folder for this kind of resource is applied with this profile's name; or a volume carries `clumio-profile` with no tagged instance; or it's an Aurora cluster's instance (tag the cluster); or DocumentDB or Neptune, which the kit doesn't support. The line says which. | Apply the `2-protect-` folder it names with that `name`, or fix the tag. A volume on its own joins with `clumio-volume-profile`. |
 | UNKNOWN | AWS or Clumio didn't answer, so nothing is assumed. | Check your sign-in and token, then run it again. |
 
-Two kinds are left out on purpose: Aurora's instances, because Clumio protects their cluster, and a volume carrying `clumio-profile` while attached to a tagged instance, because that instance's backup holds it.
+Two kinds are left out on purpose: the instances of a tagged Aurora cluster, because Clumio protects the cluster, and a volume carrying `clumio-profile` while attached to a tagged instance, because that instance's backup holds it.
 
 The first line checks that the connection sits in the organizational unit set in `1-connect/terraform.tfvars`. If it doesn't, the profiles' rules can't match anything.
 

@@ -360,7 +360,8 @@ def settings_problem(item, profiles, context):
                       "A volume attached to a tagged instance is already in that instance's backup.")
     profile = profiles.get(value)
     if profile is None:
-        return record(kind, name, value, "BAD_VALUE", f'no profile named "{value}" here. Profiles: {", ".join(sorted(profiles)) or "none applied"}. Fix the tag.')
+        return record(kind, name, value, "BAD_VALUE", f'no 2-protect- folder with name = "{value}" is applied here '
+                      f'(applied: {", ".join(sorted(profiles)) or "none"}). Apply one, or fix or remove the tag.')
     workload = WORKLOADS[kind]
     if workload not in profile:
         return record(kind, name, value, "OFF", f'no 2-protect-{workload} folder with name = "{value}" is applied, so nothing protects '

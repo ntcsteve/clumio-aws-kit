@@ -22,7 +22,7 @@ Each step is a folder with its own README. Read them in order. Each Terraform fo
 | 0 | [0-check](0-check/README.md) | Checks your tools, sign-in, token and settings, and shows every IAM role Clumio will create | No |
 | 1 | [1-connect](1-connect/README.md) | Connects your account and Region to Clumio, with Clumio's IAM roles | Yes |
 | 2 | [2-protect-s3](2-protect-s3/README.md), [-rds](2-protect-rds/README.md), [-aurora](2-protect-aurora/README.md), [-ec2](2-protect-ec2/README.md), [-ebs](2-protect-ebs/README.md) | One Clumio policy per workload, for what you tag `clumio-profile = gold` (EBS volumes on their own: `clumio-volume-profile = gold`). Use only the ones you need | Yes |
-| 3 | [3-prove](3-prove/README.md) | Shows who protects each resource, then you restore one | No |
+| 3 | [3-prove](3-prove/README.md) | Shows who protects each resource, then you restore one | Only the restore you start |
 
 Every Terraform folder works the same way: `cp settings.example terraform.tfvars`, set the values, then `terraform init`, `terraform plan -out=tfplan`, read it, `terraform apply tfplan`.
 

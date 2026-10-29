@@ -1,0 +1,7 @@
+4c734285f16e0c323bb4e1b526458e09260c6f6048f701281bfad2289ef4b5b8  kitlab-2051d6-aurora-amk-clumio-backups.json
+293fbac95a47642b33a445b754bdc5249589ba5ed87742becca7886c9b5a45a8  kitlab-2051d6-aurora-amk-clumio-resource.json
+e75c6b9c4a5584898d6951a6ee3e637df619cf4de97b95192e4fa96ffc6fb85d  kitlab-2051d6-aurora-amk-describe-db-clusters.json
+bd5869e5ad6959c63bda654f194f3a78e08673b1c3a75832dc29b570b055e027  kitlab-2051d6-aurora-amk-describe-key.json
+532a76e3d4e0877caf6842608c63ddd0911e06bf2f2e08e699a238dd971b7c8d  kitlab-2051d6-aurora-amk-key-policy.json
+8eb00171852f11ad76037095b3c996aed09abefccdc343ffdc19302ed82cc8b6  kitlab-2051d6-aurora-amk-list-aliases.json
+942a4b62d2942bbc9680bab3c62adae46318e0d43ce98695c4f4096be2a6fb80  kitlab-2051d6-aurora-amk-tags.json
