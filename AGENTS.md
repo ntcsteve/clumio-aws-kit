@@ -16,7 +16,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 | `tools/status.py` | Read-only checks: preflight, who protects each tagged resource (the kit's policies found by name in Clumio), and whether teardown is safe |
 | `modules/connection/` | The product: the connection, Clumio's IAM (`iam/`), the compliance report, and every guard. Production calls it from its own repo |
 | `modules/protect/` | The product: one workload's policy, selected by tag, with the PITR and production guards |
-| `README.md` | The entry point: what the kit does, the four steps, what keeps a first run safe |
+| `README.md` | The entry point: why, what you'll prove, how it works, what's safe, what to prepare, and the run as a table of steps with STOP points |
 | `docs/keys.md` | Does Clumio need our keys? What was shown, the evidence, what a restore needs |
 | `docs/production.md` | Calling the modules from a production repository, and which guards come with them |
 | `docs/operate.md` | Errors and what to do, reading `tools/status.py`, the known limits, and taking a trial down |

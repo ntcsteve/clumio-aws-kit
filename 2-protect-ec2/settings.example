@@ -1,4 +1,4 @@
-# Settings for 2-protect-ec2. Copy this file to terraform.tfvars in this folder, then set each REPLACE value:
+# Settings for 2-protect-ec2. Copy this file to terraform.tfvars in this folder, then check the values:
 #   cp settings.example terraform.tfvars
 # Keep each value on one line. terraform.tfvars never leaves your machine.
 # The account, Region, unit and mode come from 1-connect: apply it first.

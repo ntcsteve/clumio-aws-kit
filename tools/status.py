@@ -227,7 +227,7 @@ def check_connection(world, account, region):
         return "PASS", "connection", f"{account}/{region} isn't connected yet"
     if status == 200:
         return ("NOTE", "connection", f"{account}/{region} is already connected (unit {body.get('organizational_unit_id')}). "
-                "If this folder created it, carry on. If not, stop: it belongs to someone else.")
+                "If 1-connect created it, carry on. If not, stop: it belongs to someone else.")
     return "FAIL", "connection", f"Clumio answered HTTP {status} for the connection. Try again."
 
 
@@ -802,7 +802,7 @@ def main():
         if args.preflight:
             results = preflight(real_world())
             print_results(results)
-            print("Ready. Next: the step you're on (README.md, The steps)." if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
+            print("Ready. Next: the step you're on (README.md, What to do)." if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
             sys.exit(exit_code(results))
         sys.exit(run_teardown() if args.teardown else run_status(args.json, flags))
     except NothingApplied:

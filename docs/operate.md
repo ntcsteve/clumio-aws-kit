@@ -1,10 +1,10 @@
 # Operate
 
-What to do when something goes wrong, and how to take a trial down. Terraform commands run in the step's own folder. Paths to `tools/status.py` and `0-check/preview/preview.sh` are written from the repository's root folder.
+What to do when something goes wrong, and how to take a trial down. Run Terraform in the step's own folder, and `tools/status.py` and `0-check/preview/preview.sh` from the repository's root folder.
 
 ## When something goes wrong
 
-Start with `tools/status.py --preflight`. It checks the tools, your settings, your AWS sign-in, the Clumio token, the organizational unit, the Region, and the unit's free rule slots, and says what to fix.
+Start with `tools/status.py --preflight`: it checks your setup and says what to fix.
 
 | You see | What it means, and what to do |
 |---|---|
