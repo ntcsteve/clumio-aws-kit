@@ -130,6 +130,606 @@
     "token": "4bc513bb-4cc5-4080-b33c-acdf25c46909"
    }
   ],
+  " /tasks?limit=100&filter=%7B%22primary_entity.id%22%3A%20%7B%22%24eq%22%3A%20%2220e9cdfd-d2dd-11f1-9f52-beb16d9f134a%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_etag": "15250358208827951054",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057267630",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "management",
+       "created_timestamp": "2026-10-28T15:05:21Z",
+       "end_timestamp": "2026-10-28T15:05:54Z",
+       "genre": "administrative",
+       "id": "4057267630",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "20e9cdfd-d2dd-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_instance",
+        "value": "kitlab-c19bd0-rds-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T15:05:51Z",
+       "status": "completed",
+       "type": "aws_rds_resource_pitr_configuration_sync"
+      },
+      {
+       "_embedded": {},
+       "_etag": "18055881448926418092",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057267079",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T15:05:21Z",
+       "end_timestamp": "2026-10-28T15:16:06Z",
+       "genre": "operational",
+       "id": "4057267079",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "20e9cdfd-d2dd-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_instance",
+        "value": "kitlab-c19bd0-rds-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T15:05:52Z",
+       "status": "completed",
+       "type": "aws_rds_resource_clumio_snapshot"
+      },
+      {
+       "_embedded": {},
+       "_etag": "13083693299655056663",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057182122",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "management",
+       "created_timestamp": "2026-10-28T14:40:21Z",
+       "end_timestamp": "2026-10-28T14:40:52Z",
+       "genre": "administrative",
+       "id": "4057182122",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "20e9cdfd-d2dd-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_instance",
+        "value": "kitlab-c19bd0-rds-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T14:40:52Z",
+       "status": "completed",
+       "type": "aws_rds_resource_pitr_configuration_sync"
+      },
+      {
+       "_embedded": {},
+       "_etag": "6865698950591257462",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057182075",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T14:40:21Z",
+       "end_timestamp": "2026-10-28T14:51:04Z",
+       "genre": "operational",
+       "id": "4057182075",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "20e9cdfd-d2dd-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_instance",
+        "value": "kitlab-c19bd0-rds-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T14:40:52Z",
+       "status": "completed",
+       "type": "aws_rds_resource_clumio_snapshot"
+      }
+     ]
+    },
+    "_links": {
+     "_self": {
+      "href": "/api/tasks?filter=%7B%22primary_entity.id%22:+%7B%22$eq%22:+%2220e9cdfd-d2dd-11f1-9f52-beb16d9f134a%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 4,
+    "filter_applied": "{\"created_timestamp\":{\"$lte\":\"2026-10-28T15:05:22Z\"},\"primary_entity.id\":{\"$eq\":\"20e9cdfd-d2dd-11f1-9f52-beb16d9f134a\"}}",
+    "limit": 100,
+    "start": "",
+    "total_count": 0,
+    "total_pages_count": 0
+   }
+  ],
+  " /tasks?limit=100&filter=%7B%22primary_entity.id%22%3A%20%7B%22%24eq%22%3A%20%229a3d8c2c-d2dc-11f1-b010-fa4dc59c62ac%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_etag": "10131166371715408633",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057268295",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T15:05:22Z",
+       "end_timestamp": "2026-10-28T15:20:54Z",
+       "genre": "operational",
+       "id": "4057268295",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "9a3d8c2c-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_ec2_instance",
+        "value": "i-0d2aa68c986a87526"
+       },
+       "progress_percentage": 10,
+       "start_timestamp": "2026-10-28T15:18:44Z",
+       "status": "aborted",
+       "type": "aws_ec2_instance_backup_seeding"
+      }
+     ]
+    },
+    "_links": {
+     "_self": {
+      "href": "/api/tasks?filter=%7B%22primary_entity.id%22:+%7B%22$eq%22:+%229a3d8c2c-d2dc-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 1,
+    "filter_applied": "{\"created_timestamp\":{\"$lte\":\"2026-10-28T15:05:23Z\"},\"primary_entity.id\":{\"$eq\":\"9a3d8c2c-d2dc-11f1-b010-fa4dc59c62ac\"}}",
+    "limit": 100,
+    "start": "",
+    "total_count": 0,
+    "total_pages_count": 0
+   }
+  ],
+  " /tasks?limit=100&filter=%7B%22primary_entity.id%22%3A%20%7B%22%24eq%22%3A%20%229a6e03e6-d2dc-11f1-9f52-beb16d9f134a%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_etag": "6548786374737384392",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057267074",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "management",
+       "created_timestamp": "2026-10-28T15:05:21Z",
+       "end_timestamp": "2026-10-28T15:05:54Z",
+       "genre": "administrative",
+       "id": "4057267074",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "9a6e03e6-d2dc-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_cluster",
+        "value": "kitlab-c19bd0-aurora-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T15:05:52Z",
+       "status": "completed",
+       "type": "aws_rds_resource_pitr_configuration_sync"
+      },
+      {
+       "_embedded": {},
+       "_etag": "3566404501260107733",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057267030",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T15:05:21Z",
+       "end_timestamp": "2026-10-28T15:22:06Z",
+       "genre": "operational",
+       "id": "4057267030",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "9a6e03e6-d2dc-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_cluster",
+        "value": "kitlab-c19bd0-aurora-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T15:05:52Z",
+       "status": "completed",
+       "type": "aws_rds_resource_clumio_snapshot"
+      },
+      {
+       "_embedded": {},
+       "_etag": "13777761917670109778",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057181980",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "management",
+       "created_timestamp": "2026-10-28T14:40:21Z",
+       "end_timestamp": "2026-10-28T14:40:53Z",
+       "genre": "administrative",
+       "id": "4057181980",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "9a6e03e6-d2dc-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_cluster",
+        "value": "kitlab-c19bd0-aurora-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T14:40:52Z",
+       "status": "completed",
+       "type": "aws_rds_resource_pitr_configuration_sync"
+      },
+      {
+       "_embedded": {},
+       "_etag": "17304193525965055515",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057181763",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T14:40:21Z",
+       "end_timestamp": "2026-10-28T14:55:05Z",
+       "genre": "operational",
+       "id": "4057181763",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "9a6e03e6-d2dc-11f1-9f52-beb16d9f134a",
+        "type": "aws_rds_cluster",
+        "value": "kitlab-c19bd0-aurora-amk"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T14:40:52Z",
+       "status": "completed",
+       "type": "aws_rds_resource_clumio_snapshot"
+      }
+     ]
+    },
+    "_links": {
+     "_self": {
+      "href": "/api/tasks?filter=%7B%22primary_entity.id%22:+%7B%22$eq%22:+%229a6e03e6-d2dc-11f1-9f52-beb16d9f134a%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 4,
+    "filter_applied": "{\"created_timestamp\":{\"$lte\":\"2026-10-28T15:05:22Z\"},\"primary_entity.id\":{\"$eq\":\"9a6e03e6-d2dc-11f1-9f52-beb16d9f134a\"}}",
+    "limit": 100,
+    "start": "",
+    "total_count": 0,
+    "total_pages_count": 0
+   }
+  ],
+  " /tasks?limit=100&filter=%7B%22primary_entity.id%22%3A%20%7B%22%24eq%22%3A%20%229a754c6d-d2dc-11f1-9f52-beb16d9f134a%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_etag": "2173093040957599269",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057268248",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T15:05:22Z",
+       "end_timestamp": "2026-10-28T15:19:56Z",
+       "genre": "operational",
+       "id": "4057268248",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "9a754c6d-d2dc-11f1-9f52-beb16d9f134a",
+        "type": "aws_ebs_volume",
+        "value": "vol-05ce80d62bec0c999"
+       },
+       "progress_percentage": 50,
+       "start_timestamp": "2026-10-28T15:18:44Z",
+       "status": "aborted",
+       "type": "aws_ebs_volume_backup_seeding"
+      }
+     ]
+    },
+    "_links": {
+     "_self": {
+      "href": "/api/tasks?filter=%7B%22primary_entity.id%22:+%7B%22$eq%22:+%229a754c6d-d2dc-11f1-9f52-beb16d9f134a%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 1,
+    "filter_applied": "{\"created_timestamp\":{\"$lte\":\"2026-10-28T15:05:23Z\"},\"primary_entity.id\":{\"$eq\":\"9a754c6d-d2dc-11f1-9f52-beb16d9f134a\"}}",
+    "limit": 100,
+    "start": "",
+    "total_count": 0,
+    "total_pages_count": 0
+   }
+  ],
+  " /tasks?limit=100&filter=%7B%22primary_entity.id%22%3A%20%7B%22%24eq%22%3A%20%229a8facb8-d2dc-11f1-b010-fa4dc59c62ac%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_etag": "6262773055240210625",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057268216",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T15:05:22Z",
+       "end_timestamp": "2026-10-28T15:20:07Z",
+       "genre": "operational",
+       "id": "4057268216",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "857f4480-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_environment",
+        "value": "123456789012/us-west-2"
+       },
+       "primary_entity": {
+        "id": "9a8facb8-d2dc-11f1-b010-fa4dc59c62ac",
+        "type": "aws_ebs_volume",
+        "value": "vol-087895fce4b7f2a17"
+       },
+       "progress_percentage": 50,
+       "start_timestamp": "2026-10-28T15:18:44Z",
+       "status": "aborted",
+       "type": "aws_ebs_volume_backup_seeding"
+      }
+     ]
+    },
+    "_links": {
+     "_self": {
+      "href": "/api/tasks?filter=%7B%22primary_entity.id%22:+%7B%22$eq%22:+%229a8facb8-d2dc-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 1,
+    "filter_applied": "{\"created_timestamp\":{\"$lte\":\"2026-10-28T15:05:23Z\"},\"primary_entity.id\":{\"$eq\":\"9a8facb8-d2dc-11f1-b010-fa4dc59c62ac\"}}",
+    "limit": 100,
+    "start": "",
+    "total_count": 0,
+    "total_pages_count": 0
+   }
+  ],
+  " /tasks?limit=100&filter=%7B%22primary_entity.id%22%3A%20%7B%22%24eq%22%3A%20%22b0e91d06-c72d-4d34-bf3a-d2247514101e%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_etag": "8469940667406221651",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057181640",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "management",
+       "created_timestamp": "2026-10-28T14:40:20Z",
+       "end_timestamp": "2026-10-28T14:40:24Z",
+       "genre": "administrative",
+       "id": "4057181640",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "",
+        "type": "organization",
+        "value": ""
+       },
+       "primary_entity": {
+        "id": "b0e91d06-c72d-4d34-bf3a-d2247514101e",
+        "type": "protection_group",
+        "value": "gold-s3-123456789012-us-west-2"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T14:40:20Z",
+       "status": "completed",
+       "type": "protection_group_backtrack_reservation"
+      },
+      {
+       "_embedded": {},
+       "_etag": "5718527215636045904",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4057181591",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-10-28T14:40:20Z",
+       "end_timestamp": "2026-10-28T14:42:11Z",
+       "genre": "operational",
+       "id": "4057181591",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "",
+        "type": "organization",
+        "value": ""
+       },
+       "primary_entity": {
+        "id": "b0e91d06-c72d-4d34-bf3a-d2247514101e",
+        "type": "protection_group",
+        "value": "gold-s3-123456789012-us-west-2"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-10-28T14:40:20Z",
+       "status": "completed",
+       "type": "protection_group_backup"
+      }
+     ]
+    },
+    "_links": {
+     "_self": {
+      "href": "/api/tasks?filter=%7B%22primary_entity.id%22:+%7B%22$eq%22:+%22b0e91d06-c72d-4d34-bf3a-d2247514101e%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 2,
+    "filter_applied": "{\"created_timestamp\":{\"$lte\":\"2026-10-28T14:40:21Z\"},\"primary_entity.id\":{\"$eq\":\"b0e91d06-c72d-4d34-bf3a-d2247514101e\"}}",
+    "limit": 100,
+    "start": "",
+    "total_count": 0,
+    "total_pages_count": 0
+   }
+  ],
   "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /backups/aws/rds-resources?limit=100&filter=%7B%22resource_id%22%3A%20%7B%22%24eq%22%3A%20%2220e9cdfd-d2dd-11f1-9f52-beb16d9f134a%22%7D%7D": [
    200,
    {

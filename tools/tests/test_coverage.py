@@ -77,6 +77,11 @@ class FakeClumio:
         if bare not in self.lists:
             return 404, {}
         found = self.lists[bare]
+        # Live, 2026-10-29: asked in a unit's context, Clumio left out a restore started in the console
+        # (and answered 404 for it by ID); asked with no unit, it listed it. Every task showed
+        # organizational_unit_id null, so the cause isn't visible: a test marks such a task by hand.
+        if bare == "/tasks" and unit is not None:
+            found = [item for item in found if not item.get("hidden_in_unit")]
         params = urllib.parse.parse_qs(query)
         if "filter" in params:
             for field, test in json.loads(params["filter"][0]).items():
@@ -335,6 +340,16 @@ class Coverage(unittest.TestCase):
         self.clumio.lists["/tasks"].append({"id": "4050", "status": "in_progress", "primary_entity": {"id": "id-i-0abc"}})
         state, _ = status.teardown(self.world())
         self.assertEqual(state, "BLOCKED")
+
+    def test_teardown_waits_while_a_console_restore_runs(self):
+        # Stage 2j: while a console restore of i-0259… ran, teardown said READY: Clumio didn't list the
+        # restore in the unit's context. Removing 1-connect then takes the IAM role the restore needs.
+        self.add_instance("i-0abc")
+        self.clumio.lists["/tasks"].append({"id": "4060138517", "status": "in_progress", "type": "aws_ec2_instance_restore",
+                                            "hidden_in_unit": True, "primary_entity": {"id": "id-i-0abc"}})
+        state, lines = status.teardown(self.world())
+        self.assertEqual(state, "BLOCKED")
+        self.assertIn("aws_ec2_instance_restore", lines[0])
 
     # --- Fixes from the cold review ---
 

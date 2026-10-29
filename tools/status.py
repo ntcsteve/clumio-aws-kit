@@ -404,7 +404,8 @@ def ownership_problem(world, kind, name, value, our_policy, asset, unit):
         return record(kind, name, value, "NOT_YET", "Clumio hasn't found it yet. A new resource can take up to an hour: run again then.")
     info = asset.get("protection_info") or {}
     if not info.get("policy_id"):
-        return record(kind, name, value, "NOT_YET", "Clumio found it, but no policy applies yet. Run again in a few minutes.")
+        return record(kind, name, value, "NOT_YET", "Clumio found it, but no policy applies yet. Clumio attaches a resource created or "
+                      "tagged after its rule at its next discovery cycle: run again later, and allow up to a day.")
     if info["policy_id"] != our_policy:
         return record(kind, name, value, "OTHER", claimed_by(world, info, unit))
     return None
@@ -557,8 +558,10 @@ def teardown(world):
             watched.append((name, asset["id"]))
     running = []
     for label, asset_id in watched:
-        # Every page, or no answer: a task on page two must never read as nothing running.
-        tasks = clumio_items(world, "/tasks", {"primary_entity.id": {"$eq": asset_id}}, unit, complete=True)
+        # Every page, or no answer: a task on page two must never read as nothing running. No unit
+        # context: asked inside the unit, Clumio left out a restore started in the console (seen live,
+        # 2026-10-29). The filter keeps the answer to this asset's own tasks.
+        tasks = clumio_items(world, "/tasks", {"primary_entity.id": {"$eq": asset_id}}, None, complete=True)
         if tasks is None:
             return "UNKNOWN", [f"Clumio didn't answer in full for {label}, so running backups can't be ruled out. "
                                "Look in Clumio's Tasks; teardown waits until nothing runs."]

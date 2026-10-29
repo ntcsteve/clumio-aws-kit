@@ -1,6 +1,7 @@
 """Contract tests: status.py against the real AWS and Clumio answers recorded live in stage 2f
 (fixtures/stage2f-protected.json, 2026-10-28 15:00 UTC, masked; only this kit's policies and groups
-kept from Clumio's tenant-wide lists), not against fakes we wrote. If a
+kept from Clumio's tenant-wide lists; the same assets' task lists asked with no unit, re-read live
+2026-10-29 when teardown began asking that way), not against fakes we wrote. If a
 change to status.py misreads a real answer's shape, these fail. Run: python3 -m unittest discover -s
 tests, in tools/."""
 import json

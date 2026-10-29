@@ -30,7 +30,7 @@ Start with `tools/status.py --preflight`: it checks your setup and says what to 
 |---|---|---|
 | OURS | This profile's policy protects it, and a backup exists. | Nothing. |
 | WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. |
-| NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. | Run `tools/status.py` again in an hour; for a bucket, allow up to a day. |
+| NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. A resource created or tagged after its rule joins at Clumio's next discovery cycle. | Run `tools/status.py` again later; allow up to a day. |
 | OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in that `2-protect-` folder to the rule's ID, which the line shows, then plan and apply. The plan replaces the folder's rule, placed ahead of that one. |
 | BAD_VALUE | Its `clumio-profile` tag names no profile applied here: a typo, or that profile's `2-protect-` folder isn't applied, or was taken down. | Apply that folder, or fix or remove the tag. |
 | DOUBLE | A volume tagged `clumio-volume-profile` is attached to an instance the profile already protects, and an instance's backup already holds its volumes. | Remove the volume's `clumio-volume-profile` tag, or you pay for two copies. |
@@ -46,7 +46,7 @@ Exit codes, for scripts and CI: 0 nothing to do, including WAITING and NOT_YET, 
 ## Know the limits
 
 - **Rule order is shared.** Clumio keeps every rule in a unit in one chain. Adding a profile's rule links it after the unit's current last rule, so that rule's position changes too; if another team manages its rules with Terraform, their next plan shows it. The kit sets its own rules' position once, at creation, and doesn't fight later reordering.
-- **A database tagged after apply** gets the profile's PITR window from Clumio directly, with no plan in between, so a longer window is cut without the plan's check. Check a database's current window before you tag it.
+- **A resource created or tagged after its rule** joins at Clumio's next discovery cycle, not at once; Clumio doesn't publish how often that runs (restored copies waited more than 20 minutes in the lab). A database that joins this way gets the profile's PITR window with no plan in between, so a longer window is cut without the plan's check. Check a database's current window before you tag it.
 - **A plan that stops is still saved.** When a check stops `terraform plan -out=tfplan` (a shorter PITR window, say), Terraform still writes `tfplan`, marked as not applyable: `terraform apply tfplan` refuses it. Fix the cause and plan again.
 - **The teardown check is a step you run.** Terraform runs no checks on destroy, so nothing stops a destroy while Clumio is backing up. Run `tools/status.py --teardown` first, as [Take a trial down](#take-a-trial-down) says.
 - **Teardown reads running tasks by tag.** Remove a resource's tag before teardown, and its running backup isn't seen. If Clumio lists more than 20 pages of tasks for a resource, teardown says UNKNOWN rather than READY: look in Clumio's Tasks.

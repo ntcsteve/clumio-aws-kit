@@ -28,12 +28,11 @@ Check the captures here, offline: `proof/verify-evidence.sh`. Each folder matche
 ## What a restore needs from you
 
 - **S3:** restored copies take the target bucket's default encryption (seen live). If they must use a customer-managed key, make it the bucket's default before you restore; that the copies then get it is not yet proven.
-- **EC2:** name the key in the restore, or the volumes come back unencrypted.
+- **EC2 and EBS:** the Clumio console's restore fills in the source's key, and the copy comes back under it (seen live on this kit with an AWS-managed key). Through Clumio's API, name the key: with none named, an EC2 restore came back unencrypted (earlier lab run).
 - **RDS and Aurora, same Region:** nothing. The restore keeps the source's key.
 - **RDS, another Region:** name a key, a subnet group and a security group in that Region.
 
 ## What isn't proven
 
 - Whether an S3 restore into a bucket whose default is a customer-managed key gets that key.
-- An EBS volume on its own, restored.
 - Bring your own key (BYOK). It binds a whole Clumio tenant to one key, for good, so it needs a tenant of its own to test.
