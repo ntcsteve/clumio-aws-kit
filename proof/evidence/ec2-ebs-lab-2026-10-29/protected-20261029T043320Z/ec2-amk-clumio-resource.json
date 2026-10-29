@@ -1,0 +1,135 @@
+{
+ "_embedded": {
+  "items": [
+   {
+    "_embedded": {},
+    "_links": {
+     "_self": {
+      "href": "/datasources/aws/ec2-instances/137381d2-d350-11f1-b010-fa4dc59c62ac",
+      "templated": false,
+      "type": "get"
+     },
+     "create-backup-aws-ec2-instance": {
+      "href": "/backups/aws/ec2-instances",
+      "templated": false,
+      "type": "post"
+     },
+     "list-backup-aws-ec2-instances": {
+      "href": "/backups/aws/ec2-instances",
+      "templated": false,
+      "type": "get"
+     },
+     "list-restored-files": {
+      "href": "/restores/files",
+      "templated": false,
+      "type": "get"
+     },
+     "read-aws-ec2-instance-volumes": {
+      "href": "/datasources/aws/ec2-instances/137381d2-d350-11f1-b010-fa4dc59c62ac/volumes",
+      "templated": false,
+      "type": "get"
+     },
+     "read-policy-definition": {
+      "href": "/policies/definitions/d4bf33e3-af61-4da2-89fd-33584776cd44",
+      "templated": false,
+      "type": "get"
+     },
+     "read-policy-rule": {
+      "href": "/policies/rules/e52d3227-0382-4958-b011-372fe3025373",
+      "templated": false,
+      "type": "get"
+     },
+     "read-policy-summary": {
+      "href": "/policies/definitions/d4bf33e3-af61-4da2-89fd-33584776cd44/summary",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "account_native_id": "123456789012",
+    "available_device_names": [],
+    "aws_az": "us-west-2a",
+    "aws_region": "us-west-2",
+    "backup_status_info": {
+     "backup_status": "unknown",
+     "last_failed_policy_start_timestamp": "",
+     "last_successful_policy_start_timestamp": "2026-10-29T04:25:18Z",
+     "operation_info_list": [
+      {
+       "backup_status": "unknown",
+       "last_failed_policy_start_timestamp": "",
+       "last_successful_policy_start_timestamp": "2026-10-29T04:25:18Z",
+       "operation": "aws_ec2_instance_backup"
+      }
+     ]
+    },
+    "deletion_timestamp": null,
+    "direct_assignment_policy_id": "",
+    "ena_support": true,
+    "environment_id": "08c344bb-d350-11f1-b010-fa4dc59c62ac",
+    "has_direct_assignment": false,
+    "id": "137381d2-d350-11f1-b010-fa4dc59c62ac",
+    "instance_native_id": "i-05cdb5fdfdb6f0c8f",
+    "is_deleted": false,
+    "is_supported": true,
+    "last_backup_timestamp": "2026-10-29T04:25:59Z",
+    "last_snapshot_timestamp": null,
+    "name": "kitlab-309561-ec2-amk",
+    "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "protection_info": {
+     "inheriting_entity_id": null,
+     "inheriting_entity_type": null,
+     "policy_id": "d4bf33e3-af61-4da2-89fd-33584776cd44",
+     "rule_id": "e52d3227-0382-4958-b011-372fe3025373"
+    },
+    "protection_status": "protected",
+    "state": "running",
+    "subnet_id": "subnet-07a208dd4ff9df1bc",
+    "tags": [
+     {
+      "id": "13d3dee7-d350-11f1-b010-fa4dc59c62ac",
+      "key": "clumio-profile",
+      "key_id": "13bcac42-d350-11f1-b010-fa4dc59c62ac",
+      "value": "gold"
+     },
+     {
+      "id": "1396da3b-d350-11f1-b010-fa4dc59c62ac",
+      "key": "Name",
+      "key_id": "137f6e7f-d350-11f1-b010-fa4dc59c62ac",
+      "value": "kitlab-309561-ec2-amk"
+     },
+     {
+      "id": "1411bb4a-d350-11f1-b010-fa4dc59c62ac",
+      "key": "kitlab",
+      "key_id": "13fcbacd-d350-11f1-b010-fa4dc59c62ac",
+      "value": "proof-lab"
+     }
+    ],
+    "type": "t4g.nano",
+    "unsupported_reason": "",
+    "vpc_id": "vpc-037b82a3a27e9975f"
+   }
+  ]
+ },
+ "_links": {
+  "_first": {
+   "href": "/datasources/aws/ec2-instances?filter=%7B%22instance_native_id%22%3A+%7B%22%24eq%22%3A+%22i-05cdb5fdfdb6f0c8f%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_last": {
+   "href": "/datasources/aws/ec2-instances?filter=%7B%22instance_native_id%22%3A+%7B%22%24eq%22%3A+%22i-05cdb5fdfdb6f0c8f%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_self": {
+   "href": "/datasources/aws/ec2-instances?filter=%7B%22instance_native_id%22:+%7B%22$eq%22:+%22i-05cdb5fdfdb6f0c8f%22%7D%7D&limit=100",
+   "templated": false,
+   "type": "get"
+  }
+ },
+ "current_count": 1,
+ "limit": 100,
+ "start": "1",
+ "total_count": 1,
+ "total_pages_count": 1
+}

@@ -41,7 +41,7 @@ Two kinds are left out on purpose: the instances of a tagged Aurora cluster, bec
 
 The first line checks that the connection sits in the organizational unit set in `1-connect/terraform.tfvars`. If it doesn't, the profiles' rules can't match anything.
 
-Exit codes, for scripts and CI: 0 nothing to do, 1 a person must act, 2 AWS or Clumio didn't answer. `tools/status.py --json` prints the same lines as JSON.
+Exit codes, for scripts and CI: 0 nothing to do, including WAITING and NOT_YET, so 0 doesn't mean every line is OURS; 1 a person must act; 2 AWS or Clumio didn't answer. `tools/status.py --json` prints the same lines as JSON.
 
 ## Know the limits
 
@@ -50,6 +50,7 @@ Exit codes, for scripts and CI: 0 nothing to do, 1 a person must act, 2 AWS or C
 - **A plan that stops is still saved.** When a check stops `terraform plan -out=tfplan` (a shorter PITR window, say), Terraform still writes `tfplan`, marked as not applyable: `terraform apply tfplan` refuses it. Fix the cause and plan again.
 - **The teardown check is a step you run.** Terraform runs no checks on destroy, so nothing stops a destroy while Clumio is backing up. Run `tools/status.py --teardown` first, as [Take a trial down](#take-a-trial-down) says.
 - **Teardown reads running tasks by tag.** Remove a resource's tag before teardown, and its running backup isn't seen. If Clumio lists more than 20 pages of tasks for a resource, teardown says UNKNOWN rather than READY: look in Clumio's Tasks.
+- **OURS during a first backup.** Clumio lists a backup from its start, so OURS can show a few minutes before the first copy finishes (seen live for EC2).
 - **OURS right after a change of policy** can show the last backup the previous policy made, until this profile's first backup runs.
 
 ## Take a trial down

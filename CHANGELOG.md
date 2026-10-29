@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.0
+## v1.0.0 (2026-10-29)
 
 The first release. Proven live on 2026-10-28 and 29 in a test account (us-west-2): see [Does Clumio need our keys?](docs/keys.md) and [proof/](proof/README.md) for the evidence, and [Operate](docs/operate.md#know-the-limits) for the limits.
 

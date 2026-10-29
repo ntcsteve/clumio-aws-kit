@@ -1,0 +1,38 @@
+{
+ "Volumes": [
+  {
+   "Attachments": [],
+   "AvailabilityZone": "us-west-2a",
+   "AvailabilityZoneId": "usw2-az2",
+   "CreateTime": "2026-10-29T04:12:20.538000+00:00",
+   "Encrypted": true,
+   "Iops": 3000,
+   "KmsKeyId": "arn:aws:kms:us-west-2:123456789012:key/6bc43b62-fcc0-4b42-a5e7-8922e359a13b",
+   "MultiAttachEnabled": false,
+   "Operator": {
+    "HiddenByDefault": false,
+    "Managed": false
+   },
+   "Size": 1,
+   "SnapshotId": "",
+   "State": "available",
+   "Tags": [
+    {
+     "Key": "clumio-volume-profile",
+     "Value": "gold"
+    },
+    {
+     "Key": "Name",
+     "Value": "kitlab-309561-ebs-amk"
+    },
+    {
+     "Key": "kitlab",
+     "Value": "proof-lab"
+    }
+   ],
+   "Throughput": 125,
+   "VolumeId": "vol-012d0ce6f03deb01f",
+   "VolumeType": "gp3"
+  }
+ ]
+}

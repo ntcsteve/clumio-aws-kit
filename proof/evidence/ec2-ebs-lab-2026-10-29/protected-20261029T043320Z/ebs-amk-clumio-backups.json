@@ -1,0 +1,77 @@
+{
+ "_embedded": {
+  "items": [
+   {
+    "_links": {
+     "_self": {
+      "href": "/backups/aws/ebs-volumes/144a863c-d350-11f1-b010-fa4dc59c62ac_2026-10-29T04:25:52Z.4059748779",
+      "templated": false,
+      "type": "get"
+     },
+     "restore-aws-ebs-volume": {
+      "href": "/restores/aws/ebs-volumes",
+      "templated": false,
+      "type": "post"
+     }
+    },
+    "account_native_id": "123456789012",
+    "aws_az": "us-west-2a",
+    "aws_region": "us-west-2",
+    "backup_aws_region": "us-west-2",
+    "backup_tier": "standard",
+    "browsing_failed_reason": null,
+    "expiration_timestamp": "2026-11-05T04:25:18Z",
+    "id": "144a863c-d350-11f1-b010-fa4dc59c62ac_2026-10-29T04:25:52Z.4059748779",
+    "iops": 3000,
+    "is_browsable": true,
+    "is_encrypted": true,
+    "kms_key_native_id": "6bc43b62-fcc0-4b42-a5e7-8922e359a13b",
+    "migration_timestamp": "",
+    "size": 1,
+    "start_timestamp": "2026-10-29T04:25:52Z",
+    "tags": [
+     {
+      "key": "clumio-volume-profile",
+      "value": "gold"
+     },
+     {
+      "key": "Name",
+      "value": "kitlab-309561-ebs-amk"
+     },
+     {
+      "key": "kitlab",
+      "value": "proof-lab"
+     }
+    ],
+    "type": "clumio_backup",
+    "utilized_size_in_bytes": 0,
+    "volume_id": "144a863c-d350-11f1-b010-fa4dc59c62ac",
+    "volume_native_id": "vol-012d0ce6f03deb01f",
+    "volume_type": "gp3"
+   }
+  ]
+ },
+ "_links": {
+  "_first": {
+   "href": "/backups/aws/ebs-volumes?filter=%7B%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-10-29T04%3A25%3A52Z%22%7D%2C%22volume_id%22%3A%7B%22%24eq%22%3A%22144a863c-d350-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_last": {
+   "href": "/backups/aws/ebs-volumes?filter=%7B%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-10-29T04%3A25%3A52Z%22%7D%2C%22volume_id%22%3A%7B%22%24eq%22%3A%22144a863c-d350-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100&start=1",
+   "templated": false,
+   "type": "get"
+  },
+  "_self": {
+   "href": "/backups/aws/ebs-volumes?filter=%7B%22volume_id%22:+%7B%22$eq%22:+%22144a863c-d350-11f1-b010-fa4dc59c62ac%22%7D%7D&limit=100",
+   "templated": false,
+   "type": "get"
+  }
+ },
+ "current_count": 1,
+ "filter_applied": "{\"start_timestamp\":{\"$lte\":\"2026-10-29T04:25:52Z\"},\"volume_id\":{\"$eq\":\"144a863c-d350-11f1-b010-fa4dc59c62ac\"}}",
+ "limit": 100,
+ "start": "1",
+ "total_count": 1,
+ "total_pages_count": 1
+}

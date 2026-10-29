@@ -4,7 +4,7 @@ Production teams call the two modules from their own repository, with their own 
 
 ## Call the modules
 
-Use separate roots, as the step folders do: one for the connection, and one per workload you protect, each with its own state. A protect root looks the connection up, so apply the connection first. The address below is the published repository's once v1.0 is released; until then, use a local path.
+Use separate roots, as the step folders do: one for the connection, and one per workload you protect, each with its own state. A protect root looks the connection up, so apply the connection first.
 
 ```hcl
 # Root: connect
