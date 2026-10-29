@@ -77,7 +77,7 @@ Run each command in the folder under Where, in one shell: the one signed in to A
 | 0.2 | Person | root | `cp 1-connect/settings.example 1-connect/terraform.tfvars`, then set `account_id`, `region`, `organizational_unit`, `mode` and `workloads` (such as `["rds"]`) | Five values set |
 | 0.3 | Anyone | root | `tools/status.py --preflight` | Every line PASS, or NOTE: read it |
 | 0.4 | Anyone | root | `0-check/preview/preview.sh` | READY. Send the review pack to your security team |
-| 1.1 | Anyone | `1-connect` | `terraform init`, then `terraform plan -out=tfplan` | A plan to create the connection and Clumio's IAM |
+| 1.1 | Anyone | `1-connect` | `terraform init`, then `terraform plan -out=tfplan` | A plan to create the connection and Clumio's IAM. Nothing to change or destroy |
 | STOP | Person | | Read the plan and your security team's answer. Go, or stop | |
 | 1.2 | Anyone | `1-connect` | `terraform apply tfplan` | Apply complete |
 | 2.1 | Person | AWS | Tag what to protect: `clumio-profile = gold` (an EBS volume on its own: `clumio-volume-profile = gold`). Note each tagged database's PITR window | Tagged before the plan; windows noted |

@@ -18,7 +18,7 @@ The plan creates the connection and Clumio's IAM in this account and Region. Wit
 
 With `mode = "production"`, it adds a guard that refuses destroy, here and in every `2-protect-` folder. Choose the mode before you apply: if you switch a trial to production later, plan and apply each `2-protect-` folder again, because each gets its guard only then.
 
-Run this once per account and Region. The `2-protect-` folders read their settings from here, so once applied, never change `account_id`, `region` or `organizational_unit`: for another account or Region, copy the whole repository. The step folders keep their state locally, side by side. For production, call the modules from your own repository with its own state backend: see [Production](../docs/production.md).
+Run this once per account and Region. The `2-protect-` folders read their settings from here, so once applied, never change `account_id`, `region` or `organizational_unit`: for another account or Region, use a fresh clone of the repository, never a copy of this one: a copy carries this state, and its plan would destroy this connection. The step folders keep their state locally, side by side. For production, call the modules from your own repository with its own state backend: see [Production](../docs/production.md).
 
 ## Next
 

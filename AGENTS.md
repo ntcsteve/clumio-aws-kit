@@ -32,7 +32,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 3. **Never set `allow_shorter_pitr`.** Only the person sets it, after reading why. A shorter PITR window deletes AWS's older backups, for good.
 4. **Never print a secret.** The secret here is `CLUMIO_API_TOKEN`: never print it or other environment variables. The person exports it in the shell that starts you. Terraform never writes it to state or plans. The connection's ExternalId isn't a secret (AWS says so: anyone who can read the role can see it), so plans may show it.
 5. **One Clumio tenant per state.** A token from another tenant can't see what this state created, so Terraform would create a second set.
-6. **Never change `account_id`, `region` or `organizational_unit` in an applied `1-connect/`.** For another target, copy the whole repository.
+6. **Never change `account_id`, `region` or `organizational_unit` in an applied `1-connect/`.** For another target, use a fresh clone of the repository, never a copy of this one: a copy carries this target's state, and its plan would destroy this connection.
 7. **The kit never deletes data.** Teardown follows [Take a trial down](docs/operate.md#take-a-trial-down): `tools/status.py --teardown` first, then a saved destroy plan the person has read. Production refuses it. Never tear down while the check says a backup runs.
 8. **The person does the console steps:** the Clumio console, the AWS sign-in, and creating the token.
 
