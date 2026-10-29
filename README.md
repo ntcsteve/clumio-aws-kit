@@ -1,8 +1,8 @@
-# clumio-aws-kit
+# Clumio Get Started AWS Kit
 
-Prove that Clumio backs up and restores your AWS data, from your own account, with an afternoon's work, and that teardown leaves nothing of the kit behind. For the engineer running the trial, the field engineer beside them, and AI agents helping them ([rules for agents](AGENTS.md)).
+Prove that Clumio protects and restores your AWS data, from your own account, with an afternoon's work, and that teardown leaves nothing of the kit behind. For the engineer running the trial, the field engineer beside them, and AI agents helping them ([rules for agents](AGENTS.md)).
 
-Not an official Clumio product. It uses Clumio's Terraform provider and IAM module, pinned to tested versions. For problems with the Clumio service, contact Clumio support.
+This is not an official Clumio product. It uses Clumio's Terraform provider and IAM module, pinned to tested versions. For problems with the Clumio service, contact Clumio support.
 
 ## 1. Why care, and is this for you
 

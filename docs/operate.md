@@ -71,6 +71,8 @@ Backups Clumio already made stay until their retention ends. Each database keeps
 
 The production guards refuse every destroy, so retiring production is a deliberate act. Do it only when you mean to stop protecting this account and Region.
 
+Proven live on 2026-10-29 in the step folders: production refused a destroy in `1-connect` and in a `2-protect-` folder, and a switch to trial; the steps below then removed everything.
+
 1. In each folder you applied, remove its guard from Terraform's state. Each guard is a marker with nothing behind it in AWS or Clumio, so this deletes nothing:
 
    ```bash
