@@ -62,6 +62,8 @@ It ends with one of three results:
 
 If a CI/CD role deploys for you, check that role the same way, with `--as`.
 
+Proven live on 2026-10-29: an IAM user holding only the generated deploy policy planned, applied and destroyed `1-connect` (S3, RDS) and `2-protect-s3`, with no access errors.
+
 ## Next
 
 [Step 1: connect](../1-connect/README.md).
