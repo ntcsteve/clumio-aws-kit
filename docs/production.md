@@ -25,7 +25,7 @@ provider "aws" {
 }
 
 module "connection" {
-  source     = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/connection?ref=v1.0.0"
+  source     = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/connection?ref=v1.0.1"
   account_id = "123456789012"
   region     = "us-west-2"
   mode       = "production"
@@ -36,7 +36,7 @@ module "connection" {
 ```hcl
 # Root: protect RDS. The same terraform and provider blocks as above.
 module "protect" {
-  source               = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/protect?ref=v1.0.0"
+  source               = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/protect?ref=v1.0.1"
   workload             = "rds"
   name                 = "gold"
   account_id           = "123456789012"
