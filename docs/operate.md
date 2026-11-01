@@ -61,18 +61,33 @@ Exit codes, for scripts and CI: 0 nothing to do, including WAITING and NOT_YET, 
 
 Removing the connection ends protection for this account and Region, so restore anything you want to keep first.
 
+```
+Restore anything you want to keep, and remove the copy's profile tag.
+Delete the test copies you don't need.
+Run tools/status.py --teardown:
+  READY   -> steps 2 to 4, then what's yours below
+  BLOCKED -> wait, then run it again
+  REFUSED -> production: see Retire a production connection
+  UNKNOWN -> fix what it says, then run it again
+```
+
+Terraform removes only what the kit made. The rest is yours:
+
+| What | When | What to do |
+|---|---|---|
+| Restored copies and objects | Any time | Delete what you don't need. Terraform can't see them |
+| Each database's PITR window | After step 4 | Clumio's stays. A shorter window deletes AWS's older backups: set back the window you noted only if that's what you want |
+| The profile tags | After step 4 | Remove `clumio-profile` and `clumio-volume-profile`, so a later setup doesn't pick these resources up |
+| Clumio's RDS snapshot | After step 4 | One can stay in your account, named `clumio-airgap-encrypted-…`, under RDS manual snapshots. Delete it when you're finished |
+
 Reverse the steps: each protect folder first, the connection last. A protect folder needs the connection to plan its own removal, so `1-connect` goes last.
 
-1. Keep every tag in place until the teardown is done: the check finds running backups through them. Run `tools/status.py --teardown`. It checks that Clumio isn't backing up these resources, and lists every folder at the repository root named `1-connect`, or starting with `2-protect-`, that still has something applied in its local state. With `mode = "production"` in `1-connect/terraform.tfvars`, or while a backup runs, it says why to wait, and you stop here.
+1. Keep the originals' tags in place until the teardown is done: the check finds running backups through them. Run `tools/status.py --teardown`. It checks that Clumio isn't backing up these resources, and lists every folder at the repository root named `1-connect`, or starting with `2-protect-`, that still has something applied in its local state. With `mode = "production"` in `1-connect/terraform.tfvars`, or while a backup runs, it says why to wait, and you stop here.
 2. In each `2-protect-` folder you applied: `terraform plan -destroy -out=tfplan`, read it, `terraform apply tfplan`.
 3. Then in `1-connect`: the same three commands.
 4. In each folder, `terraform state list` prints nothing when it's all gone.
 
 If `1-connect` was destroyed first, the `2-protect-` folders can no longer plan: they read its state. Apply `1-connect` again (step 1), destroy the `2-protect-` folders, then destroy `1-connect`.
-
-5. Remove the `clumio-profile` and `clumio-volume-profile` tags, so a later setup doesn't pick these resources up without anyone deciding to.
-
-Each database keeps the PITR window Clumio set: the teardown check in step 1 lists them, and you set back the windows you noted before step 2. A Clumio snapshot of an RDS database can stay in your account: delete it when you're finished.
 
 ## Retire a production connection
 

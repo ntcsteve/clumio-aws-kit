@@ -49,9 +49,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 
 **What it changes.** Clumio sets each tagged database's PITR window to the policy's value. Where PITR is off, it turns it on, which restarts an RDS instance at its maintenance window. During a backup, Clumio uses snapshots in your account. Step 0's preview lists every permission Clumio's roles hold, such as changing an S3 bucket's event notifications.
 
-**Before you take it down.** Removing the connection ends protection for that account and Region, so restore anything you want to keep first.
-
-**What can stay.** Anything you restored. Each database's PITR window as Clumio set it, so note the old one first. A Clumio snapshot of an RDS database: delete it when you're finished.
+**Before you take it down.** Removing the connection ends protection for that account and Region, so restore anything you want to keep first. Note each database's PITR window before step 2: Clumio's stays. [Take a trial down](docs/operate.md#take-a-trial-down) lists what's yours to clear.
 
 **What stops a mistake.**
 

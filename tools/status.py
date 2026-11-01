@@ -954,7 +954,7 @@ def run_report(restore_task, flags):
 def run_teardown():
     state, lines = teardown(real_world())
     print(f"{state}: " + {"REFUSED": "teardown is refused.", "BLOCKED": "Clumio is still working on these resources:",
-                          "READY": "nothing is running. Left behind after teardown:", "UNKNOWN": ""}[state])
+                          "READY": "nothing is running.", "UNKNOWN": ""}[state])
     for line in lines:
         print(f"  {line}")
     return 0 if state == "READY" else (2 if state == "UNKNOWN" else 1)

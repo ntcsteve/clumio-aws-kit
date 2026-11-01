@@ -22,9 +22,11 @@ In the Clumio console, restore one resource you protected, to a new name beside 
 | Aurora | As RDS. Clumio creates a new cluster: set **Aurora cluster name** |
 | EC2 | **Restore as EC2 instance**, then **Basic restore** |
 | EBS | **Restore EBS volume**. The source's key and tags are filled in |
-| S3 | **Restore**, then **Restore prefix/buckets**, then **Custom**, not **Source**, which restores into the original bucket. Set the account, Region, bucket and a new prefix, such as `restored/` |
+| S3 | Open the bucket. **Restore**, then **Restore prefix/buckets**, then **Custom**, not **Source**, which restores to the original location. Set the account, Region and bucket, and a new prefix, such as `restored/`. To keep the copy, use a bucket you'll keep |
 
-When the restore task completes, open what came back and check it. The key the copy gets depends on the workload: see [What a restore needs from you](../docs/keys.md#what-a-restore-needs-from-you). A restored RDS instance or Aurora cluster keeps its tags, profile tag included: delete the copy or remove the tag when you're done. Restored S3 objects land in the bucket you name, and in a tagged bucket they're protected with it. A restored EC2 instance or EBS volume keeps the original's tags, profile tag included, so it joins that profile at Clumio's next discovery cycle and gets backed up and billed: delete it, or remove the tag, when you're done. Its Name tag is the original's, whatever name you gave in the console, so check the instance ID before you delete. A restored instance's root volume isn't deleted with the instance: delete it too. Check whether a restored instance has a public IP: one did in the lab, though the original had none.
+When the restore task completes, open what came back and check it: it's available, under the key you expect, and holds what you expect. The key depends on the workload: see [What a restore needs from you](../docs/keys.md#what-a-restore-needs-from-you). Check whether a restored instance has a public IP: one did in the lab, though the original had none.
+
+A restored database, instance or volume keeps the original's tags, profile tag included, so it joins that profile at Clumio's next discovery cycle and gets backed up and billed. When you've checked it, delete it or remove the tag. Restored S3 objects land in the bucket you name, and in a tagged bucket they're protected with it. A restored instance's Name tag is the original's, whatever name you gave in the console, so check the instance ID before you delete. Its root volume isn't deleted with it: delete that too.
 
 ## 3. Keep the evidence
 

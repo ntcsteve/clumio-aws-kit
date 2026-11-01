@@ -70,13 +70,13 @@ variable "backtrack_months" {
 }
 
 variable "archive_months" {
-  description = "RDS and Aurora: how long each monthly archive copy is kept, in months. 0 turns the archive off. Under 12 incurs Clumio's early-deletion fee. No default: a copy kept a year bills for a year, even after a trial ends."
+  description = "RDS and Aurora: how long each monthly archive copy is kept, in months. 0 turns the archive off. Under 12 incurs Clumio's early-deletion fee. No default: each archive copy bills while it's kept."
   type        = number
   default     = null
 
   validation {
     condition     = !contains(["rds", "aurora"], var.workload) || (var.archive_months != null ? var.archive_months >= 0 && floor(var.archive_months) == var.archive_months : false)
-    error_message = "Set archive_months in terraform.tfvars: 0 skips Archive, 1 shows it in a proof of concept, or the months your retention rule needs. Each archive copy bills until its retention ends, even after a trial."
+    error_message = "Set archive_months in terraform.tfvars: 0 skips Archive, 1 shows it in a proof of concept, or the months your retention rule needs. Each archive copy bills while it's kept."
   }
 }
 

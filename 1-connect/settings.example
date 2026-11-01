@@ -1,4 +1,4 @@
-# Settings for 1-connect. Copy this file to terraform.tfvars in this folder, then set the first four values:
+# Settings for 1-connect. Copy this file to terraform.tfvars in this folder, then set all five values:
 #   cp settings.example terraform.tfvars
 # tools/status.py --preflight and 0-check/preview/preview.sh read this file too, so what you check is
 # what you create. Keep each value on one line. terraform.tfvars never leaves your machine.
