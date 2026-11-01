@@ -604,7 +604,7 @@ def teardown(world):
 
 RESOPS_URL = "https://www.commvault.com/explore/resilience-operations"
 REPORT_EXIT_CODES = {"PROVEN": 0, "UNFINISHED": 1, "UNKNOWN": 2}
-VERDICT_MEANING = {"PROVEN": "Every resource is protected, with a backup on record, and the restore completed.",
+VERDICT_MEANING = {"PROVEN": "Every resource is protected, with a backup on record, and a restore of one of them completed.",
                    "UNFINISHED": "Not proven yet. The list below says what's missing.",
                    "UNKNOWN": "AWS or Clumio didn't answer, so nothing is assumed. Run it again."}
 
@@ -630,7 +630,12 @@ def seconds_between(started, ended):
         return None
 
 
-def restore_gap(restore):
+def protected_names(records, kit):
+    """What a restore task may name to count here. A bucket's task names its protection group, not the bucket (seen live)."""
+    return {r["name"] for r in records} | {f"{r['profile']}-s3-{kit['account_id']}-{kit['region']}" for r in records if r["kind"] == "s3"}
+
+
+def restore_gap(restore, protected):
     """Why this restore doesn't prove anything yet; None when it does."""
     if restore is None:
         return "No restore recorded. Restore one resource, then run this again with --restore-task <task ID>, from Clumio's Tasks page."
@@ -644,12 +649,14 @@ def restore_gap(restore):
         return f"Restore {restore['id']} is {restore['status']}. Run this again when it completes."
     if restore["status"] != "completed":
         return f"Restore {restore['id']} ended as {restore['status']}. Start a new restore, then run this with its task ID."
+    if restore.get("resource") not in protected:
+        return f"Restore {restore['id']} restored {restore.get('resource')}, which this run doesn't protect. Run this with the task ID of a restore of a resource listed here."
     return None
 
 
 def evidence(world, restore_task=None, now=None):
-    """One read of the whole run, and its verdict: PROVEN when every resource is OURS and a restore
-    completed; UNKNOWN when AWS or Clumio didn't answer; UNFINISHED otherwise, with what's missing."""
+    """One read of the whole run, and its verdict: PROVEN when every resource is OURS and a restore of
+    one of them completed; UNKNOWN when AWS or Clumio didn't answer; UNFINISHED otherwise, with what's missing."""
     kit = world.kit()
     if kit is None:
         raise NothingApplied()
@@ -659,7 +666,7 @@ def evidence(world, restore_task=None, now=None):
     gaps += [f"{r['name']}: {r['state']}. {r['detail']}" for r in records if r["state"] != "OURS"]
     if not records:
         gaps.append(f"Nothing in this Region carries the tag {TAG_KEY}.")
-    gap = restore_gap(restore)
+    gap = restore_gap(restore, protected_names(records, kit))
     gaps += [gap] if gap else []
     unanswered = connection[0] == "UNKNOWN" or any(r["state"] == "UNKNOWN" for r in records) or (restore or {}).get("status") == "no_answer"
     return {"verdict": "UNKNOWN" if unanswered else "UNFINISHED" if gaps else "PROVEN", "gaps": gaps,

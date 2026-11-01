@@ -38,7 +38,7 @@ It writes two files from one read, in the repository's root folder: `status-<tim
 
 | Verdict | What it means | What to do |
 |---|---|---|
-| PROVEN | Every resource is OURS, and the restore completed | Check that the page's Resource line names the original you restored (for a bucket, its protection group), and that you opened the copy. Keep both files |
+| PROVEN | Every resource is OURS, and a restore of one of them completed | Keep both files |
 | UNFINISHED | Something's missing | It lists what. Fix that, or wait, then run it again |
 | UNKNOWN | AWS or Clumio didn't answer | Run it again |
 

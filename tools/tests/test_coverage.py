@@ -537,6 +537,37 @@ class Report(Lab):
         # Stage 5c: "wait up to a day" alone sent the person the wrong way for a restored copy.
         self.assertIn("If it's a restored copy, delete it or remove its tag", report["gaps"][0])
 
+    def restored(self, name):
+        return self.report(primary_entity={"value": name})
+
+    # What each workload's restore task names, as read live on 2026-11-01. A bucket's names its group.
+    def test_a_restored_rds_instance_is_proven(self):
+        self.add_db("kitlab-84f0ab-rds-amk", backup="2026-11-01T04:15:52Z")
+        self.assertEqual(self.restored("kitlab-84f0ab-rds-amk")["verdict"], "PROVEN")
+
+    def test_a_restored_aurora_cluster_is_proven(self):
+        self.add_db("kitlab-9df826-aurora-amk", kind="cluster", backup="2026-11-01T11:45:52Z")
+        self.assertEqual(self.restored("kitlab-9df826-aurora-amk")["verdict"], "PROVEN")
+
+    def test_a_restored_volume_is_proven(self):
+        self.add_volume("vol-0d459504009eced33", backup="2026-11-01T10:20:53Z")
+        self.assertEqual(self.restored("vol-0d459504009eced33")["verdict"], "PROVEN")
+
+    def test_a_restored_bucket_is_proven_through_its_group(self):
+        self.add_bucket("kitlab-9df826-docs", backup="2026-11-01T11:45:18Z")
+        self.assertEqual(self.restored(f"gold-s3-{ACCOUNT}-{REGION}")["verdict"], "PROVEN")
+
+    def test_a_restore_of_something_this_kit_doesnt_protect_is_unfinished_and_named(self):
+        # Clumio lists the whole tenant's tasks, so a wrong ID can be another team's completed restore.
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = self.restored("someone-elses-db")
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("someone-elses-db", report["gaps"][0])
+
+    def test_a_restore_with_no_resource_named_is_unfinished(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        self.assertEqual(self.report(primary_entity=None)["verdict"], "UNFINISHED")
+
     def test_a_task_that_isnt_a_restore_is_unfinished(self):
         self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
         report = self.report(type="aws_ec2_instance_backup_seeding")

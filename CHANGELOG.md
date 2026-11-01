@@ -4,9 +4,9 @@
 
 Fresh clones ran live from clone to teardown on all five workloads, each with a console restore. The S3 and Aurora run used this version's code; the last doc fixes came after it, tested offline.
 
-- Before you take the kit down: removing the connection ends protection, so restore anything you want to keep first. `tools/status.py --teardown` says so too. The docs no longer say how long copies last after that. A Clumio snapshot of an RDS database can stay in your account.
-- `tools/status.py --report --restore-task <id>` writes the evidence as JSON and one HTML page, with one verdict: PROVEN, UNFINISHED or UNKNOWN. PROVEN seen live on all five workloads.
-- [3-prove](3-prove/README.md) gives the console steps for each workload, and says to clear a tagged copy before the report. NOT_YET says the same for a restored copy. For a bucket, the page's Resource line names its protection group.
+- Before you take the kit down: removing the connection ends protection, so restore anything you want to keep first. `tools/status.py --teardown` says so too. The docs no longer say how long copies last after that. [Take a trial down](docs/operate.md#take-a-trial-down) has one decision path and lists what's yours to clear, including a Clumio RDS snapshot.
+- `tools/status.py --report --restore-task <id>` writes the evidence as JSON and one HTML page, with one verdict: PROVEN, UNFINISHED or UNKNOWN. PROVEN seen live on all five workloads. The restore must be of a resource this run protects: another task ID gives UNFINISHED. Seen live on S3; the other workloads are tested on task shapes read live.
+- [3-prove](3-prove/README.md) gives the console steps for each workload, and says to clear a tagged copy before the report. NOT_YET says the same for a restored copy.
 - `tools/status.py --teardown` says BLOCKED during a restore: seen live on all five workloads, which resolves v1.0.1's "tested offline".
 - [When something goes wrong](docs/operate.md#when-something-goes-wrong) covers a resource marked tainted after a dropped connection, and an expired AWS sign-in.
 - The compliance report email is gone. `report_emails` is removed from `modules/connection`: a caller that set it must drop it.
