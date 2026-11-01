@@ -2,7 +2,7 @@
 
 ## v1.0.3 (2026-11-01)
 
-Fresh clones ran live from clone to teardown on all five workloads, each with a console restore. The S3 and Aurora run used this version's code; the last doc fixes came after it, tested offline.
+Fresh clones ran live from clone to teardown on all five workloads, each with a console restore, and an AI agent that had read only the kit ran the S3 trial live from the docs alone. The S3 and Aurora run used this version's code; the last doc fixes came after it, tested offline.
 
 - Before you take the kit down: removing the connection ends protection, so restore anything you want to keep first. `tools/status.py --teardown` says so too. The docs no longer say how long copies last after that. [Take a trial down](docs/operate.md#take-a-trial-down) has one decision path and lists what's yours to clear, including a Clumio RDS snapshot.
 - `tools/status.py --report --restore-task <id>` writes the evidence as JSON and one HTML page, with one verdict: PROVEN, UNFINISHED or UNKNOWN. PROVEN seen live on all five workloads. The restore must be of a resource this run protects: another task ID gives UNFINISHED. Seen live on S3; the other workloads are tested on task shapes read live.

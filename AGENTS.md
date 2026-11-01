@@ -27,7 +27,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 
 ## Rules for every task
 
-1. **Apply only a saved plan the person has read.** Plan with `terraform plan -out=tfplan`, show the person the plan, wait for their go, then run `terraform apply tfplan`. Never use `-auto-approve`. One go covers one apply.
+1. **Apply only a saved plan the person has read.** Plan with `terraform plan -out=tfplan`, show the person the plan, wait for their go, then run `terraform apply tfplan`. Never use `-auto-approve`. One go covers one apply. If your harness refuses the apply, give the person the exact command and wait.
 2. **The person names the account, Region, unit and mode.** `account_id`, `region`, `organizational_unit` and `mode` come from the person, never from a guess. A wrong account on a shared Clumio tenant can protect another team's data, and change its databases' PITR window. Every other setting is theirs too: change one only when the person gives you the value.
 3. **Never set `allow_shorter_pitr`.** Only the person sets it, after reading why. A shorter PITR window deletes AWS's older backups, for good.
 4. **Never print a secret.** The secret here is `CLUMIO_API_TOKEN`: never print it or other environment variables. The person exports it in the shell that starts you. Terraform never writes it to state or plans. The connection's ExternalId isn't a secret (AWS says so: anyone who can read the role can see it), so plans may show it.
