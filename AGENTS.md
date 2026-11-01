@@ -36,6 +36,20 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 7. **The kit never deletes data.** Teardown follows [Take a trial down](docs/operate.md#take-a-trial-down): `tools/status.py --teardown` first, then a saved destroy plan the person has read. Production refuses it. Never tear down while the check says a backup runs.
 8. **The person does the console steps:** the Clumio console, the AWS sign-in, and creating the token.
 
+## Read every result the same way
+
+After each step, read the word the tool prints. The word beats the exit code: `tools/status.py` exits 0 for WAITING and NOT_YET too.
+
+| You see | It means | Do |
+|---|---|---|
+| PASS, READY, OURS | Done | Go to the next step |
+| NOTE | Something to read | Show the person and wait for their go. One exception: the connection's NOTE at step 2.3 is expected |
+| WAITING, NOT_YET | Clumio isn't done | Stop, and tell the person to check later. Don't loop. No change after a day: Clumio support |
+| SKIP | It waits on a FAIL above it | Fix that FAIL |
+| FAIL, BLOCKED, REFUSED, CANNOT CHECK, OTHER, BAD_VALUE, DOUBLE, OFF | A person must act | Stop, and show the person the line: it says what to do |
+| UNKNOWN | AWS or Clumio didn't answer | Run it once more, then stop and tell the person |
+| A plan that stops with an error | A guard or a provider refused | Stop, and show the person the error and its row in [Operate](docs/operate.md). Never work around a guard |
+
 ## Changing this repository
 
 **Tests come first.** Write the test, watch it fail, then change the code. Take expected values from an independent truth, such as a saved real output, never from the code under test.

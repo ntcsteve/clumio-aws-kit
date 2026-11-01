@@ -46,4 +46,40 @@ if grep -q "not signed in to AWS" <<< "$said"; then
 else
   echo "FAIL: preview.sh stopped before the sign-in:"; sed 's/^/  /' <<< "$said"; FAILED=1
 fi
+
+# Its three endings: the exit code a script or an agent reads must match the word a person reads, and
+# the pack must survive either way, because security reviews it. Stand-in aws and terraform reach the
+# end offline. The account differs from the saved plan's: preview.sh refuses a pack showing its own.
+cat > "$RUN/bin/terraform" << EOF
+#!/bin/sh
+[ "\$1" = show ] && cat "$HERE/defaults/plan.json"
+exit 0
+EOF
+cat > "$RUN/bin/aws" << 'EOF'
+#!/bin/sh
+case "$*" in
+  *"--query Account"*) echo 333333333333 ;;
+  *"--query Arn"*) echo "$STUB_ARN" ;;
+  *simulate-principal-policy*)
+    [ "$STUB_SIMULATOR" != refused ] || { echo "An error occurred (AccessDenied)" >&2; exit 254; }
+    printf 'iam:CreateRole\t%s\n' "$STUB_SIMULATOR" ;;
+esac
+EOF
+chmod +x "$RUN/bin/terraform" "$RUN/bin/aws"
+
+check_ending() {  # who is signed in, what the simulator answers, the word, the exit code
+  local said code=0
+  rm -rf "$RUN"/clumio-iam-preview-*
+  said="$(cd "$RUN" && PATH="$RUN/bin:$PATH" STUB_ARN="$1" STUB_SIMULATOR="$2" "$TREE/0-check/preview/preview.sh" 2>&1)" || code=$?
+  if grep -q "^  $3:" <<< "$said" && [ "$code" = "$4" ] && ls -d "$RUN"/clumio-iam-preview-* > /dev/null 2>&1; then
+    echo "PASS: preview.sh $3 ($2) exits $4 and keeps the pack"
+  else
+    echo "FAIL: preview.sh $3 ($2) should exit $4 and keep the pack; exit $code"; FAILED=1
+  fi
+}
+DEPLOY_USER="arn:aws:iam::333333333333:user/deploy"
+check_ending "$DEPLOY_USER" allowed READY 0
+check_ending "$DEPLOY_USER" implicitDeny BLOCKED 1
+check_ending "$DEPLOY_USER" refused "CANNOT CHECK" 2
+check_ending "arn:aws:iam::333333333333:root" allowed "CANNOT CHECK" 2
 exit "$FAILED"

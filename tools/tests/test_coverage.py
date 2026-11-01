@@ -341,6 +341,14 @@ class Coverage(unittest.TestCase):
         state, _ = status.teardown(self.world())
         self.assertEqual(state, "BLOCKED")
 
+    def test_a_blocked_teardown_says_where_to_go_when_a_task_stays_queued(self):
+        # First backups sat queued 40+ minutes live (2e, 2f): "run again" alone is a dead end.
+        self.add_instance("i-0abc")
+        self.clumio.lists["/tasks"].append({"id": "4050", "status": "queued", "primary_entity": {"id": "id-i-0abc"}})
+        state, lines = status.teardown(self.world())
+        self.assertEqual(state, "BLOCKED")
+        self.assertIn("docs/operate.md", lines[-1])
+
     def test_teardown_waits_while_a_console_restore_runs(self):
         # Stage 2j: while a console restore of i-0259… ran, teardown said READY: Clumio didn't list the
         # restore in the unit's context. Removing 1-connect then takes the IAM role the restore needs.

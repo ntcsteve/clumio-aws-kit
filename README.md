@@ -76,7 +76,7 @@ Run each command in the folder under Where, in one shell: the one signed in to A
 | 0.1 | Person | shell | Sign in to AWS. Export `CLUMIO_API_BASE_URL` and `CLUMIO_API_TOKEN`, as [0-check](0-check/README.md) shows | `aws sts get-caller-identity` shows your account |
 | 0.2 | Person | root | `cp 1-connect/settings.example 1-connect/terraform.tfvars`, then set `account_id`, `region`, `organizational_unit`, `mode` and `workloads` (such as `["rds"]`) | Five values set |
 | 0.3 | Anyone | root | `tools/status.py --preflight` | Every line PASS, or NOTE: read it |
-| 0.4 | Anyone | root | `0-check/preview/preview.sh` | READY. Send the review pack to your security team |
+| 0.4 | Anyone | root | `0-check/preview/preview.sh` | READY: send the review pack to your security team. BLOCKED or CANNOT CHECK: stop, and see [0-check](0-check/README.md) |
 | 1.1 | Anyone | `1-connect` | `terraform init`, then `terraform plan -out=tfplan` | A plan to create the connection and Clumio's IAM. Nothing to change or destroy |
 | STOP | Person | | Read the plan and your security team's answer. Go, or stop | |
 | 1.2 | Anyone | `1-connect` | `terraform apply tfplan` | Apply complete |

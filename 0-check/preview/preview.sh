@@ -9,6 +9,7 @@
 # --as checks another identity (such as the CI/CD deploy role) instead of your own.
 # Runs `terraform plan` only, in a throwaway folder that is deleted afterwards, so there
 # is nothing left to apply. Needs: an AWS sign-in (read-only is enough), terraform, python3.
+# Exit codes: 0 READY; 1 BLOCKED, or it stopped with FAIL; 2 CANNOT CHECK.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -19,7 +20,7 @@ OUT=""
 FINISHED=0
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
-usage() { sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 value() { [ $# -ge 2 ] && [ -n "$2" ] || fail "$1 needs a value (see --help)"; }   # works on macOS bash 3.2
 
 while [ $# -gt 0 ]; do
@@ -149,3 +150,10 @@ echo
 echo "Next: give this folder to your security team (account ID masked):"
 echo "  $OUT/summary.md      the full picture, same headings as above"
 echo "  $OUT/policies/       every policy as JSON, ready to review or create"
+
+# Scripts and agents read this, so it must say what the word above says. The pack stays either way.
+case "$CHECK" in
+  READY*)   exit 0 ;;
+  BLOCKED*) exit 1 ;;
+  *)        exit 2 ;;
+esac

@@ -60,6 +60,8 @@ It ends with one of three results:
 - **BLOCKED**: it lists each missing permission. Grant them, then run it again.
 - **CANNOT CHECK**: it can't test your sign-in. Either you're the account's root user, which the IAM simulator can't test, or your role may not read itself (`iam:GetRole`) or use the simulator (`iam:SimulatePrincipalPolicy`). Have someone who can, such as your security team, run it for the identity that will deploy: `0-check/preview/preview.sh --as <its role ARN>`.
 
+Its exit code says the same, for scripts and agents: 0 READY, 1 BLOCKED, 2 CANNOT CHECK. Each writes the review pack.
+
 If a CI/CD role deploys for you, check that role the same way, with `--as`.
 
 Proven live on 2026-10-29: an IAM user holding only the generated deploy policy planned, applied and destroyed `1-connect` (S3, RDS) and `2-protect-s3`, with no access errors.

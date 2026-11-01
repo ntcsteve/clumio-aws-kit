@@ -568,7 +568,8 @@ def teardown(world):
         running += [f"task {t['id']} ({t.get('type', 'backup')}) for {label}: {t['status']}" for t in tasks
                     if t.get("status") in ("queued", "in_progress", "aborting") and (t.get("primary_entity") or {}).get("id") == asset_id]
     if running:
-        return "BLOCKED", running + ["Run tools/status.py --teardown again when they end: removing protection mid-backup leaves Clumio's tasks stuck."]
+        return "BLOCKED", running + ["Run tools/status.py --teardown again when they end: removing protection mid-backup leaves Clumio's tasks stuck. "
+                                     "If a task stays queued, see When something goes wrong in docs/operate.md."]
     databases = world.databases(kit["region"])
     lines = [f"{name}: PITR window {databases[name]['pitr']} days now. It stays after teardown: set back the window you noted, if you need to."
              for kind, name in ours if kind.startswith("rds") and name in databases]
