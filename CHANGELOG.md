@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.2 (2026-11-01)
+
+Made for first-time readers and for AI agents. Tested offline; a cold agent passed a paper walk of the tool's stops. No new live run, and an agent hasn't yet deployed from these docs.
+
+- Every result has one meaning and a next step: [AGENTS.md](AGENTS.md#read-every-result-the-same-way) maps each word the tools print to what to do, and NOT_YET, WAITING, a queued task and a connection this kit didn't make now each have a way out in [Operate](docs/operate.md).
+- `0-check/preview/preview.sh` exits 0 READY, 1 BLOCKED, 2 CANNOT CHECK. It exited 0 for all three. A script that calls it now sees a non-zero exit when it isn't READY.
+- `tools/status.py --preflight` decides whose connection it is from `1-connect`'s state: PASS when `1-connect` made it in this unit, FAIL otherwise. It was a NOTE for both.
+- The plan's `pitr_checked` output, from `modules/protect` and the RDS and Aurora folders, lists each database the PITR guard checked. Empty means it found none. A database tagged after apply still gets no check.
+- [Production](docs/production.md) says what exit 0 doesn't mean, how to watch for failed backups in Clumio, to repeat step 0, and to take a trial down first in the same account and Region.
+- [Does Clumio need our keys?](docs/keys.md) matches the live restores of EC2 and EBS.
+
 ## v1.0.1 (2026-10-29)
 
 - `tools/status.py --teardown` now sees a running restore. Asked inside the organizational unit, Clumio didn't list a restore started in its console, so the check could say READY mid-restore, and removing `1-connect` would take the IAM role the restore needs. It now reads each resource's tasks with no unit. Tested offline; the new request was seen working live.
