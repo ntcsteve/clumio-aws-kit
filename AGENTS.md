@@ -43,7 +43,7 @@ After each step, compare what you see with that step's Expect column in the READ
 | You see | It means | Do |
 |---|---|---|
 | PASS, READY, OURS | This step is fine | Go to the next step. OURS isn't the finish: a backup counts once it's restored and checked (step 3.2) |
-| PROVEN | The run is finished | Give the person both report files, and ask them to confirm they opened the restored copy |
+| PROVEN | The run is finished | Check that the page's Resource line names the original the person restored. If it does, give them both report files, and ask them to confirm they opened the restored copy. If it doesn't, ask for the right task ID |
 | NOTE | Something to read | Show the person and wait for their go |
 | UNFINISHED | The report lists what's missing | Show the person the list. Don't call the run done |
 | WAITING, NOT_YET | Clumio isn't done | Stop, and tell the person to check later. Don't loop. If it doesn't change, its row in [Operate](docs/operate.md#read-toolsstatuspy) says what's next |

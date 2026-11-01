@@ -20,7 +20,7 @@ When the restore task completes, open what came back and check it. The key the c
 
 ## 3. Keep the evidence
 
-Save what you saw, for whoever signs off. Take the restore's task ID from Clumio's Tasks page:
+Save what you saw, for whoever signs off. First delete the restored copy, or remove its profile tag: a copy that keeps its tag counts as a resource still waiting to join, and the report stays UNFINISHED. Then take the restore's task ID from Clumio's Tasks page:
 
 ```bash
 tools/status.py --report --restore-task <task ID>
@@ -30,7 +30,7 @@ It writes two files from one read, in the repository's root folder: `status-<tim
 
 | Verdict | What it means | What to do |
 |---|---|---|
-| PROVEN | Every resource is OURS, and the restore completed | Check that the page names the resource you restored, and that you opened the copy. Keep both files |
+| PROVEN | Every resource is OURS, and the restore completed | Check that the page's Resource line names the original you restored, and that you opened the copy. Keep both files |
 | UNFINISHED | Something's missing | It lists what. Fix that, or wait, then run it again |
 | UNKNOWN | AWS or Clumio didn't answer | Run it again |
 

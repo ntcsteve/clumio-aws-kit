@@ -507,6 +507,23 @@ class Report(Lab):
         self.assertEqual(report["verdict"], "UNFINISHED")
         self.assertIn("in_progress", report["gaps"][0])
 
+    def test_a_restore_that_ended_badly_says_start_a_new_one(self):
+        # "aborted" is a status Clumio's tasks really carry (stage 2f): "when it completes" would never come.
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = self.report(status="aborted")
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("new restore", report["gaps"][0])
+        self.assertNotIn("when it completes", report["gaps"][0])
+
+    def test_a_restored_copy_still_tagged_is_named_until_it_goes(self):
+        # Stage 2j: a restored instance keeps its tags, and Clumio's record shows nothing that marks it
+        # as a copy, so 3-prove says to delete or untag it before the report.
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        self.add_instance("i-copy", policy=None)
+        report = self.report()
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("i-copy: NOT_YET", report["gaps"][0])
+
     def test_a_task_that_isnt_a_restore_is_unfinished(self):
         self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
         report = self.report(type="aws_ec2_instance_backup_seeding")

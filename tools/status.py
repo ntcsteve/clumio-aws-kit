@@ -545,6 +545,9 @@ def mask(text, found):
 
 # --- Teardown: is it safe to remove protection now? ----------------------------------------------
 
+RUNNING_TASKS = ("queued", "in_progress", "aborting")  # A Clumio task in any of these hasn't ended yet.
+
+
 def teardown(world):
     """("REFUSED" | "BLOCKED" | "READY" | "UNKNOWN", lines to show). Raises NothingApplied, ClumioUnavailable."""
     # The mode as the person set it in 1-connect/terraform.tfvars. Terraform's production guard is the
@@ -579,7 +582,7 @@ def teardown(world):
             return "UNKNOWN", [f"Clumio didn't answer in full for {label}, so running backups can't be ruled out. "
                                "Look in Clumio's Tasks; teardown waits until nothing runs."]
         running += [f"task {t['id']} ({t.get('type', 'backup')}) for {label}: {t['status']}" for t in tasks
-                    if t.get("status") in ("queued", "in_progress", "aborting") and (t.get("primary_entity") or {}).get("id") == asset_id]
+                    if t.get("status") in RUNNING_TASKS and (t.get("primary_entity") or {}).get("id") == asset_id]
     if running:
         return "BLOCKED", running + ["Run tools/status.py --teardown again when they end: removing protection mid-backup leaves them unfinished. "
                                      "If a task stays queued, see When something goes wrong in docs/operate.md."]
@@ -598,7 +601,7 @@ def teardown(world):
 
 RESOPS_URL = "https://www.commvault.com/explore/resilience-operations"
 REPORT_EXIT_CODES = {"PROVEN": 0, "UNFINISHED": 1, "UNKNOWN": 2}
-VERDICT_MEANING = {"PROVEN": "Every resource is protected and backed up, and the restore completed.",
+VERDICT_MEANING = {"PROVEN": "Every resource is protected, with a backup on record, and the restore completed.",
                    "UNFINISHED": "Not proven yet. The list below says what's missing.",
                    "UNKNOWN": "AWS or Clumio didn't answer, so nothing is assumed. Run it again."}
 
@@ -634,8 +637,10 @@ def restore_gap(restore):
         return f"Clumio didn't answer for task {restore['id']}."
     if "restore" not in restore["type"]:
         return f"Task {restore['id']} isn't a restore: it's {restore['type']}."
-    if restore["status"] != "completed":
+    if restore["status"] in RUNNING_TASKS:
         return f"Restore {restore['id']} is {restore['status']}. Run this again when it completes."
+    if restore["status"] != "completed":
+        return f"Restore {restore['id']} ended as {restore['status']}. Start a new restore, then run this with its task ID."
     return None
 
 

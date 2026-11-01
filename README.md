@@ -90,7 +90,7 @@ Run each command in the folder under Where, in one shell: the one signed in to A
 | STOP | Person | | Read the plan. Go, or stop | |
 | 2.5 | Anyone | `2-protect-<workload>` | `terraform apply tfplan`. Repeat 2.1 to 2.5 per workload | Apply complete |
 | 3.1 | Anyone | root | `tools/status.py` | Every resource OURS. NOT_YET or WAITING until its first backup, up to a day |
-| 3.2 | Person | Clumio console | Restore one resource to a new name beside the original | You open it and check it |
+| 3.2 | Person | Clumio console | Restore one resource to a new name beside the original | You open it and check it, note the task ID, then delete the copy or remove its profile tag |
 | 3.3 | Anyone | root | `tools/status.py --report --restore-task <task ID>` | PROVEN, with a JSON file and an HTML page for sign-off. UNFINISHED lists what's missing |
 
 `<workload>`: `s3`, `rds`, `aurora`, `ec2` or `ebs`. Each folder's README has the detail. [Operate](docs/operate.md) explains each status and error.
