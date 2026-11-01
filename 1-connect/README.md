@@ -14,7 +14,7 @@ terraform plan -out=tfplan     # read it
 terraform apply tfplan
 ```
 
-The plan creates the connection and Clumio's IAM in this account and Region. With `report_emails`, it adds Clumio's daily compliance report.
+The plan creates the connection and Clumio's IAM in this account and Region.
 
 With `mode = "production"`, it adds a guard that refuses destroy, here and in every `2-protect-` folder. Choose the mode before you apply: if you switch a trial to production later, plan and apply each `2-protect-` folder again, because each gets its guard only then.
 

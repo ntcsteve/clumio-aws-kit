@@ -8,9 +8,6 @@ region              = "REGION-REPLACE-THIS"     # where your data is, such as us
 organizational_unit = "UNIT-REPLACE-THIS"       # "global", or a unit's ID: tools/status.py --preflight lists them
 mode                = "MODE-REPLACE-THIS"       # "trial" (can be torn down, also for a proof of concept) or "production" (refuses destroy)
 
-# Who gets Clumio's daily compliance report for this account and Region:
-# report_emails = ["platform-oncall@example.com"]
-
 # What Clumio may protect, by 2-protect folder: "s3", "rds", "aurora", "ec2", "ebs". Clumio's IAM is created
 # for these only; each 2-protect folder you use must be listed, or its plan stops and says so.
 workloads = ["s3", "rds", "aurora", "ec2", "ebs"]

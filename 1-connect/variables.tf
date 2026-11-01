@@ -42,12 +42,6 @@ variable "mode" {
   }
 }
 
-variable "report_emails" {
-  description = "Who gets Clumio's daily compliance report for this Region. Empty means no report."
-  type        = list(string)
-  default     = []
-}
-
 variable "iam_prefix" {
   description = "The start of every IAM role and policy name Clumio creates. Empty means Clumio's default names."
   type        = string

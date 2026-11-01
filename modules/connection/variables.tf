@@ -28,17 +28,6 @@ variable "mode" {
   }
 }
 
-variable "report_emails" {
-  description = "Who gets Clumio's daily compliance report for this Region: whether every asset has a backup each day. Empty means no report."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition     = alltrue([for e in var.report_emails : can(regex("^[^@ ]+@[^@ ]+\\.[^@ ]+$", e))])
-    error_message = "report_emails must be email addresses, such as platform-oncall@example.com."
-  }
-}
-
 # Clumio's IAM settings. Checked in ./iam, which 0-check/preview calls too.
 
 variable "iam_prefix" {

@@ -24,7 +24,6 @@ module "connection" {
   account_id               = var.account_id
   region                   = var.region
   mode                     = var.mode
-  report_emails            = var.report_emails
   iam_prefix               = var.iam_prefix
   iam_path                 = var.iam_path
   workloads                = var.workloads

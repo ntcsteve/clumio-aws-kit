@@ -74,7 +74,7 @@ Keep the connection and each protect call in separate roots: in one root, the co
 Terraform doesn't report a failed backup, and `tools/status.py` shows only the last backup's time. Watch them in Clumio:
 
 - **Alerts** show a failed backup or restore.
-- **The compliance report** says whether each asset has a backup each day. Set `report_emails` on `modules/connection` to name who gets it.
+- **Reports** show whether each asset has a backup. Set up Clumio's compliance report in its console.
 - **Name who reads them.** Clumio recommends [checking its reports every day](https://documentation.commvault.com/clumio/best_practices_for_clumios_platform.html).
 
 ## One state per root
