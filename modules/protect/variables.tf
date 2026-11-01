@@ -76,7 +76,7 @@ variable "archive_months" {
 
   validation {
     condition     = !contains(["rds", "aurora"], var.workload) || (var.archive_months != null ? var.archive_months >= 0 && floor(var.archive_months) == var.archive_months : false)
-    error_message = "Set archive_months in terraform.tfvars: 0 for a trial (no archive), or the months your retention rule needs. Each archive copy bills until its retention ends, even after a trial."
+    error_message = "Set archive_months in terraform.tfvars: 0 skips Archive, 1 shows it in a proof of concept, or the months your retention rule needs. Each archive copy bills until its retention ends, even after a trial."
   }
 }
 

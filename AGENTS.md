@@ -38,7 +38,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 
 ## Read every result the same way
 
-After each step, read the word the tool prints. The word beats the exit code: `tools/status.py` exits 0 for WAITING and NOT_YET too.
+After each step, compare what you see with that step's Expect column in the README, and read the word the tool prints. The word beats the exit code: `tools/status.py` exits 0 for WAITING and NOT_YET too.
 
 | You see | It means | Do |
 |---|---|---|

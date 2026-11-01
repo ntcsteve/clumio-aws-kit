@@ -222,8 +222,8 @@ def check_rule_slots(world, unit_id):
 
 
 def check_connection(world, account, region, unit_id):
-    """PASS when nothing is connected yet, or 1-connect made this connection in this unit. Anything else
-    stops: the state this folder holds decides whose it is, so no reader has to."""
+    """PASS when nothing is connected yet, or 1-connect made this connection in this unit; anything else
+    is a FAIL. 1-connect's local state decides whose it is, so nobody has to judge a NOTE."""
     status, body = world.clumio_get(f"/connections/aws/{account}_{region}")
     if status == 404:
         return "PASS", "connection", f"{account}/{region} isn't connected yet"
@@ -232,9 +232,9 @@ def check_connection(world, account, region, unit_id):
     connected_unit = body.get("organizational_unit_id")
     if "1-connect" not in (world.applied_folders() if world.applied_folders else []):
         return ("FAIL", "connection", f"{account}/{region} is already connected (unit {connected_unit}), and 1-connect's state "
-                "doesn't hold it. Stop: it isn't this folder's. Find out whose it is before you go on.")
+                "doesn't hold it. Stop: this copy of the kit didn't make it. See When something goes wrong in docs/operate.md.")
     if unit_id and connected_unit != unit_id:
-        return ("FAIL", "connection", f"{account}/{region} is connected in unit {connected_unit}, not {unit_id}, so this folder's "
+        return ("FAIL", "connection", f"{account}/{region} is connected in unit {connected_unit}, not {unit_id}, so the kit's "
                 "rules can't match it. Set organizational_unit to the connection's unit.")
     return "PASS", "connection", f"{account}/{region} is connected by 1-connect, in this unit"
 

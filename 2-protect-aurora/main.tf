@@ -45,6 +45,6 @@ output "policy" {
 }
 
 output "pitr_checked" {
-  description = "Each tagged cluster this plan checked, with its PITR window today, in days. Empty means nothing is tagged: tag first."
+  description = "Each tagged cluster this plan checked, with its PITR window today, in days. Empty means it found none: check the tags."
   value       = module.protect.pitr_checked
 }

@@ -2,7 +2,8 @@
 # Checks extract.py against saved plans (account 123456789012, ap-southeast-2), made from real
 # read-only plans at aws-template 0.42.0 with the account masked. Each case's
 # output must match its expected/ exactly, so any change to what the security team sees shows
-# up as a diff.
+# up as a diff. Then runs preview.sh itself, with stand-ins: it finds its files, and each of its three
+# endings exits as it should.
 #   regulated/  S3 + RDS + EC2/EBS, prefix + path "/", role tags, boundary, pass-role deny list
 #   defaults/   the shipped settings: no prefix, path "/clumio/", S3 + RDS + EC2/EBS (one policy lands at "/")
 #

@@ -1,5 +1,5 @@
-# This workload's Clumio objects. tools/status.py finds them by name in Clumio; a production caller may
-# use the rule's ID to rank another rule against it.
+# This workload's Clumio objects, and what its plan checked. tools/status.py finds the objects by name in
+# Clumio; a production caller may use the rule's ID to rank another rule against it.
 
 output "policy_id" {
   description = "This workload's Clumio policy."
@@ -16,9 +16,9 @@ output "protection_group_id" {
   value       = one(clumio_protection_group.s3[*].id)
 }
 
-# The PITR guard passes when nothing is tagged, so show what it read: a plan that checked nothing must
-# not look like a plan that checked everything.
+# The PITR guard passes when it finds no database, so show what it read: a plan that checked nothing
+# must not look like a plan that checked everything.
 output "pitr_checked" {
-  description = "Each tagged database this plan checked, with its PITR window today, in days. Empty means nothing is tagged, so nothing was checked."
+  description = "Each tagged database this plan checked, with its PITR window today, in days. Empty means it found none, so nothing was checked."
   value       = local.pitr_now
 }

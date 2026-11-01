@@ -195,6 +195,7 @@ class Preflight(unittest.TestCase):
         self.assertEqual(self.states(results)["connection"], "FAIL")
         self.assertEqual(status.exit_code(results), 1)
         self.assertIn("Stop", self.detail(results, "connection"))
+        self.assertIn("docs/operate.md", self.detail(results, "connection"))
 
     def test_a_folder_applied_elsewhere_doesnt_make_it_ours(self):
         results = self.run_preflight(clumio=self.connected_in(UNIT), applied=["2-protect-s3"])

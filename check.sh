@@ -15,7 +15,7 @@
 #   Suites, on a copy of what ships (never your .terraform, terraform.tfvars or state):
 #   8. step folders          each validates with its lock file; 1-connect's placeholders stop the plan
 #   9. module tests          each module, each step folder and the proof lab refuse what they must (mock providers)
-#  10. preview golden tests what the security team sees matches the reviewed output exactly
+#  10. preview tests        what the security team sees matches the reviewed output exactly; each ending exits as it says
 #  11. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
 #  12. self-test             tests/check_test.sh proves each scan passes and fails when it should
 # CHECK_SCANS_ONLY=1 runs the scans only. tests/check_test.sh sets it, so this never loops.
@@ -168,9 +168,9 @@ for module in modules/connection modules/connection/iam modules/protect proof/la
     && pass "$module: tests" || flunk "$module: tests (run terraform test in $module to see why)"
 done
 
-# 10. The preview renders exactly what the security team reviewed.
-"$COPIES/0-check/preview/test/test.sh" > /dev/null 2>&1 && pass "0-check/preview: golden tests" \
-  || flunk "0-check/preview: golden tests (run 0-check/preview/test/test.sh to see the diff)"
+# 10. The preview renders exactly what the security team reviewed, and exits as each ending says.
+"$COPIES/0-check/preview/test/test.sh" > /dev/null 2>&1 && pass "0-check/preview: tests" \
+  || flunk "0-check/preview: tests (run 0-check/preview/test/test.sh to see which)"
 
 # 11. status.py's checks, against fake AWS and Clumio answers.
 (cd "$COPIES/tools" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "tools/status.py: tests" \

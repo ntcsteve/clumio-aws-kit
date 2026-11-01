@@ -289,7 +289,7 @@ run "an_equal_window_passes" {
   }
 }
 
-# The guard passes when nothing is tagged, so the plan shows what it read: empty means nothing was checked.
+# The guard passes when it finds no database, so the plan shows what it read: empty means nothing was checked.
 run "the_plan_shows_each_rds_instance_it_checked" {
   command = plan
   override_data {
