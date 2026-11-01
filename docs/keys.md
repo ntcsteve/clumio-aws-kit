@@ -11,8 +11,8 @@ Two lab runs show it, each with raw AWS and Clumio answers you can check yoursel
 | S3 | Backed up | Backed up, in the same backup | Byte for byte, same and another Region. The restored copy takes the target bucket's default encryption, even when the source object used a CMK |
 | RDS | Backed up | Backed up | A new, available, encrypted instance, same and another Region |
 | Aurora | Backed up | Backed up | The CMK cluster restored as a new cluster under the same customer-managed key, chosen by Clumio |
-| EC2 | Backed up | Backed up | Encrypted under the key the restore names; without one, unencrypted |
-| EBS on its own | Backed up | Backed up | Not restored in a lab run |
+| EC2 | Backed up | Backed up | A new instance. Its key depends on how you restore: see [What a restore needs from you](#what-a-restore-needs-from-you) |
+| EBS on its own | Backed up | Backed up | A new volume, restored in the Clumio console. Its key: see [What a restore needs from you](#what-a-restore-needs-from-you) |
 
 A customer-managed key's default policy, which lets IAM in the account decide, is enough: the 2026-10-28 run used one and changed nothing. A key policy that explicitly denies Clumio's role blocks it: the object isn't backed up, and Clumio reports it with AWS's error.
 
