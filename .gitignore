@@ -18,8 +18,9 @@ tf-debug.log
 # Preview output: one folder per run, for your security team, not for git
 clumio-iam-preview-*/
 
-# Saved status (3-prove): it names your AWS account
+# Saved evidence (3-prove): it names your AWS account
 status-*.json
+status-*.html
 
 __pycache__/
 .DS_Store

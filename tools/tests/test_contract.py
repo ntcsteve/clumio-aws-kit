@@ -55,6 +55,15 @@ class Stage2fProtected(unittest.TestCase):
         self.assertEqual(connection[0], "PASS")
         self.assertTrue(all(r["last_backup"] for r in records if r["state"] == "OURS"))
 
+    def test_the_report_reads_the_real_answers_and_names_what_is_missing(self):
+        # Expected from the same run: not finished. Four resources weren't OURS, and no restore had run.
+        report = status.evidence(self.world, None, "2026-10-28T15:00:00Z")
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertEqual(len(report["gaps"]), 5)
+        page = status.render_html(report)
+        for resource in report["resources"]:
+            self.assertIn(resource["name"], page)
+
     def test_the_kits_policies_are_found_by_name_one_per_workload(self):
         profiles = status.kit_profiles(self.world, self.world.kit())
         self.assertEqual(sorted(profiles), ["gold"])

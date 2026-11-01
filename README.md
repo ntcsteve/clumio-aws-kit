@@ -20,6 +20,7 @@ This kit covers one AWS account and Region, and five workloads: S3, RDS, Aurora,
 | What you tag gets backed up: S3, RDS, Aurora, EC2, EBS | [Keys evidence](proof/evidence/keys-lab-2026-10-28/) |
 | RDS and Aurora get AWS point-in-time recovery (PITR), a daily SecureVault Standard copy and a monthly SecureVault Archive copy | [Archive evidence](proof/evidence/archive-lab-2026-10-29/), for Aurora |
 | You restore one resource and check it | [Does Clumio need our keys?](docs/keys.md) |
+| You keep the evidence: a verdict, each resource, and your restore time | [3-prove](3-prove/README.md) |
 | Your keys stay yours, AWS-managed or customer-managed | [Does Clumio need our keys?](docs/keys.md) |
 | Teardown removes everything the kit created | [Take a trial down](docs/operate.md#take-a-trial-down) |
 
@@ -90,7 +91,7 @@ Run each command in the folder under Where, in one shell: the one signed in to A
 | 2.5 | Anyone | `2-protect-<workload>` | `terraform apply tfplan`. Repeat 2.1 to 2.5 per workload | Apply complete |
 | 3.1 | Anyone | root | `tools/status.py` | Every resource OURS. NOT_YET or WAITING until its first backup, up to a day |
 | 3.2 | Person | Clumio console | Restore one resource to a new name beside the original | You open it and check it |
-| 3.3 | Anyone | root | `tools/status.py --json > status-$(date -u +%Y%m%d).json` | Evidence for sign-off |
+| 3.3 | Anyone | root | `tools/status.py --report --restore-task <task ID>` | PROVEN, with a JSON file and an HTML page for sign-off. UNFINISHED lists what's missing |
 
 `<workload>`: `s3`, `rds`, `aurora`, `ec2` or `ebs`. Each folder's README has the detail. [Operate](docs/operate.md) explains each status and error.
 

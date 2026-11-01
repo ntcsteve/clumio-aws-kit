@@ -8,9 +8,12 @@
                                   organizational unit, Region, rule slots, and any existing connection
   tools/status.py --teardown      before a trial teardown: refuses in production, or while a backup runs,
                                   and names the folders still applied
+  tools/status.py --report --restore-task <task ID>
+                                  the evidence for sign-off: a JSON file and an HTML page from one read,
+                                  with a verdict: PROVEN, UNFINISHED or UNKNOWN
   tools/status.py --account 123456789012 --region us-west-2 --unit <unit ID or global> [--json]
                                   status of policies modules/protect made from another repository; all
-                                  three together, for status and --json only
+                                  three together, for status, --json and --report only
 
 Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a person must act;
 2 AWS or Clumio didn't answer, so nothing is assumed. The account, Region, unit and mode come from
@@ -18,6 +21,7 @@ Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a
 from CLUMIO_API_TOKEN and CLUMIO_API_BASE_URL. Runs on macOS's stock Python 3.9.
 """
 import argparse
+import html
 import json
 import os
 import re
@@ -28,6 +32,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -473,7 +478,7 @@ def check_connection_unit(world, kit):
     """The connection must sit in the unit the profiles live in, or their rules never match it."""
     status_code, body = world.clumio_get(f"/connections/aws/{kit['account_id']}_{kit['region']}")
     if status_code == 200 and body.get("organizational_unit_id") == kit["organizational_unit_id"]:
-        return "PASS", "connection", f"{kit['account_id']}/{kit['region']} is connected, in this folder's unit"
+        return "PASS", "connection", f"{kit['account_id']}/{kit['region']} is connected, in this unit"
     if status_code == 200:
         return ("FAIL", "connection", f"{kit['account_id']}/{kit['region']} is connected in unit {body.get('organizational_unit_id')}, "
                 f"not {kit['organizational_unit_id']}, so these profiles' rules can't match it. Set organizational_unit to the connection's unit.")
@@ -587,6 +592,142 @@ def teardown(world):
         lines.append("Still applied: " + ", ".join(protect + (["1-connect"] if "1-connect" in applied else []))
                      + ". Destroy each 2-protect- folder first, 1-connect last (docs/operate.md, Take a trial down).")
     return "READY", lines
+
+
+# --- Report: the evidence of one run, as JSON and one HTML page ------------------------------------
+
+RESOPS_URL = "https://www.commvault.com/explore/resilience-operations"
+REPORT_EXIT_CODES = {"PROVEN": 0, "UNFINISHED": 1, "UNKNOWN": 2}
+VERDICT_MEANING = {"PROVEN": "Every resource is protected and backed up, and the restore completed.",
+                   "UNFINISHED": "Not proven yet. The list below says what's missing.",
+                   "UNKNOWN": "AWS or Clumio didn't answer, so nothing is assumed. Run it again."}
+
+
+def read_restore(world, task_id):
+    """What Clumio says about the restore task. Asked with no unit: inside the unit, Clumio answers 404
+    for a restore started in its console (seen live, 2026-10-29)."""
+    status_code, task = world.clumio_get(f"/tasks/{task_id}")
+    if status_code == 404:
+        return {"id": task_id, "status": "not_found"}
+    if status_code != 200:
+        return {"id": task_id, "status": "no_answer"}
+    started, ended = task.get("start_timestamp"), task.get("end_timestamp")
+    return {"id": task_id, "type": task.get("type", ""), "status": task.get("status", ""), "resource": (task.get("primary_entity") or {}).get("value"),
+            "started": started, "ended": ended, "seconds": seconds_between(started, ended)}
+
+
+def seconds_between(started, ended):
+    """Whole seconds between two of Clumio's timestamps; None when either is missing or unreadable."""
+    try:
+        return int((datetime.fromisoformat(ended.replace("Z", "+00:00")) - datetime.fromisoformat(started.replace("Z", "+00:00"))).total_seconds())
+    except (AttributeError, ValueError):
+        return None
+
+
+def restore_gap(restore):
+    """Why this restore doesn't prove anything yet; None when it does."""
+    if restore is None:
+        return "No restore recorded. Restore one resource, then run this again with --restore-task <task ID>, from Clumio's Tasks page."
+    if restore["status"] == "not_found":
+        return f"Clumio has no task {restore['id']}. Check the ID on Clumio's Tasks page."
+    if restore["status"] == "no_answer":
+        return f"Clumio didn't answer for task {restore['id']}."
+    if "restore" not in restore["type"]:
+        return f"Task {restore['id']} isn't a restore: it's {restore['type']}."
+    if restore["status"] != "completed":
+        return f"Restore {restore['id']} is {restore['status']}. Run this again when it completes."
+    return None
+
+
+def evidence(world, restore_task=None, now=None):
+    """One read of the whole run, and its verdict: PROVEN when every resource is OURS and a restore
+    completed; UNKNOWN when AWS or Clumio didn't answer; UNFINISHED otherwise, with what's missing."""
+    kit = world.kit()
+    if kit is None:
+        raise NothingApplied()
+    records, connection = coverage(world)
+    restore = read_restore(world, restore_task) if restore_task else None
+    gaps = [] if connection[0] == "PASS" else [f"connection: {connection[2]}"]
+    gaps += [f"{r['name']}: {r['state']}. {r['detail']}" for r in records if r["state"] != "OURS"]
+    if not records:
+        gaps.append(f"Nothing in this Region carries the tag {TAG_KEY}.")
+    gap = restore_gap(restore)
+    gaps += [gap] if gap else []
+    unanswered = connection[0] == "UNKNOWN" or any(r["state"] == "UNKNOWN" for r in records) or (restore or {}).get("status") == "no_answer"
+    return {"verdict": "UNKNOWN" if unanswered else "UNFINISHED" if gaps else "PROVEN", "gaps": gaps,
+            "generated_at": now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "account_id": kit["account_id"], "region": kit["region"],
+            "organizational_unit_id": kit["organizational_unit_id"], "connection": dict(zip(("state", "check", "detail"), connection)),
+            "resources": records, "restore": restore}
+
+
+def duration(seconds):
+    """150 as 2m 30s."""
+    return "-" if seconds is None else f"{seconds // 60}m {seconds % 60}s"
+
+
+def render_html(report):
+    """One page with no scripts and nothing fetched from elsewhere, so it opens anywhere and prints."""
+    # Tag values and Clumio's answers come from outside: every value is escaped for the page.
+    text = lambda value: html.escape(str("-" if value in (None, "") else value))
+    resources = "".join(f"<tr><td>{text(r['state'])}</td><td>{text(r['kind'])}</td><td>{text(r['name'])}</td><td>{text(r['profile'])}</td>"
+                        f"<td>{text(r['last_backup'])}</td><td>{text(r['detail'])}</td></tr>" for r in report["resources"])
+    restore = report["restore"]
+    restore_table = "<p>No restore recorded yet.</p>" if restore is None else (
+        f"<table class=\"facts\"><tr><th>Task</th><td>{text(restore['id'])}</td></tr><tr><th>Type</th><td>{text(restore.get('type'))}</td></tr>"
+        f"<tr><th>Resource</th><td>{text(restore.get('resource'))}</td></tr><tr><th>Status</th><td>{text(restore['status'])}</td></tr>"
+        f"<tr><th>Started</th><td>{text(when(restore.get('started')))}</td></tr><tr><th>Ended</th><td>{text(when(restore.get('ended')))}</td></tr>"
+        f"<tr><th>Restore time</th><td>{text(duration(restore.get('seconds')))}</td></tr></table>")
+    gaps = "".join(f"<li>{text(gap)}</li>" for gap in report["gaps"])
+    missing = f"<h2>What's missing</h2><ul>{gaps}</ul>" if gaps else ""
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clumio recovery evidence</title>
+<style>
+body {{ font: 16px/1.5 system-ui, sans-serif; color: #1a1a1a; background: #fff; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }}
+table {{ border-collapse: collapse; width: 100%; font-size: 0.9rem; }}
+th, td {{ border-bottom: 1px solid #ddd; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }}
+.facts th {{ width: 12rem; }}
+.verdict {{ font-size: 2rem; font-weight: 700; margin: 0; }}
+.PROVEN {{ color: #0a6b3b; }} .UNFINISHED {{ color: #9a5b00; }} .UNKNOWN {{ color: #a11; }}
+footer {{ margin-top: 2rem; color: #555; font-size: 0.9rem; }}
+</style></head><body>
+<h1>Clumio recovery evidence</h1>
+<p class="verdict {text(report['verdict'])}">{text(report['verdict'])}</p>
+<p>{text(VERDICT_MEANING[report['verdict']])}</p>
+{missing}
+<h2>Run</h2>
+<table class="facts"><tr><th>Account</th><td>{text(report['account_id'])}</td></tr><tr><th>Region</th><td>{text(report['region'])}</td></tr>
+<tr><th>Organizational unit</th><td>{text(report['organizational_unit_id'])}</td></tr><tr><th>Generated</th><td>{text(when(report['generated_at']))}</td></tr>
+<tr><th>Connection</th><td>{text(report['connection']['state'])}: {text(report['connection']['detail'])}</td></tr></table>
+<h2>Restore</h2>
+{restore_table}
+<h2>Resources</h2>
+<table><tr><th>State</th><th>Kind</th><th>Name</th><th>Profile</th><th>Last backup</th><th>Detail</th></tr>{resources}</table>
+<footer>A backup counts once you've seen it restore: open what came back and check it before you sign off.
+Part of proving recovery with evidence: <a href="{RESOPS_URL}">Resilience Operations (ResOps)</a>.</footer>
+</body></html>
+"""
+
+
+def write_report(report, folder):
+    """Both files, named for this run, so a later run never overwrites this evidence. Returns their paths."""
+    stem = os.path.join(folder, "status-" + re.sub(r"[-:]", "", report["generated_at"]))
+    with open(stem + ".json", "w", encoding="utf-8") as out:
+        json.dump(report, out, indent=1)
+    with open(stem + ".html", "w", encoding="utf-8") as out:
+        out.write(render_html(report))
+    return stem + ".json", stem + ".html"
+
+
+def report_problem(report, as_json, restore_task):
+    """Why these flags can't be used together, or None."""
+    if restore_task and not report:
+        return "--restore-task works with --report."
+    if report and as_json:
+        return "--report writes the JSON file itself: drop --json."
+    if restore_task and not restore_task.isdigit():
+        return "--restore-task takes the task's number, from Clumio's Tasks page."
+    return None
 
 
 def print_results(results):
@@ -783,6 +924,16 @@ def run_status(as_json, flags=None):
     return code
 
 
+def run_report(restore_task, flags):
+    report = evidence(real_world(flags), restore_task)
+    json_path, html_path = write_report(report, ROOT)
+    print(f"{report['verdict']}: {VERDICT_MEANING[report['verdict']]}")
+    for gap in report["gaps"]:
+        print(f"  {gap}")
+    print(f"Evidence: {json_path}\nPage:     {html_path}\nBoth name your AWS account, so keep them out of anything public.")
+    return REPORT_EXIT_CODES[report["verdict"]]
+
+
 def run_teardown():
     state, lines = teardown(real_world())
     print(f"{state}: " + {"REFUSED": "teardown is refused.", "BLOCKED": "Clumio is still working on this folder's resources:",
@@ -797,12 +948,15 @@ def main():
     choice = parser.add_mutually_exclusive_group()
     choice.add_argument("--preflight", action="store_true", help="check everything before the first plan")
     choice.add_argument("--teardown", action="store_true", help="whether teardown is safe now")
+    choice.add_argument("--report", action="store_true", help="write the evidence: a JSON file and an HTML page, with a verdict")
+    parser.add_argument("--restore-task", help="with --report: the restore's task ID, from Clumio's Tasks page")
     parser.add_argument("--json", action="store_true", help="coverage as JSON, for machines")
     parser.add_argument("--account", help="with --region and --unit: check this account instead of 1-connect's settings")
     parser.add_argument("--region")
     parser.add_argument("--unit", help='"global", or a unit\'s ID')
     args = parser.parse_args()
-    problem = flag_problem(args.account, args.region, args.unit, args.preflight or args.teardown)
+    problem = (flag_problem(args.account, args.region, args.unit, args.preflight or args.teardown)
+               or report_problem(args.report, args.json, args.restore_task))
     if problem:
         parser.error(problem)
     flags = {"account_id": args.account, "region": args.region, "organizational_unit": args.unit} if args.account else None
@@ -816,6 +970,8 @@ def main():
             print_results(results)
             print("Ready. Next: the step you're on (README.md, What to do)." if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
             sys.exit(exit_code(results))
+        if args.report:
+            sys.exit(run_report(args.restore_task, flags))
         sys.exit(run_teardown() if args.teardown else run_status(args.json, flags))
     except NothingApplied:
         print("No account, Region and unit to check: set them in 1-connect/terraform.tfvars (0-check/README.md), "

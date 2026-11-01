@@ -13,7 +13,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 | `1-connect/` | Step 1: the connection and Clumio's IAM, one state. Its `terraform.tfvars` holds the account, Region, unit, mode and workloads for every step |
 | `2-protect-s3/`, `-rds/`, `-aurora/`, `-ec2/`, `-ebs/` | Step 2: one Clumio policy per workload, one state each. Each reads the account, Region, unit and mode from `1-connect`'s state |
 | `3-prove/` | Step 3: who protects each resource, a restore, and the evidence |
-| `tools/status.py` | Read-only checks: preflight, who protects each tagged resource (the kit's policies found by name in Clumio), and whether teardown is safe |
+| `tools/status.py` | Read-only checks: preflight, who protects each tagged resource (the kit's policies found by name in Clumio), whether teardown is safe, and the evidence report |
 | `modules/connection/` | The product: the connection, Clumio's IAM (`iam/`), and every guard. Production calls it from its own repo |
 | `modules/protect/` | The product: one workload's policy, selected by tag, with the PITR and production guards |
 | `README.md` | The entry point: why, what you'll prove, how it works, what's safe, what to prepare, and the run as a table of steps with STOP points |
@@ -43,7 +43,9 @@ After each step, compare what you see with that step's Expect column in the READ
 | You see | It means | Do |
 |---|---|---|
 | PASS, READY, OURS | This step is fine | Go to the next step. OURS isn't the finish: a backup counts once it's restored and checked (step 3.2) |
+| PROVEN | The run is finished | Give the person both report files, and ask them to confirm they opened the restored copy |
 | NOTE | Something to read | Show the person and wait for their go |
+| UNFINISHED | The report lists what's missing | Show the person the list. Don't call the run done |
 | WAITING, NOT_YET | Clumio isn't done | Stop, and tell the person to check later. Don't loop. If it doesn't change, its row in [Operate](docs/operate.md#read-toolsstatuspy) says what's next |
 | SKIP | It waits on a FAIL above it | Fix that FAIL |
 | FAIL, BLOCKED, REFUSED, CANNOT CHECK, OTHER, BAD_VALUE, DOUBLE, OFF | A person must act | Stop, and show the person the line: it says what to do. What happens next is the person's call |

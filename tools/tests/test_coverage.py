@@ -72,6 +72,9 @@ class FakeClumio:
         # Live, 2026-10-28: a rule in a unit is found only in that unit's context; without it, 404.
         if bare.startswith("/policies/rules/") and unit != UNIT:
             return 404, {}
+        # Live, 2026-10-29: a console restore answers 404 by ID in a unit's context, 200 with no unit.
+        if bare.startswith("/tasks/") and unit is not None:
+            return 404, {}
         if bare in self.single:
             return self.single[bare]
         if bare not in self.lists:
@@ -107,7 +110,9 @@ def matches(value, test):
             "$in": value in expected}[op]
 
 
-class Coverage(unittest.TestCase):
+class Lab(unittest.TestCase):
+    """The fake account: what the Coverage and Report tests build on."""
+
     def setUp(self):
         self.clumio = FakeClumio()
         self.resources = []
@@ -170,6 +175,9 @@ class Coverage(unittest.TestCase):
     def states(self):
         records, unit_result = status.coverage(self.world())
         return {r["name"]: r["state"] for r in records}, records, unit_result
+
+
+class Coverage(Lab):
 
     # --- status ---
 
@@ -464,6 +472,120 @@ class Coverage(unittest.TestCase):
         self.clumio.page_size["/datasources/aws/rds-resources"] = 1
         states, _, _ = self.states()
         self.assertEqual(states["orders-db"], "OURS")
+
+
+RESTORE_ID = "4060138517"
+RESTORE = {"id": RESTORE_ID, "type": "aws_ec2_instance_restore", "status": "completed", "start_timestamp": "2026-10-29T06:38:39Z",
+           "end_timestamp": "2026-10-29T06:41:09Z", "primary_entity": {"id": "id-i-0abc", "type": "aws_ec2_instance", "value": "i-0abc"}}
+NOW = "2026-10-29T07:00:00Z"
+
+
+class Report(Lab):
+    """Each row of the verdict: PROVEN, UNFINISHED, UNKNOWN. The expected times are worked by hand."""
+
+    def report(self, task=RESTORE_ID, **changes):
+        self.clumio.single[f"/tasks/{RESTORE_ID}"] = (200, dict(RESTORE, **changes))
+        return status.evidence(self.world(), task, NOW)
+
+    def test_every_resource_ours_and_a_completed_restore_is_proven(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = self.report()
+        self.assertEqual((report["verdict"], report["gaps"]), ("PROVEN", []))
+        self.assertEqual(report["restore"]["seconds"], 150)  # 06:38:39 to 06:41:09
+        self.assertEqual(status.REPORT_EXIT_CODES[report["verdict"]], 0)
+
+    def test_no_restore_is_unfinished_and_says_how_to_add_it(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = self.report(task=None)
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("--restore-task", report["gaps"][0])
+        self.assertEqual(status.REPORT_EXIT_CODES[report["verdict"]], 1)
+
+    def test_a_restore_still_running_is_unfinished(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = self.report(status="in_progress")
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("in_progress", report["gaps"][0])
+
+    def test_a_task_that_isnt_a_restore_is_unfinished(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = self.report(type="aws_ec2_instance_backup_seeding")
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("isn't a restore", report["gaps"][0])
+
+    def test_a_task_clumio_doesnt_know_is_unfinished(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = status.evidence(self.world(), "999", NOW)
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("999", report["gaps"][0])
+
+    def test_a_resource_still_waiting_is_unfinished_and_named(self):
+        self.add_instance("i-0abc")
+        report = self.report()
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("i-0abc: WAITING", report["gaps"][0])
+
+    def test_nothing_tagged_is_unfinished(self):
+        self.assertEqual(self.report()["verdict"], "UNFINISHED")
+
+    def test_a_connection_problem_is_unfinished(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        self.clumio.single[f"/connections/aws/{ACCOUNT}_{REGION}"] = (404, {})
+        report = self.report()
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("connection", report["gaps"][0])
+
+    def test_clumio_not_answering_for_a_resource_is_unknown(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        self.clumio.broken.add("/datasources/aws/ec2-instances")
+        report = self.report()
+        self.assertEqual(report["verdict"], "UNKNOWN")
+        self.assertEqual(status.REPORT_EXIT_CODES[report["verdict"]], 2)
+
+    def test_clumio_not_answering_for_the_restore_is_unknown(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        self.clumio.broken.add(f"/tasks/{RESTORE_ID}")
+        self.assertEqual(self.report()["verdict"], "UNKNOWN")
+
+    def test_the_page_shows_the_verdict_each_resource_and_the_restore_time(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        page = status.render_html(self.report())
+        for shown in ("PROVEN", "i-0abc", "OURS", "2m 30s", ACCOUNT, REGION, status.RESOPS_URL):
+            self.assertIn(shown, page)
+
+    def test_a_page_with_no_restore_shows_no_empty_table(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        page = status.render_html(self.report(task=None))
+        self.assertIn("No restore recorded", page)
+        self.assertNotIn("Restore time", page)
+
+    def test_the_page_stands_alone_and_prints_no_outside_value_raw(self):
+        # A tag's value comes from outside the kit: a page that opens in a reviewer's browser must show
+        # it as text. Trust ends at the boundary.
+        self.add_instance("i-0abc", value="<script>alert(1)</script>")
+        page = status.render_html(self.report(status="<img src=x onerror=alert(2)>"))
+        self.assertNotIn("<script", page)
+        self.assertNotIn("<img", page)
+        self.assertIn("&lt;script&gt;", page)
+
+    def test_the_two_files_hold_one_run(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = self.report()
+        folder = tempfile.mkdtemp()
+        json_path, html_path = status.write_report(report, folder)
+        self.assertEqual(os.path.basename(json_path), "status-20261029T070000Z.json")
+        self.assertEqual(os.path.basename(html_path), "status-20261029T070000Z.html")
+        with open(json_path, encoding="utf-8") as saved:
+            self.assertEqual(json.load(saved), report)
+        with open(html_path, encoding="utf-8") as saved:
+            self.assertEqual(saved.read(), status.render_html(report))
+
+    def test_the_restore_flag_needs_the_report_and_a_task_number(self):
+        self.assertIn("--report", status.report_problem(False, False, "4060138517"))
+        self.assertIn("number", status.report_problem(True, False, "../rules"))
+        self.assertIn("--json", status.report_problem(True, True, None))
+        self.assertIsNone(status.report_problem(True, False, "4060138517"))
+        self.assertIsNone(status.report_problem(False, True, None))
 
 
 if __name__ == "__main__":

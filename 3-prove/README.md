@@ -20,15 +20,21 @@ When the restore task completes, open what came back and check it. The key the c
 
 ## 3. Keep the evidence
 
-Save what you saw, for whoever signs off:
+Save what you saw, for whoever signs off. Take the restore's task ID from Clumio's Tasks page:
 
 ```bash
-tools/status.py --json > status-$(date -u +%Y%m%d).json
+tools/status.py --report --restore-task <task ID>
 ```
 
-The file names your AWS account, so keep it out of anything public; this repository's `.gitignore` skips `status-*.json`.
+It writes two files from one read, in the repository's root folder: `status-<time>.json`, the evidence, and `status-<time>.html`, one page for sign-off. The page shows every resource and your own restore time, on your own data.
 
-Add the restore task's ID and how long it took, from Clumio's Tasks page. Each backup and restore is a Clumio task, with its start and end times, so this is your own recovery time, on your own data.
+| Verdict | What it means | What to do |
+|---|---|---|
+| PROVEN | Every resource is OURS, and the restore completed | Check that the page names the resource you restored, and that you opened the copy. Keep both files |
+| UNFINISHED | Something's missing | It lists what. Fix that, or wait, then run it again |
+| UNKNOWN | AWS or Clumio didn't answer | Run it again |
+
+Each run writes new files, so earlier evidence stays. The files name your AWS account, so keep them out of anything public; this repository's `.gitignore` skips them.
 
 ## Next
 
