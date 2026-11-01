@@ -20,7 +20,7 @@ When the restore task completes, open what came back and check it. The key the c
 
 ## 3. Keep the evidence
 
-Save what you saw, for whoever signs off. First delete the restored copy, or remove its profile tag: a copy that keeps its tag counts as a resource still waiting to join, and the report stays UNFINISHED. Then take the restore's task ID from Clumio's Tasks page:
+Save what you saw, for whoever signs off. First, if the restored copy carries a profile tag, delete the copy or remove the tag: a tagged copy counts as a resource still waiting to join, and the report stays UNFINISHED. Then take the restore's task ID from Clumio's Tasks page:
 
 ```bash
 tools/status.py --report --restore-task <task ID>

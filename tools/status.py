@@ -672,8 +672,10 @@ def duration(seconds):
 
 def render_html(report):
     """One page with no scripts and nothing fetched from elsewhere, so it opens anywhere and prints."""
-    # Tag values and Clumio's answers come from outside: every value is escaped for the page.
-    text = lambda value: html.escape(str("-" if value in (None, "") else value))
+    def text(value):
+        """Tag values and Clumio's answers come from outside, so every value is escaped for the page."""
+        return html.escape(str("-" if value in (None, "") else value))
+
     resources = "".join(f"<tr><td>{text(r['state'])}</td><td>{text(r['kind'])}</td><td>{text(r['name'])}</td><td>{text(r['profile'])}</td>"
                         f"<td>{text(r['last_backup'])}</td><td>{text(r['detail'])}</td></tr>" for r in report["resources"])
     restore = report["restore"]
@@ -941,7 +943,7 @@ def run_report(restore_task, flags):
 
 def run_teardown():
     state, lines = teardown(real_world())
-    print(f"{state}: " + {"REFUSED": "teardown is refused.", "BLOCKED": "Clumio is still working on this folder's resources:",
+    print(f"{state}: " + {"REFUSED": "teardown is refused.", "BLOCKED": "Clumio is still working on these resources:",
                           "READY": "nothing is running. Left behind after teardown:", "UNKNOWN": ""}[state])
     for line in lines:
         print(f"  {line}")
