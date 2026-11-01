@@ -1,14 +1,16 @@
 # Clumio Get Started AWS Kit
 
-Prove that Clumio protects and restores your AWS data, from your own account, with an afternoon's work, and that teardown leaves nothing of the kit behind. For the engineer running the trial, the field engineer beside them, and AI agents helping them ([rules for agents](AGENTS.md)).
+Prove that [Clumio by Commvault](https://www.clumio.com/) protects and restores your AWS data, from your own account, with an afternoon's work, and that teardown leaves nothing of the kit behind. For the engineer running the trial, the field engineer beside them, and AI agents helping them ([rules for agents](AGENTS.md)).
 
-This is not an official Clumio product. It uses Clumio's Terraform provider and IAM module, pinned to tested versions. For problems with the Clumio service, contact Clumio support.
+This kit uses Clumio's Terraform provider and IAM module, pinned to tested versions. For problems with the Clumio service, contact Clumio support.
 
 ## 1. Why care, and is this for you
 
-Backups in the same account as the data fall with it: a deleted account, a stolen admin key or ransomware takes both. Clumio keeps a copy outside your account. This kit sets that up with plain Terraform, protects what you tag, and shows you each backup and a restore. You decide on evidence, not a slide.
+Backups in the same account as the data fall with it: a deleted account, a stolen admin key or ransomware takes both. Clumio describes where your backups live as [a dedicated, air-gapped, immutable vault outside your cloud account](https://www.clumio.com/platform). This kit sets Clumio up with plain Terraform, protects what you tag, and shows you each backup and a restore. You decide on evidence.
 
-For one AWS account and Region, and five workloads: S3, RDS, Aurora, EC2 and EBS. Not for bring your own key (BYOK), DynamoDB, or many accounts at once. You restore in the Clumio console.
+This is a first step in [Resilience Operations (ResOps)](https://www.commvault.com/explore/resilience-operations), Commvault's discipline for recovering within defined impact tolerances, and proving it with evidence. Backup answers "do we have copies?". This kit proves a restore, and leaves you the evidence.
+
+This kit covers one AWS account and Region, and five workloads: S3, RDS, Aurora, EC2 and EBS. You restore in the Clumio console.
 
 ## 2. What you'll prove
 
@@ -21,7 +23,7 @@ For one AWS account and Region, and five workloads: S3, RDS, Aurora, EC2 and EBS
 | Your keys stay yours, AWS-managed or customer-managed | [Does Clumio need our keys?](docs/keys.md) |
 | Teardown removes everything the kit created | [Take a trial down](docs/operate.md#take-a-trial-down) |
 
-Not yet proven live: [What isn't proven](docs/keys.md#what-isnt-proven) and [Know the limits](docs/operate.md#know-the-limits).
+See also [Outside these runs](docs/keys.md#outside-these-runs) and [Know the limits](docs/operate.md#know-the-limits).
 
 ## 3. How it works
 
@@ -44,7 +46,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 
 **What it creates.** Step 1: the Clumio connection, Clumio's IAM roles and policies, EventBridge rules and an SNS topic. Step 0 shows them before they exist. Step 2: one Clumio policy per workload, with a rule (S3: a protection group).
 
-**What it changes.** Clumio sets each tagged database's PITR window to the policy's value. Where PITR is off, it turns it on, which restarts an RDS instance at its maintenance window. During a backup, Clumio makes temporary snapshots in your account and deletes them after. Clumio's roles may do more than back up what you tag, such as change an S3 bucket's event notifications: step 0's preview lists it all.
+**What it changes.** Clumio sets each tagged database's PITR window to the policy's value. Where PITR is off, it turns it on, which restarts an RDS instance at its maintenance window. During a backup, Clumio makes temporary snapshots in your account and deletes them after. Step 0's preview lists every permission Clumio's roles hold, such as changing an S3 bucket's event notifications.
 
 **What stays after teardown.** Clumio's copies, until their retention ends. Each database's PITR window as Clumio set it, so note the old one first. Anything you restored.
 

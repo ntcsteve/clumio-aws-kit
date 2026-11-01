@@ -35,7 +35,7 @@ ROOT = os.path.normpath(os.path.join(HERE, ".."))
 CONNECT = os.path.join(ROOT, "1-connect")  # Its terraform.tfvars names the account, Region, unit and mode
 GLOBAL_UNIT = "00000000-0000-0000-0000-000000000000"  # Clumio's ID for the Global unit (read 2026-10-28)
 MIN_TERRAFORM = (1, 10)  # S3 state locking (use_lockfile) needs 1.10
-# Clumio's rule limits, as seen live; Clumio shows no limit until you hit it (error_code 107): 25 in the
+# Clumio's rule limits, as seen live (error_code 107), because its API has no limit field: 25 in the
 # Global unit ("Number of rules is limited to 25", v1), 5 in a child unit (2026-10-28).
 RULE_LIMITS = {"global": 25, "child unit": 5}
 RULE_WORKLOADS = ("rds", "aurora", "ec2", "ebs")  # each 2-protect- folder for these adds one rule; S3 adds none
@@ -576,7 +576,7 @@ def teardown(world):
         running += [f"task {t['id']} ({t.get('type', 'backup')}) for {label}: {t['status']}" for t in tasks
                     if t.get("status") in ("queued", "in_progress", "aborting") and (t.get("primary_entity") or {}).get("id") == asset_id]
     if running:
-        return "BLOCKED", running + ["Run tools/status.py --teardown again when they end: removing protection mid-backup leaves Clumio's tasks stuck. "
+        return "BLOCKED", running + ["Run tools/status.py --teardown again when they end: removing protection mid-backup leaves them unfinished. "
                                      "If a task stays queued, see When something goes wrong in docs/operate.md."]
     databases = world.databases(kit["region"])
     lines = [f"{name}: PITR window {databases[name]['pitr']} days now. It stays after teardown: set back the window you noted, if you need to."
