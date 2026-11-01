@@ -98,7 +98,7 @@ def preflight(world):
                    else ("SKIP", "Region", "needs a valid region"))
     results.append(check_rule_slots(world, unit_id) if unit_id
                    else ("SKIP", "rule slots", "needs a valid organizational_unit"))
-    results.append(check_connection(world, settings["account_id"], settings["region"])
+    results.append(check_connection(world, settings["account_id"], settings["region"], unit_id)
                    if {"account_id", "region"} <= valid else ("SKIP", "connection", "needs a valid account_id and region"))
     return results
 
@@ -221,14 +221,22 @@ def check_rule_slots(world, unit_id):
     return "PASS", "rule slots", f"{used} of {limit} used in this unit{note}"
 
 
-def check_connection(world, account, region):
+def check_connection(world, account, region, unit_id):
+    """PASS when nothing is connected yet, or 1-connect made this connection in this unit. Anything else
+    stops: the state this folder holds decides whose it is, so no reader has to."""
     status, body = world.clumio_get(f"/connections/aws/{account}_{region}")
     if status == 404:
         return "PASS", "connection", f"{account}/{region} isn't connected yet"
-    if status == 200:
-        return ("NOTE", "connection", f"{account}/{region} is already connected (unit {body.get('organizational_unit_id')}). "
-                "If 1-connect created it, carry on. If not, stop: it belongs to someone else.")
-    return "FAIL", "connection", f"Clumio answered HTTP {status} for the connection. Try again."
+    if status != 200:
+        return "FAIL", "connection", f"Clumio answered HTTP {status} for the connection. Try again."
+    connected_unit = body.get("organizational_unit_id")
+    if "1-connect" not in (world.applied_folders() if world.applied_folders else []):
+        return ("FAIL", "connection", f"{account}/{region} is already connected (unit {connected_unit}), and 1-connect's state "
+                "doesn't hold it. Stop: it isn't this folder's. Find out whose it is before you go on.")
+    if unit_id and connected_unit != unit_id:
+        return ("FAIL", "connection", f"{account}/{region} is connected in unit {connected_unit}, not {unit_id}, so this folder's "
+                "rules can't match it. Set organizational_unit to the connection's unit.")
+    return "PASS", "connection", f"{account}/{region} is connected by 1-connect, in this unit"
 
 
 def exit_code(results):

@@ -28,7 +28,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 ## Rules for every task
 
 1. **Apply only a saved plan the person has read.** Plan with `terraform plan -out=tfplan`, show the person the plan, wait for their go, then run `terraform apply tfplan`. Never use `-auto-approve`. One go covers one apply.
-2. **The person names the account, Region, unit and mode.** `account_id`, `region`, `organizational_unit` and `mode` come from the person, never from a guess. A wrong account on a shared Clumio tenant can protect another team's data, and change its databases' PITR window.
+2. **The person names the account, Region, unit and mode.** `account_id`, `region`, `organizational_unit` and `mode` come from the person, never from a guess. A wrong account on a shared Clumio tenant can protect another team's data, and change its databases' PITR window. Every other setting is theirs too: change one only when the person gives you the value.
 3. **Never set `allow_shorter_pitr`.** Only the person sets it, after reading why. A shorter PITR window deletes AWS's older backups, for good.
 4. **Never print a secret.** The secret here is `CLUMIO_API_TOKEN`: never print it or other environment variables. The person exports it in the shell that starts you. Terraform never writes it to state or plans. The connection's ExternalId isn't a secret (AWS says so: anyone who can read the role can see it), so plans may show it.
 5. **One Clumio tenant per state.** A token from another tenant can't see what this state created, so Terraform would create a second set.
@@ -42,11 +42,11 @@ After each step, read the word the tool prints. The word beats the exit code: `t
 
 | You see | It means | Do |
 |---|---|---|
-| PASS, READY, OURS | Done | Go to the next step |
-| NOTE | Something to read | Show the person and wait for their go. One exception: the connection's NOTE at step 2.3 is expected |
-| WAITING, NOT_YET | Clumio isn't done | Stop, and tell the person to check later. Don't loop. No change after a day: Clumio support |
+| PASS, READY, OURS | This step is fine | Go to the next step. OURS isn't the finish: a backup counts once it's restored and checked (step 3.2) |
+| NOTE | Something to read | Show the person and wait for their go |
+| WAITING, NOT_YET | Clumio isn't done | Stop, and tell the person to check later. Don't loop. If it doesn't change, its row in [Operate](docs/operate.md#read-toolsstatuspy) says what's next |
 | SKIP | It waits on a FAIL above it | Fix that FAIL |
-| FAIL, BLOCKED, REFUSED, CANNOT CHECK, OTHER, BAD_VALUE, DOUBLE, OFF | A person must act | Stop, and show the person the line: it says what to do |
+| FAIL, BLOCKED, REFUSED, CANNOT CHECK, OTHER, BAD_VALUE, DOUBLE, OFF | A person must act | Stop, and show the person the line: it says what to do. What happens next is the person's call |
 | UNKNOWN | AWS or Clumio didn't answer | Run it once more, then stop and tell the person |
 | A plan that stops with an error | A guard or a provider refused | Stop, and show the person the error and its row in [Operate](docs/operate.md). Never work around a guard |
 

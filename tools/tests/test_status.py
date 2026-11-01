@@ -51,7 +51,7 @@ class FakeClumio:
 
 
 class Preflight(unittest.TestCase):
-    def run_preflight(self, settings=GOOD_SETTINGS, signed_in=ACCOUNT, clumio=None, terraform="1.15.5", env=True, pending=()):
+    def run_preflight(self, settings=GOOD_SETTINGS, signed_in=ACCOUNT, clumio=None, terraform="1.15.5", env=True, pending=(), applied=()):
         folder = tempfile.mkdtemp()
         if settings is not None:
             with open(os.path.join(folder, "terraform.tfvars"), "w") as f:
@@ -65,6 +65,7 @@ class Preflight(unittest.TestCase):
             clumio_credentials_set=lambda: env,
             clumio_get=self.clumio.get,
             pending_rule_folders=lambda: list(pending),
+            applied_folders=lambda: list(applied),
         )
         return status.preflight(world)
 
@@ -174,10 +175,36 @@ class Preflight(unittest.TestCase):
         results = self.run_preflight(clumio=FakeClumio(**{"/policies/rules": (200, rules(25, GLOBAL))}))
         self.assertEqual(self.states(results)["rule slots"], "PASS")
 
-    def test_an_existing_connection_is_a_note_not_a_failure(self):
-        results = self.run_preflight(clumio=FakeClumio(**{f"/connections/aws/{ACCOUNT}_us-west-2": (200, {"organizational_unit_id": UNIT})}))
-        self.assertEqual(self.states(results)["connection"], "NOTE")
+    # The connection line decides for itself: one word, one meaning. It was a NOTE for both "yours" and
+    # "stop, not yours", so an expected NOTE needed exceptions in the docs (cold agent walk, 2026-11-01).
+    def connected_in(self, unit):
+        return FakeClumio(**{f"/connections/aws/{ACCOUNT}_us-west-2": (200, {"organizational_unit_id": unit})})
+
+    def test_the_connection_1_connect_made_in_this_unit_passes(self):
+        results = self.run_preflight(clumio=self.connected_in(UNIT), applied=["1-connect"])
+        self.assertEqual(self.states(results)["connection"], "PASS")
         self.assertEqual(status.exit_code(results), 0)
+
+    def test_a_connection_1_connect_made_in_global_passes(self):
+        # Clumio names Global with the all-zero ID, and the setting says "global": these are one unit.
+        results = self.run_preflight(settings=GOOD_SETTINGS.replace(f'"{UNIT}"', '"global"'), clumio=self.connected_in(GLOBAL), applied=["1-connect"])
+        self.assertEqual(self.states(results)["connection"], "PASS")
+
+    def test_a_connection_1_connect_didnt_make_fails_and_says_stop(self):
+        results = self.run_preflight(clumio=self.connected_in(UNIT))
+        self.assertEqual(self.states(results)["connection"], "FAIL")
+        self.assertEqual(status.exit_code(results), 1)
+        self.assertIn("Stop", self.detail(results, "connection"))
+
+    def test_a_folder_applied_elsewhere_doesnt_make_it_ours(self):
+        results = self.run_preflight(clumio=self.connected_in(UNIT), applied=["2-protect-s3"])
+        self.assertEqual(self.states(results)["connection"], "FAIL")
+
+    def test_a_connection_in_another_unit_fails_and_names_both(self):
+        results = self.run_preflight(clumio=self.connected_in("99999999-2222-3333-4444-555555555555"), applied=["1-connect"])
+        self.assertEqual(self.states(results)["connection"], "FAIL")
+        self.assertIn("99999999-2222-3333-4444-555555555555", self.detail(results, "connection"))
+        self.assertIn(UNIT, self.detail(results, "connection"))
 
     def test_checks_that_need_settings_are_skipped_when_settings_fail(self):
         results = self.run_preflight(settings=None)
