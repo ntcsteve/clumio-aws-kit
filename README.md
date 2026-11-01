@@ -1,6 +1,6 @@
 # Clumio Get Started AWS Kit
 
-Prove that [Clumio by Commvault](https://www.clumio.com/) protects and restores your AWS data, from your own account, with an afternoon's work, and that teardown leaves nothing of the kit behind. For the engineer running the trial, the field engineer beside them, and AI agents helping them ([rules for agents](AGENTS.md)).
+Prove that [Clumio by Commvault](https://www.clumio.com/) protects and restores your AWS data, from your own account, with an afternoon's work, then take it down. For the engineer running the trial, the field engineer beside them, and AI agents helping them ([rules for agents](AGENTS.md)).
 
 This kit uses Clumio's Terraform provider and IAM module, pinned to tested versions. For problems with the Clumio service, contact Clumio support.
 
@@ -47,9 +47,11 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 
 **What it creates.** Step 1: the Clumio connection, Clumio's IAM roles and policies, EventBridge rules and an SNS topic. Step 0 shows them before they exist. Step 2: one Clumio policy per workload, with a rule (S3: a protection group).
 
-**What it changes.** Clumio sets each tagged database's PITR window to the policy's value. Where PITR is off, it turns it on, which restarts an RDS instance at its maintenance window. During a backup, Clumio makes temporary snapshots in your account and deletes them after. Step 0's preview lists every permission Clumio's roles hold, such as changing an S3 bucket's event notifications.
+**What it changes.** Clumio sets each tagged database's PITR window to the policy's value. Where PITR is off, it turns it on, which restarts an RDS instance at its maintenance window. During a backup, Clumio uses snapshots in your account. Step 0's preview lists every permission Clumio's roles hold, such as changing an S3 bucket's event notifications.
 
-**What stays after teardown.** Clumio's copies, until their retention ends. Each database's PITR window as Clumio set it, so note the old one first. Anything you restored.
+**Before you take it down.** Removing the connection ends protection for that account and Region, so restore anything you want to keep first.
+
+**What can stay.** Anything you restored. Each database's PITR window as Clumio set it, so note the old one first. A Clumio snapshot of an RDS database: delete it when you're finished.
 
 **What stops a mistake.**
 
@@ -57,7 +59,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 - **Shorter backups:** a plan stops if it would shorten a database's PITR window, which deletes AWS's older backups for good, unless you accept it in writing.
 - **Production:** with `mode = "production"`, Terraform refuses to destroy the connection or a policy.
 - **Mid-backup teardown:** `tools/status.py --teardown` says wait while Clumio is backing up. You run it; Terraform doesn't.
-- **No data deleted:** the kit removes only what it created.
+- **Your resources:** the kit removes only what it created.
 
 ## 5. Plan and prepare
 
@@ -68,7 +70,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 | Decide | The account and Region. The Clumio organizational unit. `mode`: `trial` for a proof of concept. `workloads`: only what you'll test, so Clumio gets no more IAM than that. What to tag, and the profile name, such as `gold`. How long to keep copies |
 | Check | Each database's PITR window: set `pitr_retention_days` at least that long. One free Clumio rule slot per RDS, Aurora, EC2 or EBS folder: preflight counts them. Outbound HTTPS to the Terraform registry and your Clumio API URL. Your SCPs and data-perimeter rules: preflight can't test them, so ask your cloud security team whether they allow Clumio's cross-account roles |
 | Time | About a dozen commands. First backups came within an hour in the lab; allow up to a day |
-| Cost | Clumio bills each copy until its retention ends, even after teardown. An Archive copy kept under 12 months has Clumio's early-deletion fee. For a proof of concept, `archive_months = 1` shows Archive, and 0 skips it |
+| Cost | Clumio bills each copy while it's kept. An Archive copy kept under 12 months has Clumio's early-deletion fee. For a proof of concept, `archive_months = 1` shows Archive, and 0 skips it |
 
 ## 6. What to do
 

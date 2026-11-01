@@ -33,7 +33,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 4. **Never print a secret.** The secret here is `CLUMIO_API_TOKEN`: never print it or other environment variables. The person exports it in the shell that starts you. Terraform never writes it to state or plans. The connection's ExternalId isn't a secret (AWS says so: anyone who can read the role can see it), so plans may show it.
 5. **One Clumio tenant per state.** A token from another tenant can't see what this state created, so Terraform would create a second set.
 6. **Never change `account_id`, `region` or `organizational_unit` in an applied `1-connect/`.** For another target, use a fresh clone of the repository, never a copy of this one: a copy carries this target's state, and its plan would destroy this connection.
-7. **The kit never deletes data.** Teardown follows [Take a trial down](docs/operate.md#take-a-trial-down): `tools/status.py --teardown` first, then a saved destroy plan the person has read. Production refuses it. Never tear down while the check says a backup runs.
+7. **Removing the connection ends protection.** Before teardown, tell the person to restore anything they want to keep. Teardown follows [Take a trial down](docs/operate.md#take-a-trial-down): `tools/status.py --teardown` first, then a saved destroy plan the person has read. Production refuses it. Never tear down while the check says a backup runs.
 8. **The person does the console steps:** the Clumio console, the AWS sign-in, and creating the token.
 
 ## Read every result the same way
@@ -43,7 +43,7 @@ After each step, compare what you see with that step's Expect column in the READ
 | You see | It means | Do |
 |---|---|---|
 | PASS, READY, OURS | This step is fine | Go to the next step. OURS isn't the finish: a backup counts once it's restored and checked (step 3.2) |
-| PROVEN | The run is finished | Check that the page's Resource line names the original the person restored. If it does, give them both report files, and ask them to confirm they opened the restored copy. If it doesn't, ask for the right task ID |
+| PROVEN | The run is finished | Check that the page's Resource line names the original the person restored (for a bucket, its protection group). If it does, give them both report files, and ask them to confirm they opened the restored copy. If it doesn't, ask for the right task ID |
 | NOTE | Something to read | Show the person and wait for their go |
 | UNFINISHED | The report lists what's missing | Show the person the list. Don't call the run done |
 | WAITING, NOT_YET | Clumio isn't done | Stop, and tell the person to check later. Don't loop. If it doesn't change, its row in [Operate](docs/operate.md#read-toolsstatuspy) says what's next |

@@ -437,6 +437,17 @@ class Coverage(Lab):
         self.assertEqual(state, "READY")
         self.assertTrue(any("2-protect-rds" in line and "2-protect-s3" in line and "1-connect last" in line for line in lines))
 
+    def test_teardown_says_to_restore_first_while_the_connection_is_there(self):
+        # Stage 5c: READY is the moment a person acts, and the docs don't reach them there.
+        self.applied = ["1-connect", "2-protect-rds"]
+        _, lines = status.teardown(self.world())
+        self.assertEqual(lines[-1], "Removing the connection ends protection, so restore anything you want to keep first.")
+
+    def test_teardown_says_nothing_about_the_connection_once_it_is_gone(self):
+        self.applied = ["2-protect-rds"]
+        _, lines = status.teardown(self.world())
+        self.assertFalse(any("ends protection" in line for line in lines))
+
     def test_teardown_goes_ahead_once_the_settings_say_trial(self):
         self.settings_path = self.settings("trial")
         state, _ = status.teardown(self.world())
@@ -523,6 +534,8 @@ class Report(Lab):
         report = self.report()
         self.assertEqual(report["verdict"], "UNFINISHED")
         self.assertIn("i-copy: NOT_YET", report["gaps"][0])
+        # Stage 5c: "wait up to a day" alone sent the person the wrong way for a restored copy.
+        self.assertIn("If it's a restored copy, delete it or remove its tag", report["gaps"][0])
 
     def test_a_task_that_isnt_a_restore_is_unfinished(self):
         self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")

@@ -418,7 +418,8 @@ def ownership_problem(world, kind, name, value, our_policy, asset, unit):
     info = asset.get("protection_info") or {}
     if not info.get("policy_id"):
         return record(kind, name, value, "NOT_YET", "Clumio found it, but no policy applies yet. Clumio attaches a resource created or "
-                      "tagged after its rule at its next discovery cycle: run again later, and allow up to a day.")
+                      "tagged after its rule at its next discovery cycle: run again later, and allow up to a day. "
+                      "If it's a restored copy, delete it or remove its tag.")
     if info["policy_id"] != our_policy:
         return record(kind, name, value, "OTHER", claimed_by(world, info, unit))
     return None
@@ -594,6 +595,8 @@ def teardown(world):
         protect = [folder for folder in applied if folder != "1-connect"]
         lines.append("Still applied: " + ", ".join(protect + (["1-connect"] if "1-connect" in applied else []))
                      + ". Destroy each 2-protect- folder first, 1-connect last (docs/operate.md, Take a trial down).")
+    if "1-connect" in applied:
+        lines.append("Removing the connection ends protection, so restore anything you want to keep first.")
     return "READY", lines
 
 

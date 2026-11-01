@@ -31,7 +31,7 @@ provider "aws" {
 }
 
 module "connection" {
-  source     = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/connection?ref=v1.0.2"
+  source     = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/connection?ref=v1.0.3"
   account_id = "123456789012"
   region     = "us-west-2"
   mode       = "production"
@@ -42,7 +42,7 @@ module "connection" {
 ```hcl
 # Root: protect RDS. The same terraform and provider blocks as above.
 module "protect" {
-  source               = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/protect?ref=v1.0.2"
+  source               = "git::https://github.com/ntcsteve/clumio-aws-kit.git//modules/protect?ref=v1.0.3"
   workload             = "rds"
   name                 = "gold"
   account_id           = "123456789012"
@@ -83,7 +83,7 @@ Keep one Terraform state per root, per account and Region, and one Clumio tenant
 
 ## Retire production
 
-Production refuses every destroy on purpose. To retire it, in each protect root first and the connection root last:
+Production refuses every destroy on purpose. Retiring it ends protection for that account and Region. Before you start, restore anything you want to keep, and talk to Clumio about any backups you need. To retire it, in each protect root first and the connection root last:
 
 1. Remove the guard from state: `terraform state rm 'module.protect.terraform_data.production_guard[0]'` (in the connection root, `module.connection.terraform_data.production_guard[0]`). It's a marker with nothing behind it in AWS or Clumio, so this deletes nothing.
 2. Set `mode = "trial"`, then plan and apply once: no resource changes.

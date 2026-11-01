@@ -57,6 +57,8 @@ Exit codes, for scripts and CI: 0 nothing to do, including WAITING and NOT_YET, 
 
 ## Take a trial down
 
+Removing the connection ends protection for this account and Region, so restore anything you want to keep first.
+
 Reverse the steps: each protect folder first, the connection last. A protect folder needs the connection to plan its own removal, so `1-connect` goes last.
 
 1. Keep every tag in place until the teardown is done: the check finds running backups through them. Run `tools/status.py --teardown`. It checks that Clumio isn't backing up these resources, and lists every folder at the repository root named `1-connect`, or starting with `2-protect-`, that still has something applied in its local state. With `mode = "production"` in `1-connect/terraform.tfvars`, or while a backup runs, it says why to wait, and you stop here.
@@ -68,11 +70,11 @@ If `1-connect` was destroyed first, the `2-protect-` folders can no longer plan:
 
 5. Remove the `clumio-profile` and `clumio-volume-profile` tags, so a later setup doesn't pick these resources up without anyone deciding to.
 
-Backups Clumio already made stay until their retention ends. Each database keeps the PITR window Clumio set: the teardown check in step 1 lists them, and you set back the windows you noted before step 2.
+Each database keeps the PITR window Clumio set: the teardown check in step 1 lists them, and you set back the windows you noted before step 2. A Clumio snapshot of an RDS database can stay in your account: delete it when you're finished.
 
 ## Retire a production connection
 
-The production guards refuse every destroy, so retiring production is a deliberate act. Do it only when you mean to stop protecting this account and Region.
+The production guards refuse every destroy, so retiring production is a deliberate act. Do it only when you mean to stop protecting this account and Region. Before you start, restore anything you want to keep, and talk to Clumio about any backups you need.
 
 Proven live on 2026-10-29 in the step folders: production refused a destroy in `1-connect` and in a `2-protect-` folder, and a switch to trial; the steps below then removed everything.
 
