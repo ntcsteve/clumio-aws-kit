@@ -2,6 +2,12 @@
 
 Production teams call the two modules from their own repository, with their own state backend, review and CI. The modules are the product: the step folders are their first-time callers, and every guard lives in the modules, so your repository gets the same checks.
 
+## Before you start
+
+Repeat [step 0](../0-check/README.md) with your production settings: set them in a clone's `1-connect/terraform.tfvars`, then run `tools/status.py --preflight` and `0-check/preview/preview.sh`. New settings can mean new IAM, so your security team reviews this pack too.
+
+An account and Region have one Clumio connection, and one state manages it. If a trial connected this account and Region, [take the trial down](operate.md#take-a-trial-down) first.
+
 ## Call the modules
 
 Use separate roots, as the step folders do: one for the connection, and one per workload you protect, each with its own state. A protect root looks the connection up, so apply the connection first.
@@ -61,7 +67,15 @@ Keep the connection and each protect call in separate roots: in one root, the co
 | A workload the connection's IAM leaves out stops the plan | Yes, when you pass `connection_workloads` |
 | No backup running before a teardown | **No:** `tools/status.py --teardown` reads `1-connect`'s settings and refuses in production. Check Clumio's Tasks before removing protection |
 
-`tools/status.py --account <ID> --region <Region> --unit <unit>` shows who protects each tagged resource, for policies `modules/protect` made in any repository: it finds them by name in Clumio. Add `--json` for CI; the exit code is 0 when nothing needs a person.
+`tools/status.py --account <ID> --region <Region> --unit <unit>` shows who protects each tagged resource, for policies `modules/protect` made in any repository: it finds them by name in Clumio. Add `--json` for CI. Exit 0 means no tag or ownership problem. It doesn't mean a backup ran: a resource with an old backup, or one still WAITING or NOT_YET, exits 0 too.
+
+## Watch your backups
+
+Terraform doesn't report a failed backup, and `tools/status.py` shows only the last backup's time. Watch them in Clumio:
+
+- **Alerts** show a failed backup or restore.
+- **The compliance report** says whether each asset has a backup each day. Set `report_emails` on `modules/connection` to get it by email. The report was created live; the email itself hasn't been seen yet.
+- **Name who reads them.** Clumio recommends [checking its reports every day](https://documentation.commvault.com/clumio/best_practices_for_clumios_platform.html).
 
 ## One state per root
 

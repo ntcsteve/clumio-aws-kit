@@ -20,6 +20,7 @@ Start with `tools/status.py --preflight`: it checks your setup and says what to 
 | *error_code 320 … already exists* | An apply was cut off after Clumio created an object. Run `terraform import <address> <ID from the Clumio console>`, then plan again. |
 | *Instance cannot be destroyed* | `mode = "production"`: the production guard refuses a destroy, a switch to trial, or a new account or Region. That's on purpose. For another account or Region, use a fresh clone of the repository, as [1-connect](../1-connect/README.md) says. |
 | *error_code 367*, during a teardown | Your Clumio tenant can't delete connections. Keep the connection, or ask Clumio support. |
+| *BLOCKED* from `tools/status.py --teardown`, and a task stays `queued` | Teardown waits for every task on these resources, and first backups have sat queued for 40 minutes or more in the lab. Wait and run the check again. To stop a queued task, ask Clumio support, or send Clumio's API `PATCH /tasks/<task ID>` with `{"status": "aborting"}`: in the lab it ended within about 1 to 5 minutes. |
 | Anything else | Run again with `TF_LOG=DEBUG TF_LOG_PATH=./tf-debug.log`. The log can hold secrets: check it before you share it. |
 
 ## Read tools/status.py
@@ -29,8 +30,8 @@ Start with `tools/status.py --preflight`: it checks your setup and says what to 
 | State | What it means | What to do |
 |---|---|---|
 | OURS | This profile's policy protects it, and a backup exists. | Nothing. |
-| WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. |
-| NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. A resource created or tagged after its rule joins at Clumio's next discovery cycle. | Run `tools/status.py` again later; allow up to a day. |
+| WAITING | This profile's policy protects it; its first backup hasn't finished. | Nothing yet. If it still waits after a day, look for it in Clumio's Tasks. If nothing moves there, contact Clumio support with the resource's ID. |
+| NOT_YET | Clumio hasn't found it, or hasn't applied the profile yet. A resource created or tagged after its rule joins at Clumio's next discovery cycle. | Run `tools/status.py` again later; allow up to a day. After a day with no change, contact Clumio support with the resource's ID. |
 | OTHER | Another rule or policy protects it. The line names the rule. | Remove the tag that rule matches, ask its owner, or rank this profile's rule ahead of it: set `rule_before_id` in that `2-protect-` folder to the rule's ID, which the line shows, then plan and apply. The plan replaces the folder's rule, placed ahead of that one. |
 | BAD_VALUE | Its `clumio-profile` tag names no profile applied here: a typo, or that profile's `2-protect-` folder isn't applied, or was taken down. | Apply that folder, or fix or remove the tag. |
 | DOUBLE | A volume tagged `clumio-volume-profile` is attached to an instance the profile already protects, and an instance's backup already holds its volumes. | Remove the volume's `clumio-volume-profile` tag, or you pay for two copies. |
