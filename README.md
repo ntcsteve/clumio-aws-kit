@@ -83,7 +83,7 @@ Run each command in the folder under Where, in one shell: the one signed in to A
 | 2.1 | Person | AWS | Tag what to protect: `clumio-profile = gold` (an EBS volume on its own: `clumio-volume-profile = gold`). Note each tagged database's PITR window | Tagged before the plan; windows noted |
 | 2.2 | Person | `2-protect-<workload>` | `cp settings.example terraform.tfvars`, then set any value marked REPLACE and check the rest | Settings set |
 | 2.3 | Anyone | root | `tools/status.py --preflight` | Every line PASS, or NOTE: read it |
-| 2.4 | Anyone | `2-protect-<workload>` | `terraform init`, then `terraform plan -out=tfplan` | Adds one Clumio policy and its rule (S3: its protection group). Nothing to change or destroy |
+| 2.4 | Anyone | `2-protect-<workload>` | `terraform init`, then `terraform plan -out=tfplan` | Adds one Clumio policy and its rule (S3: its protection group). Nothing to change or destroy. RDS and Aurora: `pitr_checked` lists each database. Empty means nothing is tagged: stop |
 | STOP | Person | | Read the plan. Go, or stop | |
 | 2.5 | Anyone | `2-protect-<workload>` | `terraform apply tfplan`. Repeat 2.1 to 2.5 per workload | Apply complete |
 | 3.1 | Anyone | root | `tools/status.py` | Every resource OURS. NOT_YET or WAITING until its first backup, up to a day |

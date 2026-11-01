@@ -47,3 +47,19 @@ run "it_protects_rds_in_1_connects_account_and_region" {
     error_message = "The policy is named for this workload, in 1-connect's account and Region."
   }
 }
+
+run "the_plan_shows_the_databases_it_checked" {
+  command = plan
+  override_data {
+    target = module.protect.data.aws_db_instances.tagged[0]
+    values = { instance_identifiers = ["orders"] }
+  }
+  override_data {
+    target = module.protect.data.aws_db_instance.tagged["orders"]
+    values = { backup_retention_period = 7, db_cluster_identifier = "" }
+  }
+  assert {
+    condition     = output.pitr_checked == { "RDS instance orders" = 7 }
+    error_message = "This folder's plan must show what the PITR guard read."
+  }
+}

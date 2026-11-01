@@ -47,3 +47,19 @@ run "it_protects_aurora_in_1_connects_account_and_region" {
     error_message = "The policy is named for this workload, in 1-connect's account and Region."
   }
 }
+
+run "the_plan_shows_the_clusters_it_checked" {
+  command = plan
+  override_data {
+    target = module.protect.data.aws_rds_clusters.all[0]
+    values = { cluster_identifiers = ["orders-aurora"] }
+  }
+  override_data {
+    target = module.protect.data.aws_rds_cluster.all["orders-aurora"]
+    values = { backup_retention_period = 7, engine = "aurora-mysql", tags = { "clumio-profile" = "gold" } }
+  }
+  assert {
+    condition     = output.pitr_checked == { "Aurora cluster orders-aurora" = 7 }
+    error_message = "This folder's plan must show what the PITR guard read."
+  }
+}

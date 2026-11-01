@@ -289,6 +289,54 @@ run "an_equal_window_passes" {
   }
 }
 
+# The guard passes when nothing is tagged, so the plan shows what it read: empty means nothing was checked.
+run "the_plan_shows_each_rds_instance_it_checked" {
+  command = plan
+  override_data {
+    target = data.aws_db_instances.tagged[0]
+    values = { instance_identifiers = ["orders"] }
+  }
+  override_data {
+    target = data.aws_db_instance.tagged["orders"]
+    values = { backup_retention_period = 14, db_cluster_identifier = "" }
+  }
+  assert {
+    condition     = output.pitr_checked == { "RDS instance orders" = 14 }
+    error_message = "The plan must show each tagged instance and its window today."
+  }
+}
+
+run "the_plan_shows_each_aurora_cluster_it_checked_and_no_other" {
+  command = plan
+  variables {
+    workload = "aurora"
+  }
+  override_data {
+    target = data.aws_rds_clusters.all[0]
+    values = { cluster_identifiers = ["orders-aurora", "other"] }
+  }
+  override_data {
+    target = data.aws_rds_cluster.all["orders-aurora"]
+    values = { backup_retention_period = 14, engine = "aurora-mysql", tags = { "clumio-profile" = "gold" } }
+  }
+  override_data {
+    target = data.aws_rds_cluster.all["other"]
+    values = { backup_retention_period = 35, engine = "aurora-mysql", tags = { team = "x" } }
+  }
+  assert {
+    condition     = output.pitr_checked == { "Aurora cluster orders-aurora" = 14 }
+    error_message = "The plan must show tagged clusters only, each with its window today."
+  }
+}
+
+run "nothing_tagged_shows_an_empty_list" {
+  command = plan
+  assert {
+    condition     = output.pitr_checked == {}
+    error_message = "With nothing tagged, the plan must show that nothing was checked."
+  }
+}
+
 # Aurora's instances carry their cluster's window, and Clumio protects the cluster.
 run "the_rds_folder_leaves_aurora_instances_to_their_cluster" {
   command = plan

@@ -43,3 +43,8 @@ output "policy" {
   description = "This folder's Clumio policy."
   value       = { name = "${var.name}-rds-${local.connect.account_id}-${local.connect.region}", id = module.protect.policy_id }
 }
+
+output "pitr_checked" {
+  description = "Each tagged database this plan checked, with its PITR window today, in days. Empty means nothing is tagged: tag first."
+  value       = module.protect.pitr_checked
+}
