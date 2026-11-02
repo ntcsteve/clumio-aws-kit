@@ -64,6 +64,8 @@ Its exit code says the same, for scripts and agents: 0 READY, 1 BLOCKED, 2 CANNO
 
 If a CI/CD role deploys for you, check that role the same way, with `--as`.
 
+The preview checks what Terraform needs, not what `tools/status.py` needs. Preflight reads `sts:GetCallerIdentity`. Steps 3.1 and 3.3 and the teardown check read `tag:GetResources`, `ec2:DescribeVolumes`, `ec2:DescribeInstances`, `rds:DescribeDBInstances` and `rds:DescribeDBClusters`. The generated deploy policy doesn't grant all of these, so an identity holding only that policy needs them added, or the tool stops and says to check your sign-in.
+
 Proven live on 2026-10-29: an IAM user holding only the generated deploy policy planned, applied and destroyed `1-connect` (S3, RDS) and `2-protect-s3`, with no access errors.
 
 ## Next

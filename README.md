@@ -1,6 +1,6 @@
 # Clumio Get Started AWS Kit
 
-Prove that [Clumio by Commvault](https://www.clumio.com/) protects and restores your AWS data, from your own account, with an afternoon's work, then take it down. For the engineer running the trial, the field engineer beside them, and AI agents helping them ([rules for agents](AGENTS.md)).
+Prove that [Clumio by Commvault](https://www.clumio.com/) protects and restores your AWS data, from your own account, in two sittings, then take it down. For the engineer running the trial, the forward deployed engineer, and AI agents helping them ([rules for agents](AGENTS.md)).
 
 This kit uses Clumio's Terraform provider and IAM module, pinned to tested versions. For problems with the Clumio service, contact Clumio support.
 

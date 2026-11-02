@@ -80,6 +80,7 @@ Terraform removes only what the kit made. The rest is yours:
 | Each database's PITR window | After step 4 | Clumio's stays. A shorter window deletes AWS's older backups: set back the window you noted only if that's what you want |
 | The profile tags | After step 4 | Remove `clumio-profile` and `clumio-volume-profile`, so a later setup doesn't pick these resources up |
 | Clumio's RDS snapshot | After step 4 | One can stay in your account, named `clumio-airgap-encrypted-…`, under RDS manual snapshots. Delete it when you're finished |
+| Your Clumio API token | After step 4 | Revoke it in the Clumio console, where you created it, unless you still need it |
 
 Reverse the steps: each protect folder first, the connection last. A protect folder needs the connection to plan its own removal, so `1-connect` goes last.
 
