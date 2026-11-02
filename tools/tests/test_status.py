@@ -342,10 +342,16 @@ class FolderStateTests(unittest.TestCase):
 
     # A clone on a new machine: the state exists in S3, but this folder hasn't been initialized yet.
     def test_a_backend_not_initialized_is_never_taken_as_empty(self):
-        self.folder("2-protect-rds")
+        self.folder("2-protect-rds", settings=True)
         open(os.path.join(self.root, "2-protect-rds", "backend.tf"), "w").close()
         self.assertIsNone(status.folder_resources("2-protect-rds"))
         self.assertEqual(status.applied_folders(), ["2-protect-rds"])
+
+    # Read live, run 1 of v1.1: the tool writes backend.tf in every folder, used or not.
+    def test_a_backend_in_a_folder_with_no_settings_was_never_applied(self):
+        self.folder("2-protect-ebs")
+        open(os.path.join(self.root, "2-protect-ebs", "backend.tf"), "w").close()
+        self.assertEqual(status.applied_folders(), [])
 
     def test_other_folders_are_left_out(self):
         self.folder("proof", initialized=True, resources=[self.RULE])

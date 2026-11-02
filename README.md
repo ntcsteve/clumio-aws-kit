@@ -24,6 +24,7 @@ This kit covers one AWS account and Region, and five workloads: S3, RDS, Aurora,
 | Copies outside your account: [in your data's Region by default](https://www.clumio.com/platform), the setting this kit leaves in place | [How it works](#3-how-it-works) |
 | Your keys staying yours, AWS-managed or customer-managed | [Does Clumio need our keys?](docs/keys.md) |
 | A verdict and the evidence behind it, for sign-off | [3-prove](3-prove/README.md#3-keep-the-evidence) |
+| A deleted test bucket restored from Clumio's copy | [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) |
 | Backups, restores and failures, in Clumio's Tasks, Alerts and Reports | [Watch your backups](docs/production.md#watch-your-backups) |
 | Teardown removing everything the kit created | [Take a trial down](#take-a-trial-down) |
 

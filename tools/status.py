@@ -469,8 +469,11 @@ def check_bucket(world, kit, name, value, profile):
     if asset is None:
         return record("s3", name, value, "NOT_YET", "Clumio hasn't added it to this profile's protection group yet. "
                       "A bucket joins once Clumio's daily inventory sees its tag, up to a day: run again later.")
-    if (asset.get("protection_info") or {}).get("policy_id") != profile["s3"]:
-        return record("s3", name, value, "OTHER", claimed_by(world, asset.get("protection_info") or {}, kit["organizational_unit_id"]))
+    info = asset.get("protection_info") or {}
+    if not info.get("policy_id"):  # Seen live for the first minutes after a bucket joins its group.
+        return record("s3", name, value, "NOT_YET", "It's in this profile's protection group, and its policy attaches within minutes: run again.")
+    if info["policy_id"] != profile["s3"]:
+        return record("s3", name, value, "OTHER", claimed_by(world, info, kit["organizational_unit_id"]))
     return protected("s3", name, value, asset.get("last_backup_timestamp") or "")
 
 
@@ -834,9 +837,13 @@ def folder_resources(folder):
     """What Terraform's state holds for a folder at the repository root, from any backend: a list, empty
     when nothing is applied; None when Terraform can't say. Before terraform init, a step folder can't
     answer at all (Module not installed), so a folder with no .terraform and no local state holds nothing,
-    unless backend.tf says its state lives elsewhere: then only Terraform knows."""
+    unless backend.tf says its state lives elsewhere and the folder has settings: then only Terraform
+    knows. tools/use_s3_state.py writes backend.tf in every folder, so one with no settings was never used."""
     path = os.path.join(ROOT, folder)
-    if not any(os.path.exists(os.path.join(path, name)) for name in (".terraform", "terraform.tfstate", "backend.tf")):
+    def holds(name):
+        return os.path.exists(os.path.join(path, name))
+    in_use_elsewhere = holds("backend.tf") and holds("terraform.tfvars")
+    if not (holds(".terraform") or holds("terraform.tfstate") or in_use_elsewhere):
         return []
     try:
         answer = subprocess.run(["terraform", f"-chdir={path}", "state", "pull"], capture_output=True, text=True, timeout=TIMEOUT_SECONDS)

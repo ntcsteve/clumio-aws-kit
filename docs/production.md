@@ -17,6 +17,8 @@ Deploy to production from a fresh clone of this kit, with the same steps you ran
 
 To work from another machine, make a fresh clone, copy your `terraform.tfvars` files and any second profile's folder, run the tool with the same bucket, and run `terraform init` in each folder you applied before any check.
 
+Proven live on 2026-11-02 for S3: a fresh clone in production mode, state in S3, on an identity holding only the generated deploy policy, `tools/status.py`'s reads and the state bucket's permissions, from a second machine too, through to retiring it.
+
 ## What you get
 
 | Guard | In production |
@@ -39,7 +41,7 @@ Terraform doesn't report a failed backup, and `tools/status.py` shows only the l
 
 The production guards refuse every destroy, so retiring production is a deliberate act. Do it only when you mean to stop protecting this account and Region. Before you start, restore anything you want to keep, and talk to Clumio about any backups you need.
 
-Proven live on 2026-10-29 in the step folders: production refused a destroy in `1-connect` and in a `2-protect-` folder, and a switch to trial; the steps below then removed everything.
+Proven live on 2026-11-02 with state in S3: production refused a teardown and a destroy; the steps below then removed everything.
 
 1. In each folder you applied, remove its guard from Terraform's state. Each guard is a marker with nothing behind it in AWS or Clumio, so this deletes nothing:
 

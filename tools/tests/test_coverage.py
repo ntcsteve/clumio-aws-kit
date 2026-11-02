@@ -151,12 +151,12 @@ class Lab(unittest.TestCase):
         if backup:
             self.clumio.lists["/backups/aws/rds-resources"].append({"resource_id": f"id-{name}", "start_timestamp": backup})
 
-    def add_bucket(self, name, in_group=True, backup=None, value="gold"):
+    def add_bucket(self, name, in_group=True, backup=None, value="gold", policy=POLICY["s3"]):
         self.resources.append(bucket(name, value))
         if in_group:
             self.clumio.lists["/datasources/protection-groups/s3-assets"].append(
                 {"id": f"asset-{name}", "bucket_name": name, "group_id": GROUP, "is_deleted": False,
-                 "protection_info": {"policy_id": POLICY["s3"]}, "last_backup_timestamp": backup})
+                 "protection_info": {"policy_id": policy} if policy else None, "last_backup_timestamp": backup})
 
     def add_instance(self, instance_id, policy=POLICY["ec2"], backup=None, value="gold"):
         self.resources.append(instance(instance_id, value))
@@ -255,6 +255,13 @@ class Coverage(Lab):
         states, records, unit = self.states()
         self.assertEqual(states["orders-db"], "UNKNOWN")
         self.assertEqual(status.coverage_exit_code(records, unit), 2)
+
+    # Read live, run 1 of v1.1: a bucket in its group has no protection_info for its first minutes.
+    # That isn't another policy: OTHER told the person to remove an assignment that didn't exist.
+    def test_a_bucket_in_its_group_with_no_policy_yet_is_not_yet_not_other(self):
+        self.add_bucket("docs-bucket", policy=None)
+        states, _, _ = self.states()
+        self.assertEqual(states["docs-bucket"], "NOT_YET")
 
     def test_a_connection_in_another_unit_fails(self):
         self.clumio.single[f"/connections/aws/{ACCOUNT}_{REGION}"] = (200, {"organizational_unit_id": "another-unit"})

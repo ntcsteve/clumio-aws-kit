@@ -6,6 +6,8 @@
 - `tools/status.py` says PROTECTED where it said OURS, in its output and in `--json`. A script that reads the old word must change.
 - `tools/status.py` reads the connection's status: HTTP 200 alone no longer passes. It asks Terraform for state, so it works with any backend, and it never claims a connection whose state it can't read.
 - The README's steps run from preparing to taking a trial down, and folder READMEs keep only what's unique. [Retire a production connection](docs/production.md#retire-a-production-connection) moved to Production.
+- `tools/status.py` says NOT_YET, not OTHER, for a bucket whose policy hasn't attached yet. OTHER told you to remove an assignment that didn't exist.
+- [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) shows a deleted test bucket restored from Clumio's copy, seen live on S3.
 - The README says what you'll see, and that this kit is independent.
 
 ## v1.0.3 (2026-11-01)
