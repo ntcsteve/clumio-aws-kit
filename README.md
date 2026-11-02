@@ -148,7 +148,7 @@ Terraform removes only what the kit made. The rest is yours:
 | Restored copies and objects | Any time | Delete what you don't need. Terraform can't see them |
 | Each database's PITR window | After 4.7 | It stays as the policy set it. A shorter window deletes AWS's older backups: set back the window you noted only if that's what you want |
 | The profile tags | After 4.7 | Remove `clumio-profile` and `clumio-volume-profile`, so a later setup doesn't pick these resources up |
-| Clumio's RDS snapshot | After 4.7 | One may remain in your account, named `clumio-airgap-encrypted-…`, under RDS manual snapshots. Delete it when you're finished |
+| Clumio's RDS snapshot | After 4.7 | One per database may remain in your account, named `clumio-airgap-encrypted-…`, under RDS manual snapshots. Delete them when you're finished |
 | Your Clumio API token | After 4.7 | Revoke it in the Clumio console, where you created it, unless you still need it |
 
 ## License
