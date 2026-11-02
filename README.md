@@ -4,33 +4,44 @@ Prove that [Clumio by Commvault](https://www.clumio.com/) protects and restores 
 
 This kit uses Clumio's Terraform provider and IAM module, pinned to tested versions. It's an independent kit, not an official Clumio or Commvault product. Clumio is a trademark of its owner. For the Clumio service, contact Clumio support. For this kit, open an issue.
 
+## What you'll see with Clumio
+
+On your own data, in your own account, with evidence you keep.
+
+### Does it come back?
+
+| You'll see | Seen live |
+|---|---|
+| A copy of everything you tag, outside your account, [in your data's Region by default](#where-your-copies-live) | S3, RDS, Aurora, EC2 and EBS: [keys evidence](proof/evidence/keys-lab-2026-10-28/) |
+| Your own data restored, checked and timed | All five workloads. S3 byte for byte, in about 2 minutes: [3-prove](3-prove/README.md#2-restore-one) |
+| A deleted bucket brought back from its copy | S3: [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) |
+
+### Can you run it with confidence?
+
+| You'll see | Seen live |
+|---|---|
+| Every IAM role and permission Clumio gets, before anything exists | [0-check](0-check/README.md), and a deploy on only the generated policy |
+| A verdict and the evidence behind it, for sign-off | All five workloads: [3-prove](3-prove/README.md#3-keep-the-evidence) |
+| Teardown removing everything the kit created | [Take a trial down](#take-a-trial-down) |
+
+### Does it fit your rules?
+
+| You'll see | Seen live |
+|---|---|
+| AWS point-in-time recovery (PITR) kept, with a daily SecureVault Standard copy and a monthly SecureVault Archive copy, from one policy | Aurora: [Archive evidence](proof/evidence/archive-lab-2026-10-29/) |
+| Your keys staying yours, AWS-managed or customer-managed | [Does Clumio need our keys?](docs/keys.md) |
+
+See also [Not covered here](docs/keys.md#not-covered-here) and [How it behaves](docs/operate.md#how-it-behaves).
+
 ## 1. Why care, and is this for you
 
-Backups in the same account as the data fall with it: a deleted account, a stolen admin key or ransomware takes both. Clumio describes where your backups live as [a dedicated, air-gapped, immutable vault outside your cloud account](https://www.clumio.com/platform). This kit sets Clumio up with plain Terraform, protects what you tag, and shows you each backup and a restore. You decide on evidence.
+Keep AWS PITR and your snapshots for fast local recovery. Clumio adds a copy that doesn't share their fate: backups in the same account as the data can fall with it, in a deleted account, with a stolen admin key, or to ransomware. Clumio describes where your backups live as [a dedicated, air-gapped, immutable vault outside your cloud account](https://www.clumio.com/platform). This kit sets Clumio up with plain Terraform, protects what you tag, and shows you each backup and a restore. You decide on evidence.
 
 This is a first step in [Resilience Operations (ResOps)](https://www.commvault.com/explore/resilience-operations), Commvault's discipline for recovering within defined impact tolerances, and proving it with evidence. Backup answers "do we have copies?". This kit proves a restore, and leaves you the evidence.
 
 This kit covers one AWS account and Region, and five workloads: S3, RDS, Aurora, EC2 and EBS. You restore in the Clumio console.
 
-## 2. What you'll see
-
-| You'll see | Where to look |
-|---|---|
-| Every IAM role and permission Clumio gets, before anything exists | [0-check](0-check/README.md) |
-| What you tag, backed up: S3, RDS, Aurora, EC2, EBS | [Keys evidence](proof/evidence/keys-lab-2026-10-28/) |
-| How often it runs and how long copies stay, in one policy per workload | [Each protect folder's settings](2-protect-rds/settings.example) |
-| One policy running your database's AWS point-in-time recovery (PITR), a daily SecureVault Standard copy and a monthly SecureVault Archive copy | [Archive evidence](proof/evidence/archive-lab-2026-10-29/), for Aurora |
-| Your own data restored, and how long it took | [3-prove](3-prove/README.md#2-restore-one) |
-| Copies outside your account: [in your data's Region by default](https://www.clumio.com/platform), the setting this kit leaves in place | [How it works](#3-how-it-works) |
-| Your keys staying yours, AWS-managed or customer-managed | [Does Clumio need our keys?](docs/keys.md) |
-| A verdict and the evidence behind it, for sign-off | [3-prove](3-prove/README.md#3-keep-the-evidence) |
-| A deleted test bucket restored from Clumio's copy | [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) |
-| Backups, restores and failures, in Clumio's Tasks, Alerts and Reports | [Watch your backups](docs/production.md#watch-your-backups) |
-| Teardown removing everything the kit created | [Take a trial down](#take-a-trial-down) |
-
-See also [Not covered here](docs/keys.md#not-covered-here) and [How it behaves](docs/operate.md#how-it-behaves).
-
-## 3. How it works
+## 2. How it works
 
 ```
  Your AWS account                                    Clumio
@@ -47,7 +58,11 @@ See also [Not covered here](docs/keys.md#not-covered-here) and [How it behaves](
 
 You tag a resource. A Clumio rule matches the tag. The policy decides what Clumio copies, how often and for how long. Clumio works in your account only through the IAM roles from step 1.
 
-## 4. What it touches
+### Where your copies live
+
+[By default, backups stay in the same cloud region as the source](https://www.clumio.com/platform), in Clumio's accounts, outside yours. This kit leaves that default in place, and Clumio's console shows it as **In-region**. RDS and Aurora get three layers from one policy: AWS PITR stays in your account for fast local recovery, SecureVault Standard is a daily copy that restores a whole database, and SecureVault Archive is a monthly long-term copy built from Standard. A restore can go to another Region, with a key, subnet group and security group there for RDS: [What a restore needs from you](docs/keys.md#what-a-restore-needs-from-you). AWS transfer fees may apply.
+
+## 3. What it touches
 
 **What it creates.** Step 1: the Clumio connection, Clumio's IAM roles and policies, EventBridge rules and an SNS topic. Step 0 shows them before they exist. Step 2: one Clumio policy per workload, with a rule (S3: a protection group).
 
@@ -63,7 +78,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 - **Mid-backup teardown:** `tools/status.py --teardown` says wait while Clumio is backing up. You run it; Terraform doesn't.
 - **Your resources:** the kit removes only what it created.
 
-## 5. Plan and prepare
+## 4. Plan and prepare
 
 | What | Detail |
 |---|---|
@@ -74,7 +89,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 | Time | About a dozen commands, in two sittings: steps 0 to 1.1 before your security team's review, 1.2 onward after it. First backups came within an hour in the lab; allow up to a day |
 | Cost | Clumio bills each copy while it's kept. Archive is built for 12 months or longer: a shorter copy has an early-deletion fee. To see Archive in a test, set `archive_months = 1`; 0 skips it |
 
-## 6. What to do
+## 5. What to do
 
 Run each command in the folder under Where, in one shell: the one signed in to AWS, with the Clumio details exported. **Person**: a person does it. **STOP**: wait for a person's go. **Anyone**: a person or an agent. `<workload>` is `s3`, `rds`, `aurora`, `ec2` or `ebs`. [Operate](docs/operate.md) explains each status and error.
 

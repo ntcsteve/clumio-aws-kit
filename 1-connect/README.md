@@ -14,4 +14,4 @@ Run this once per account and Region. The `2-protect-` folders read their settin
 
 ## Next
 
-[Step 2](../README.md#6-what-to-do): protect each workload you need, from its own `2-protect-` folder.
+[Step 2](../README.md#protect): protect each workload you need, from its own `2-protect-` folder.

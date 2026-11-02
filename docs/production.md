@@ -11,7 +11,7 @@ Deploy to production from a fresh clone of this kit, with the same steps you ran
 
 ## Deploy
 
-1. Do steps 0.1 and 0.2 in the [README](../README.md#6-what-to-do), with `mode = "production"`.
+1. Do steps 0.1 and 0.2 in the [README](../README.md#5-what-to-do), with `mode = "production"`.
 2. From the repository's root folder, run `tools/use_s3_state.py <bucket>`. It writes `backend.tf` in `1-connect` and in each `2-protect-` folder, one key each, and tells each `2-protect-` folder where `1-connect`'s state is. Run it before the first `terraform init`.
 3. Carry on from step 0.3, to step 3.1. New settings can mean new IAM, so your security team reviews this pack too.
 

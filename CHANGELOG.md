@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `tools/status.py --report` lists each policy's frequency and retention, and `--recovery-target-minutes` says MET or MISSED beside the restore time. Tested offline.
+- The README opens with what you'll see with Clumio, and says where copies live. [Operate](docs/operate.md#delete-a-backup) says how deleting a backup works.
 - Going live is one path: a fresh clone in your production account, with Terraform's state in S3. [Production](docs/production.md) replaces calling the modules from your own repository. `tools/use_s3_state.py` sets the state up.
 - `tools/status.py` says PROTECTED where it said OURS, in its output and in `--json`. A script that reads the old word must change.
 - `tools/status.py` reads the connection's status: HTTP 200 alone no longer passes. It asks Terraform for state, so it works with any backend, and it never claims a connection whose state it can't read.

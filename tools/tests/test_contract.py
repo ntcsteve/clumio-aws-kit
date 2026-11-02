@@ -64,6 +64,16 @@ class Stage2fProtected(unittest.TestCase):
         for resource in report["resources"]:
             self.assertIn(resource["name"], page)
 
+    # The expected terms are read by hand from the saved answer: the settings stage 2f applied.
+    def test_the_report_shows_each_policys_frequency_and_retention(self):
+        terms = status.evidence(self.world, None, "2026-10-28T15:00:00Z")["policies"]
+        s3 = [t for t in terms if t["policy"].startswith("gold-s3-")]
+        self.assertEqual([(t["copy"], t["every"], t["kept_for"]) for t in s3],
+                         [("SecureVault Standard", "1 day", "30 days"), ("Backtrack", "1 day", "3 months")])
+        rds = [t for t in terms if t["policy"].startswith("gold-rds-")]
+        self.assertEqual([(t["copy"], t["every"], t["kept_for"]) for t in rds],
+                         [("AWS PITR", "1 day", "7 days"), ("SecureVault Standard", "1 day", "7 days")])
+
     def test_the_kits_policies_are_found_by_name_one_per_workload(self):
         profiles = status.kit_profiles(self.world, self.world.kit())
         self.assertEqual(sorted(profiles), ["gold"])

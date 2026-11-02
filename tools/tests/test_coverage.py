@@ -512,6 +512,36 @@ class Report(Lab):
         self.clumio.single[f"/tasks/{RESTORE_ID}"] = (200, dict(RESTORE, **changes))
         return status.evidence(self.world(), task, NOW)
 
+    # The expected results are worked by hand: RESTORE took 150 seconds, 2m 30s.
+    def report_with_target(self, minutes):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        self.clumio.single[f"/tasks/{RESTORE_ID}"] = (200, dict(RESTORE))
+        return status.evidence(self.world(), RESTORE_ID, NOW, minutes)
+
+    def test_a_restore_inside_the_target_is_met(self):
+        report = self.report_with_target(3)
+        self.assertEqual(report["recovery_target"], {"minutes": 3, "result": "MET"})
+        self.assertEqual(report["verdict"], "PROVEN")
+
+    # PROVEN says a restore worked. Missing a target is the person's to weigh, so it doesn't change that.
+    def test_a_restore_past_the_target_is_missed_and_stays_proven(self):
+        report = self.report_with_target(2)
+        self.assertEqual(report["recovery_target"], {"minutes": 2, "result": "MISSED"})
+        self.assertEqual(report["verdict"], "PROVEN")
+
+    def test_no_target_says_nothing(self):
+        self.assertIsNone(self.report_with_target(None)["recovery_target"])
+
+    def test_a_target_with_no_finished_restore_has_no_result(self):
+        self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
+        report = status.evidence(self.world(), None, NOW, 3)
+        self.assertEqual(report["recovery_target"], {"minutes": 3, "result": None})
+
+    def test_the_page_shows_the_target_beside_the_restore_time(self):
+        page = status.render_html(self.report_with_target(3))
+        self.assertIn("Recovery target", page)
+        self.assertIn("3 minutes: MET", page)
+
     def test_every_resource_ours_and_a_completed_restore_is_proven(self):
         self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
         report = self.report()

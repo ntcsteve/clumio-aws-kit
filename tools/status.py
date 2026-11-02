@@ -8,7 +8,7 @@
                                   organizational unit, Region, rule slots, and any existing connection
   tools/status.py --teardown      before a trial teardown: refuses in production, or while a backup runs,
                                   and names the folders still applied
-  tools/status.py --report --restore-task <task ID>
+  tools/status.py --report --restore-task <task ID> [--recovery-target-minutes <minutes>]
                                   the evidence for sign-off: a JSON file and an HTML page from one read,
                                   with a verdict: PROVEN, UNFINISHED or UNKNOWN
   tools/status.py --account 123456789012 --region us-west-2 --unit <unit ID or global> [--json]
@@ -677,9 +677,44 @@ def restore_gap(restore, protected):
     return None
 
 
-def evidence(world, restore_task=None, now=None):
+# What each Clumio operation is, in the words the docs use.
+COPY_NAMES = {"protection_group_backup": "SecureVault Standard", "aws_s3_backtrack": "Backtrack",
+              "aws_rds_resource_aws_snapshot": "AWS PITR", "aws_rds_resource_rolling_backup": "SecureVault Standard",
+              "aws_rds_resource_granular_backup": "SecureVault Archive", "aws_ec2_instance_backup": "SecureVault Standard",
+              "aws_ebs_volume_backup": "SecureVault Standard"}
+
+
+def span(period):
+    """{"unit": "days", "value": 1} as 1 day."""
+    value, unit = (period or {}).get("value"), (period or {}).get("unit") or ""
+    return "-" if value is None else f"{value} {unit[:-1] if value == 1 and unit.endswith('s') else unit}"
+
+
+def policy_terms(world, kit):
+    """How often each of the kit's policies runs and how long it keeps each copy, as Clumio holds them."""
+    pattern = kit_name_pattern(kit)
+    policies = clumio_items(world, "/policies/definitions", None, kit["organizational_unit_id"], complete=True)
+    if policies is None:
+        raise ClumioUnavailable("Clumio didn't list this unit's policies in full, so their terms can't be shown. Run again.")
+    return [{"policy": policy["name"], "copy": COPY_NAMES.get(operation.get("type"), operation.get("type")),
+             "every": span(sla.get("rpo_frequency")), "kept_for": span(sla.get("retention_duration"))}
+            for policy in policies if pattern.match(policy.get("name") or "")
+            for operation in policy.get("operations") or [] for sla in operation.get("slas") or []]
+
+
+def recovery_target(minutes, restore):
+    """The person's target against the restore: MET or MISSED once a restore has completed; None with no target."""
+    if minutes is None:
+        return None
+    if not restore or restore.get("status") != "completed" or restore.get("seconds") is None:
+        return {"minutes": minutes, "result": None}
+    return {"minutes": minutes, "result": "MET" if restore["seconds"] <= minutes * 60 else "MISSED"}
+
+
+def evidence(world, restore_task=None, now=None, target_minutes=None):
     """One read of the whole run, and its verdict: PROVEN when every resource is PROTECTED and a restore of
-    one of them completed; UNKNOWN when AWS or Clumio didn't answer; UNFINISHED otherwise, with what's missing."""
+    one of them completed; UNKNOWN when AWS or Clumio didn't answer; UNFINISHED otherwise, with what's missing.
+    A recovery target doesn't change the verdict: PROVEN says it worked, and how long is the person's to weigh."""
     kit = world.kit()
     if kit is None:
         raise NothingApplied()
@@ -695,12 +730,17 @@ def evidence(world, restore_task=None, now=None):
     return {"verdict": "UNKNOWN" if unanswered else "UNFINISHED" if gaps else "PROVEN", "gaps": gaps,
             "generated_at": now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "account_id": kit["account_id"], "region": kit["region"],
             "organizational_unit_id": kit["organizational_unit_id"], "connection": dict(zip(("state", "check", "detail"), connection)),
-            "resources": records, "restore": restore}
+            "resources": records, "restore": restore, "policies": policy_terms(world, kit),
+            "recovery_target": recovery_target(target_minutes, restore)}
 
 
 def duration(seconds):
     """150 as 2m 30s."""
     return "-" if seconds is None else f"{seconds // 60}m {seconds % 60}s"
+
+
+def target_line(target):
+    return f"{target['minutes']} minutes: {target['result'] or 'no finished restore to measure'}"
 
 
 def render_html(report):
@@ -712,11 +752,15 @@ def render_html(report):
     resources = "".join(f"<tr><td>{text(r['state'])}</td><td>{text(r['kind'])}</td><td>{text(r['name'])}</td><td>{text(r['profile'])}</td>"
                         f"<td>{text(r['last_backup'])}</td><td>{text(r['detail'])}</td></tr>" for r in report["resources"])
     restore = report["restore"]
+    target = report["recovery_target"]
+    target_row = "" if target is None else f"<tr><th>Recovery target</th><td>{text(target_line(target))}</td></tr>"
     restore_table = "<p>No restore recorded yet.</p>" if restore is None else (
         f"<table class=\"facts\"><tr><th>Task</th><td>{text(restore['id'])}</td></tr><tr><th>Type</th><td>{text(restore.get('type'))}</td></tr>"
         f"<tr><th>Resource</th><td>{text(restore.get('resource'))}</td></tr><tr><th>Status</th><td>{text(restore['status'])}</td></tr>"
         f"<tr><th>Started</th><td>{text(when(restore.get('started')))}</td></tr><tr><th>Ended</th><td>{text(when(restore.get('ended')))}</td></tr>"
-        f"<tr><th>Restore time</th><td>{text(duration(restore.get('seconds')))}</td></tr></table>")
+        f"<tr><th>Restore time</th><td>{text(duration(restore.get('seconds')))}</td></tr>{target_row}</table>")
+    policies = "".join(f"<tr><td>{text(t['policy'])}</td><td>{text(t['copy'])}</td><td>{text(t['every'])}</td><td>{text(t['kept_for'])}</td></tr>"
+                       for t in report["policies"])
     gaps = "".join(f"<li>{text(gap)}</li>" for gap in report["gaps"])
     missing = f"<h2>What's missing</h2><ul>{gaps}</ul>" if gaps else ""
     return f"""<!doctype html>
@@ -741,6 +785,8 @@ footer {{ margin-top: 2rem; color: #555; font-size: 0.9rem; }}
 <tr><th>Connection</th><td>{text(report['connection']['state'])}: {text(report['connection']['detail'])}</td></tr></table>
 <h2>Restore</h2>
 {restore_table}
+<h2>Backup policies</h2>
+<table><tr><th>Policy</th><th>Copy</th><th>Every</th><th>Kept for</th></tr>{policies}</table>
 <h2>Resources</h2>
 <table><tr><th>State</th><th>Kind</th><th>Name</th><th>Profile</th><th>Last backup</th><th>Detail</th></tr>{resources}</table>
 <footer>A backup counts once you've seen it restore: open what came back and check it before you sign off.
@@ -759,8 +805,12 @@ def write_report(report, folder):
     return stem + ".json", stem + ".html"
 
 
-def report_problem(report, as_json, restore_task):
+def report_problem(report, as_json, restore_task, target_minutes=None):
     """Why these flags can't be used together, or None."""
+    if target_minutes is not None and not (report and restore_task):
+        return "--recovery-target-minutes works with --report and --restore-task."
+    if target_minutes is not None and target_minutes < 1:
+        return "--recovery-target-minutes takes a whole number of minutes, 1 or more."
     if restore_task and not report:
         return "--restore-task works with --report."
     if report and as_json:
@@ -984,12 +1034,14 @@ def run_status(as_json, flags=None):
     return code
 
 
-def run_report(restore_task, flags):
-    report = evidence(real_world(flags), restore_task)
+def run_report(restore_task, flags, target_minutes=None):
+    report = evidence(real_world(flags), restore_task, target_minutes=target_minutes)
     json_path, html_path = write_report(report, ROOT)
     print(f"{report['verdict']}: {VERDICT_MEANING[report['verdict']]}")
     for gap in report["gaps"]:
         print(f"  {gap}")
+    if report["recovery_target"]:
+        print(f"Restore time {duration((report['restore'] or {}).get('seconds'))}. Recovery target {target_line(report['recovery_target'])}")
     print(f"Evidence: {json_path}\nPage:     {html_path}\nBoth name your AWS account, so keep them out of anything public.")
     return REPORT_EXIT_CODES[report["verdict"]]
 
@@ -1010,13 +1062,14 @@ def main():
     choice.add_argument("--teardown", action="store_true", help="whether teardown is safe now")
     choice.add_argument("--report", action="store_true", help="write the evidence: a JSON file and an HTML page, with a verdict")
     parser.add_argument("--restore-task", help="with --report: the restore's task ID, from Clumio's Tasks page")
+    parser.add_argument("--recovery-target-minutes", type=int, help="with --report and --restore-task: your target, shown as MET or MISSED")
     parser.add_argument("--json", action="store_true", help="coverage as JSON, for machines")
     parser.add_argument("--account", help="with --region and --unit: check this account instead of 1-connect's settings")
     parser.add_argument("--region")
     parser.add_argument("--unit", help='"global", or a unit\'s ID')
     args = parser.parse_args()
     problem = (flag_problem(args.account, args.region, args.unit, args.preflight or args.teardown)
-               or report_problem(args.report, args.json, args.restore_task))
+               or report_problem(args.report, args.json, args.restore_task, args.recovery_target_minutes))
     if problem:
         parser.error(problem)
     flags = {"account_id": args.account, "region": args.region, "organizational_unit": args.unit} if args.account else None
@@ -1031,7 +1084,7 @@ def main():
             print("Ready. Next: the step you're on (README.md, What to do)." if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
             sys.exit(exit_code(results))
         if args.report:
-            sys.exit(run_report(args.restore_task, flags))
+            sys.exit(run_report(args.restore_task, flags, args.recovery_target_minutes))
         sys.exit(run_teardown() if args.teardown else run_status(args.json, flags))
     except NothingApplied:
         print("No account, Region and unit to check: set them in 1-connect/terraform.tfvars (0-check/README.md), "

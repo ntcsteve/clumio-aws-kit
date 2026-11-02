@@ -58,6 +58,10 @@ Exit codes, for scripts and CI: 0 nothing to do, including WAITING and NOT_YET, 
 - **PROTECTED during a first backup.** Clumio lists a backup from its start, so PROTECTED can show a few minutes before the first copy finishes (seen live for EC2).
 - **PROTECTED right after a change of policy** can show the last backup the previous policy made, until this profile's first backup runs.
 
+## Delete a backup
+
+A backup deletion request is a deliberate, two-person act. In the Clumio console, under **Administration**, **Backup deletion**, a Super Admin creates a request, names a second approver, and selects by date range and data source, narrowing by account, Region, asset type or backup type. To target one resource, use its Clumio entity ID from the Consumption report: a resource's AWS name or ID doesn't work here. Both people sign, and Clumio then deletes the backups. [Clumio's steps](https://documentation.commvault.com/clumio/backup_deletion.html). Charges continue until a copy's minimum retention ends.
+
 ## A second profile
 
 For a second profile, such as `silver`, copy a `2-protect-` folder's files, never its state or `backend.tf`:
