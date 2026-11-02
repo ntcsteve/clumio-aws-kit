@@ -254,20 +254,16 @@ class RuleSlotPages(unittest.TestCase):
         self.assertEqual({c: s for s, c, _ in results}["rule slots"], "FAIL")
 
 
-class Flags(unittest.TestCase):
-    # Cold review, 2026-10-28: a partial set crashed, and --teardown ignored the flags and checked
-    # 1-connect's account instead.
-    def test_flags_need_all_three(self):
-        self.assertIn("--account, --region and --unit", status.flag_problem(account="123456789012", region=None, unit=None, mode_flag=False))
+class ReportFlags(unittest.TestCase):
+    def test_a_target_needs_a_restore_to_measure(self):
+        self.assertIn("--restore-task", status.report_problem(True, False, None, 30))
 
-    def test_flags_work_only_for_status(self):
-        self.assertIn("status and --json", status.flag_problem(account="123456789012", region="us-west-2", unit="global", mode_flag=True))
+    def test_a_target_is_at_least_a_minute(self):
+        self.assertIn("1 or more", status.report_problem(True, False, "4076940023", 0))
 
-    def test_a_full_set_for_status_is_fine(self):
-        self.assertIsNone(status.flag_problem(account="123456789012", region="us-west-2", unit="global", mode_flag=False))
+    def test_a_report_with_a_task_and_a_target_is_fine(self):
+        self.assertIsNone(status.report_problem(True, False, "4076940023", 30))
 
-    def test_no_flags_is_fine(self):
-        self.assertIsNone(status.flag_problem(account=None, region=None, unit=None, mode_flag=True))
 
 class FolderStateTests(unittest.TestCase):
     """Which folders hold something, read through real Terraform, so it works for any backend."""

@@ -16,7 +16,7 @@
 #   8. step folders          each validates with its lock file; 1-connect's placeholders stop the plan
 #   9. module tests          each module, each step folder and the proof lab refuse what they must (mock providers)
 #  10. preview tests        what the security team sees matches the reviewed output exactly; each ending exits as it says
-#  11. status tests          status.py's checks, against fake AWS and Clumio answers that filter as Clumio does
+#  11. tools tests           status.py and use_s3_state.py, against fake AWS and Clumio answers that filter as Clumio does
 #  12. self-test             tests/check_test.sh proves each scan passes and fails when it should
 # CHECK_SCANS_ONLY=1 runs the scans only. tests/check_test.sh sets it, so this never loops.
 set -euo pipefail
@@ -172,9 +172,9 @@ done
 "$COPIES/0-check/preview/test/test.sh" > /dev/null 2>&1 && pass "0-check/preview: tests" \
   || flunk "0-check/preview: tests (run 0-check/preview/test/test.sh to see which)"
 
-# 11. status.py's checks, against fake AWS and Clumio answers.
-(cd "$COPIES/tools" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "tools/status.py: tests" \
-  || flunk "tools/status.py: tests (run: python3 -m unittest discover -s tests, in tools/)"
+# 11. status.py and use_s3_state.py, against fake AWS and Clumio answers.
+(cd "$COPIES/tools" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "tools: tests" \
+  || flunk "tools: tests (run: python3 -m unittest discover -s tests, in tools/)"
 
 # 11c. The evidence capture masks the account and unit, and writes a manifest shasum verifies.
 (cd "$COPIES/proof" && python3 -W error -m unittest discover -s tests > /dev/null 2>&1) && pass "proof/capture.py: tests" \

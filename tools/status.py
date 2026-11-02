@@ -11,9 +11,6 @@
   tools/status.py --report --restore-task <task ID> [--recovery-target-minutes <minutes>]
                                   the evidence for sign-off: a JSON file and an HTML page from one read,
                                   with a verdict: PROVEN, UNFINISHED or UNKNOWN
-  tools/status.py --account 123456789012 --region us-west-2 --unit <unit ID or global> [--json]
-                                  the same for another account, Region and unit; all three together,
-                                  for status, --json and --report only
 
 Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a person must act;
 2 AWS or Clumio couldn't be read, so nothing is assumed. The account, Region, unit and mode come from
@@ -830,7 +827,7 @@ def print_results(results):
 
 # --- The real world ------------------------------------------------------------------------------
 
-def real_world(flags=None):
+def real_world():
     settings_path = os.path.join(CONNECT, "terraform.tfvars")
     return World(
         settings_path=settings_path,
@@ -839,7 +836,7 @@ def real_world(flags=None):
         signed_in_account=signed_in_account,
         clumio_credentials_set=lambda: bool(os.environ.get("CLUMIO_API_TOKEN") and os.environ.get("CLUMIO_API_BASE_URL")),
         clumio_get=clumio_get,
-        kit=lambda: kit_from(flags) if flags else kit_from(read_settings(settings_path)[0]),
+        kit=lambda: kit_from(read_settings(settings_path)[0]),
         tagged_resources=aws_tagged_resources,
         databases=aws_databases,
         volumes=aws_volumes,
@@ -859,22 +856,8 @@ def run_json(command, timeout=60):
     return json.loads(answer.stdout) if answer.returncode == 0 and answer.stdout.strip() else None
 
 
-def flag_problem(account, region, unit, mode_flag):
-    """Why the --account, --region and --unit flags can't be used as given, or None. They name the
-    account to check for status and --json; preflight and teardown read 1-connect's settings, mode
-    included, so a flag there would check one account and report another (cold review, 2026-10-28)."""
-    given = [flag for flag in (account, region, unit) if flag]
-    if not given:
-        return None
-    if len(given) < 3:
-        return "Give --account, --region and --unit together, or none of them."
-    if mode_flag:
-        return "--account, --region and --unit work with status and --json only. --preflight and --teardown read 1-connect/terraform.tfvars."
-    return None
-
-
 def kit_from(settings):
-    """The account, Region and unit to check, from 1-connect's settings or the flags; None when any is
+    """The account, Region and unit to check, from 1-connect's settings; None when any is
     missing or malformed. The unit becomes the ID Clumio uses: "global" is the all-zero ID."""
     if not all(key in settings and re.match(SETTING_SHAPES[key][0], settings[key]) for key in ("account_id", "region", "organizational_unit")):
         return None
@@ -1019,8 +1002,8 @@ def print_records(records):
         print(f"{r['state']:12} {r['kind']:13} {r['name']:32} {r['profile']:10} {r['last_backup'] or '-':20} {r['detail']}")
 
 
-def run_status(as_json, flags=None):
-    records, unit_result = coverage(real_world(flags))
+def run_status(as_json):
+    records, unit_result = coverage(real_world())
     code = coverage_exit_code(records, unit_result)
     if as_json:
         print(json.dumps({"connection": dict(zip(("state", "check", "detail"), unit_result)), "resources": records, "exit_code": code}, indent=1))
@@ -1034,8 +1017,8 @@ def run_status(as_json, flags=None):
     return code
 
 
-def run_report(restore_task, flags, target_minutes=None):
-    report = evidence(real_world(flags), restore_task, target_minutes=target_minutes)
+def run_report(restore_task, target_minutes=None):
+    report = evidence(real_world(), restore_task, target_minutes=target_minutes)
     json_path, html_path = write_report(report, ROOT)
     print(f"{report['verdict']}: {VERDICT_MEANING[report['verdict']]}")
     for gap in report["gaps"]:
@@ -1064,15 +1047,10 @@ def main():
     parser.add_argument("--restore-task", help="with --report: the restore's task ID, from Clumio's Tasks page")
     parser.add_argument("--recovery-target-minutes", type=int, help="with --report and --restore-task: your target, shown as MET or MISSED")
     parser.add_argument("--json", action="store_true", help="coverage as JSON, for machines")
-    parser.add_argument("--account", help="with --region and --unit: check this account instead of 1-connect's settings")
-    parser.add_argument("--region")
-    parser.add_argument("--unit", help='"global", or a unit\'s ID')
     args = parser.parse_args()
-    problem = (flag_problem(args.account, args.region, args.unit, args.preflight or args.teardown)
-               or report_problem(args.report, args.json, args.restore_task, args.recovery_target_minutes))
+    problem = report_problem(args.report, args.json, args.restore_task, args.recovery_target_minutes)
     if problem:
         parser.error(problem)
-    flags = {"account_id": args.account, "region": args.region, "organizational_unit": args.unit} if args.account else None
     if not args.preflight and not (os.environ.get("CLUMIO_API_TOKEN") and os.environ.get("CLUMIO_API_BASE_URL")):
         print("Export your Clumio details first (0-check/README.md): export CLUMIO_API_BASE_URL=<your API URL>, "
               "then read -rs CLUMIO_API_TOKEN && export CLUMIO_API_TOKEN")
@@ -1084,11 +1062,10 @@ def main():
             print("Ready. Next: the step you're on (README.md, What to do)." if exit_code(results) == 0 else "Fix each FAIL above, then run tools/status.py --preflight again.")
             sys.exit(exit_code(results))
         if args.report:
-            sys.exit(run_report(args.restore_task, flags, args.recovery_target_minutes))
-        sys.exit(run_teardown() if args.teardown else run_status(args.json, flags))
+            sys.exit(run_report(args.restore_task, args.recovery_target_minutes))
+        sys.exit(run_teardown() if args.teardown else run_status(args.json))
     except NothingApplied:
-        print("No account, Region and unit to check: set them in 1-connect/terraform.tfvars (0-check/README.md), "
-              "or pass --account, --region and --unit.")
+        print("No account, Region and unit to check: set them in 1-connect/terraform.tfvars (0-check/README.md).")
         sys.exit(1)
     except (AwsUnavailable, ClumioUnavailable) as error:
         print(f"UNKNOWN: {error}")
