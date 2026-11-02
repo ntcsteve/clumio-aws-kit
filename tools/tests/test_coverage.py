@@ -59,7 +59,7 @@ class FakeClumio:
             "/policies/definitions": [dict(p) for p in POLICIES],
             "/datasources/protection-groups": [dict(g) for g in GROUPS],
         }
-        self.single = {f"/connections/aws/{ACCOUNT}_{REGION}": (200, {"organizational_unit_id": UNIT}),
+        self.single = {f"/connections/aws/{ACCOUNT}_{REGION}": (200, {"organizational_unit_id": UNIT, "connection_status": "connected"}),
                        "/policies/rules/rule-other": (200, {"id": "rule-other", "name": "CEG Demo"})}
         self.broken = set()
         self.page_size = {}  # path -> items per page; Clumio pages by cursor, a _links._next href (read live, 2026-10-28)
@@ -184,7 +184,7 @@ class Coverage(Lab):
     def test_a_database_with_our_policy_and_a_backup_is_ours(self):
         self.add_db("orders-db", backup="2026-10-28T05:00:00Z")
         states, records, unit = self.states()
-        self.assertEqual(states["orders-db"], "OURS")
+        self.assertEqual(states["orders-db"], "PROTECTED")
         self.assertIn("2026-10-28 05:00 UTC", records[0]["last_backup"])
         self.assertEqual(status.coverage_exit_code(records, unit), 0)
 
@@ -220,12 +220,12 @@ class Coverage(Lab):
         self.resources.append(database("orders-cluster-1"))
         self.dbs["orders-cluster-1"] = {"pitr": 7, "cluster": "orders-cluster"}
         states, _, _ = self.states()
-        self.assertEqual(states, {"orders-cluster": "OURS"})
+        self.assertEqual(states, {"orders-cluster": "PROTECTED"})
 
     def test_a_bucket_in_our_group_with_a_backup_is_ours(self):
         self.add_bucket("orders-docs", backup="2026-10-28T06:00:00Z")
         states, _, _ = self.states()
-        self.assertEqual(states["orders-docs"], "OURS")
+        self.assertEqual(states["orders-docs"], "PROTECTED")
 
     def test_a_bucket_not_yet_in_our_group_is_not_yet(self):
         self.add_bucket("orders-docs", in_group=False)
@@ -262,6 +262,13 @@ class Coverage(Lab):
         self.assertEqual(unit[0], "FAIL")
         self.assertEqual(status.coverage_exit_code(records, unit), 1)
 
+    def test_a_connection_clumio_doesnt_call_connected_fails_and_names_what_it_read(self):
+        self.clumio.single[f"/connections/aws/{ACCOUNT}_{REGION}"] = (200, {"organizational_unit_id": UNIT, "connection_status": "disconnected"})
+        _, records, unit = self.states()
+        self.assertEqual(unit[0], "FAIL")
+        self.assertIn("disconnected", unit[2])
+        self.assertEqual(status.coverage_exit_code(records, unit), 1)
+
     # The kit's policies are found by name in Clumio; another team's, or another Region's, never count.
     def test_only_policies_named_for_this_account_and_region_are_the_kits(self):
         profiles = status.kit_profiles(self.world(), self.kit)
@@ -281,7 +288,7 @@ class Coverage(Lab):
         self.add_db("orders-db", backup="2026-10-28T05:00:00Z")
         self.clumio.page_size["/policies/definitions"] = 1  # gold's RDS policy is the second: page two
         states, _, _ = self.states()
-        self.assertEqual(states["orders-db"], "OURS")
+        self.assertEqual(states["orders-db"], "PROTECTED")
 
     def test_a_list_that_never_ends_is_unknown_never_a_guess(self):
         self.add_db("orders-db")
@@ -311,7 +318,7 @@ class Coverage(Lab):
     def test_an_instance_with_our_policy_and_a_backup_is_ours(self):
         self.add_instance("i-0abc", backup="2026-10-28T07:00:00Z")
         states, _, _ = self.states()
-        self.assertEqual(states["i-0abc"], "OURS")
+        self.assertEqual(states["i-0abc"], "PROTECTED")
 
     def test_an_instance_in_a_profile_without_ec2_is_off(self):
         self.add_instance("i-0abc", value="dbonly")
@@ -321,7 +328,7 @@ class Coverage(Lab):
     def test_a_volume_tagged_on_its_own_with_a_backup_is_ours(self):
         self.add_volume("vol-0aaa", backup="2026-10-28T07:00:00Z")
         states, _, _ = self.states()
-        self.assertEqual(states["vol-0aaa"], "OURS")
+        self.assertEqual(states["vol-0aaa"], "PROTECTED")
 
     def test_a_volume_tagged_on_its_own_on_a_protected_instance_is_double(self):
         self.add_instance("i-0abc", backup="2026-10-28T07:00:00Z")
@@ -335,7 +342,7 @@ class Coverage(Lab):
         self.add_instance("i-0abc", backup="2026-10-28T07:00:00Z")
         self.add_volume("vol-0ccc", attached_to="i-0abc", key="clumio-profile")
         states, _, _ = self.states()
-        self.assertEqual(states, {"i-0abc": "OURS"})
+        self.assertEqual(states, {"i-0abc": "PROTECTED"})
 
     def test_an_unattached_volume_with_the_instance_tag_is_off_and_says_which_tag(self):
         self.add_volume("vol-0ddd", key="clumio-profile")
@@ -482,7 +489,7 @@ class Coverage(Lab):
         self.add_db("orders-db", backup="2026-10-28T05:00:00Z")
         self.clumio.page_size["/datasources/aws/rds-resources"] = 1
         states, _, _ = self.states()
-        self.assertEqual(states["orders-db"], "OURS")
+        self.assertEqual(states["orders-db"], "PROTECTED")
 
 
 RESTORE_ID = "4060138517"
@@ -611,7 +618,7 @@ class Report(Lab):
     def test_the_page_shows_the_verdict_each_resource_and_the_restore_time(self):
         self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
         page = status.render_html(self.report())
-        for shown in ("PROVEN", "i-0abc", "OURS", "2m 30s", ACCOUNT, REGION, status.RESOPS_URL):
+        for shown in ("PROVEN", "i-0abc", "PROTECTED", "2m 30s", ACCOUNT, REGION, status.RESOPS_URL):
             self.assertIn(shown, page)
 
     def test_a_page_with_no_restore_shows_no_empty_table(self):

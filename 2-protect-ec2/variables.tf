@@ -17,3 +17,16 @@ variable "rule_before_id" {
   type        = string
   default     = ""
 }
+
+# Where 1-connect's state is. Local for a trial. tools/use_s3_state.py sets both for production.
+variable "connect_backend" {
+  description = "The Terraform backend that holds 1-connect's state."
+  type        = string
+  default     = "local"
+}
+
+variable "connect_config" {
+  description = "That backend's settings. The default is relative to the folder Terraform runs in."
+  type        = any
+  default     = { path = "../1-connect/terraform.tfstate" }
+}

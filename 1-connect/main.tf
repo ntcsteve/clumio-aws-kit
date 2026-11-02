@@ -1,5 +1,5 @@
 # Step 1: connect one AWS account and Region to Clumio, with Clumio's IAM. See README.md.
-# Production teams call ../modules from their own repo instead (docs/production.md); every guard lives
+# Production is a fresh clone of this kit (docs/production.md); every guard lives
 # in the modules. Clumio credentials come from CLUMIO_API_TOKEN and CLUMIO_API_BASE_URL in your shell.
 
 locals {

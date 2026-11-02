@@ -1,5 +1,5 @@
 # Connects one AWS account and Region to Clumio: the connection and Clumio's IAM. Every guard lives
-# here, so a production repo that calls this module directly gets the same checks as 1-connect/.
+# here. 1-connect/ calls this module.
 # The caller configures both providers. The Clumio provider's organizational unit decides which
 # unit the connection, and so the account's resources, belong to.
 

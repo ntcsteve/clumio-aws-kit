@@ -12,11 +12,11 @@
                                   the evidence for sign-off: a JSON file and an HTML page from one read,
                                   with a verdict: PROVEN, UNFINISHED or UNKNOWN
   tools/status.py --account 123456789012 --region us-west-2 --unit <unit ID or global> [--json]
-                                  status of policies modules/protect made from another repository; all
-                                  three together, for status, --json and --report only
+                                  the same for another account, Region and unit; all three together,
+                                  for status, --json and --report only
 
 Every line names the state and what to do next. Exit codes: 0 nothing to do; 1 a person must act;
-2 AWS or Clumio didn't answer, so nothing is assumed. The account, Region, unit and mode come from
+2 AWS or Clumio couldn't be read, so nothing is assumed. The account, Region, unit and mode come from
 1-connect/terraform.tfvars; the kit's policies are found by name in Clumio. Clumio credentials come
 from CLUMIO_API_TOKEN and CLUMIO_API_BASE_URL. Runs on macOS's stock Python 3.9.
 """
@@ -40,7 +40,7 @@ ROOT = os.path.normpath(os.path.join(HERE, ".."))
 CONNECT = os.path.join(ROOT, "1-connect")  # Its terraform.tfvars names the account, Region, unit and mode
 GLOBAL_UNIT = "00000000-0000-0000-0000-000000000000"  # Clumio's ID for the Global unit (read 2026-10-28)
 MIN_TERRAFORM = (1, 10)  # S3 state locking (use_lockfile) needs 1.10
-# Clumio's rule limits, as seen live (error_code 107), because its API has no limit field: 25 in the
+# Rule limits per unit, as read live (error_code 107): 25 in the
 # Global unit ("Number of rules is limited to 25", v1), 5 in a child unit (2026-10-28).
 RULE_LIMITS = {"global": 25, "child unit": 5}
 RULE_WORKLOADS = ("rds", "aurora", "ec2", "ebs")  # each 2-protect- folder for these adds one rule; S3 adds none
@@ -72,6 +72,7 @@ class World:
     volumes: Optional[Callable[[str], dict]] = None  # volume ID -> {"instance": the instance it's attached to, or None}
     instances: Optional[Callable[[str], set]] = None  # IDs of the instances AWS describes as not terminated
     applied_folders: Optional[Callable[[], list]] = None  # the 1-connect and 2-protect- folders whose state holds resources
+    connect_resources: Optional[Callable[[], Optional[list]]] = None  # what 1-connect's state holds; None when it can't be read
     pending_rule_folders: Optional[Callable[[], list]] = None  # 2-protect- folders with settings whose rule isn't applied yet
 
 
@@ -226,21 +227,37 @@ def check_rule_slots(world, unit_id):
     return "PASS", "rule slots", f"{used} of {limit} used in this unit{note}"
 
 
+def connection_problem(body, account, region):
+    """Why Clumio's connection can't protect anything; None when Clumio calls it connected. HTTP 200 only
+    says the record exists."""
+    if body.get("connection_status") == "connected":
+        return None
+    return (f"{account}/{region} isn't healthy: Clumio's connection_status is {body.get('connection_status')}. "
+            "See When something goes wrong in docs/operate.md.")
+
+
 def check_connection(world, account, region, unit_id):
-    """PASS when nothing is connected yet, or 1-connect made this connection in this unit; anything else
-    is a FAIL. 1-connect's local state decides whose it is, so nobody has to judge a NOTE."""
+    """PASS when nothing is connected yet, or 1-connect made this healthy connection in this unit; anything
+    else is a FAIL. 1-connect's state decides whose it is, so nobody has to judge a NOTE."""
     status, body = world.clumio_get(f"/connections/aws/{account}_{region}")
     if status == 404:
         return "PASS", "connection", f"{account}/{region} isn't connected yet"
     if status != 200:
         return "FAIL", "connection", f"Clumio answered HTTP {status} for the connection. Try again."
     connected_unit = body.get("organizational_unit_id")
-    if "1-connect" not in (world.applied_folders() if world.applied_folders else []):
+    resources = world.connect_resources() if world.connect_resources else []
+    if resources is None:  # Not knowing whose it is must never read as ours.
+        return ("FAIL", "connection", f"{account}/{region} is connected, and 1-connect's state can't be read, so whose it is isn't known. "
+                "Check your sign-in and your access to the state bucket, and run terraform init in 1-connect.")
+    if not resources:
         return ("FAIL", "connection", f"{account}/{region} is already connected (unit {connected_unit}), and 1-connect's state "
                 "doesn't hold it. Stop: this copy of the kit didn't make it. See When something goes wrong in docs/operate.md.")
     if unit_id and connected_unit != unit_id:
         return ("FAIL", "connection", f"{account}/{region} is connected in unit {connected_unit}, not {unit_id}, so the kit's "
                 "rules can't match it. Set organizational_unit to the connection's unit.")
+    problem = connection_problem(body, account, region)
+    if problem:
+        return "FAIL", "connection", problem
     return "PASS", "connection", f"{account}/{region} is connected by 1-connect, in this unit"
 
 
@@ -404,7 +421,7 @@ def check_in_clumio(world, kit, profiles, item):
     if kind.startswith("rds"):
         backups = clumio_items(world, "/backups/aws/rds-resources", {"resource_id": {"$eq": asset["id"]}}, kit["organizational_unit_id"], complete=True)
         if backups is None:
-            return record(kind, name, value, "UNKNOWN", "Clumio didn't answer for its backups. Run again.")
+            return record(kind, name, value, "UNKNOWN", "Couldn't read its backups from Clumio. Run again.")
         return protected(kind, name, value, max((b.get("start_timestamp", "") for b in backups if b.get("resource_id") == asset["id"]), default=""))
     return protected(kind, name, value, asset.get("last_backup_timestamp") or "")
 
@@ -412,9 +429,9 @@ def check_in_clumio(world, kit, profiles, item):
 def ownership_problem(world, kind, name, value, our_policy, asset, unit):
     """UNKNOWN, NOT_YET or OTHER for an asset Clumio returned; None when our policy protects it."""
     if asset is None:
-        return record(kind, name, value, "UNKNOWN", "Clumio didn't answer. Run again; if it persists, check the token.")
+        return record(kind, name, value, "UNKNOWN", "Couldn't read from Clumio. Run again; if it persists, check the token.")
     if asset == {}:
-        return record(kind, name, value, "NOT_YET", "Clumio hasn't found it yet. A new resource can take up to an hour: run again then.")
+        return record(kind, name, value, "NOT_YET", "Not discovered yet. A new resource can take up to a day: run again later.")
     info = asset.get("protection_info") or {}
     if not info.get("policy_id"):
         return record(kind, name, value, "NOT_YET", "Clumio found it, but no policy applies yet. Clumio attaches a resource created or "
@@ -447,7 +464,7 @@ def find_asset(world, kit, kind, native_id):
 def check_bucket(world, kit, name, value, profile):
     found = clumio_items(world, "/datasources/protection-groups/s3-assets", {"bucket_name": {"$eq": name}}, kit["organizational_unit_id"])
     if found is None:
-        return record("s3", name, value, "UNKNOWN", "Clumio didn't answer. Run again; if it persists, check the token.")
+        return record("s3", name, value, "UNKNOWN", "Couldn't read from Clumio. Run again; if it persists, check the token.")
     asset = next((a for a in found if a.get("group_id") == profile.get("s3_group") and not a.get("is_deleted")), None)
     if asset is None:
         return record("s3", name, value, "NOT_YET", "Clumio hasn't added it to this profile's protection group yet. "
@@ -459,7 +476,7 @@ def check_bucket(world, kit, name, value, profile):
 
 def protected(kind, name, value, latest):
     if latest:
-        return record(kind, name, value, "OURS", "", when(latest))
+        return record(kind, name, value, "PROTECTED", "", when(latest))
     return record(kind, name, value, "WAITING", "protected; its first backup hasn't finished yet. "
                   "If it still waits after a day, look in Clumio's Tasks for it.")
 
@@ -479,6 +496,9 @@ def check_connection_unit(world, kit):
     """The connection must sit in the unit the profiles live in, or their rules never match it."""
     status_code, body = world.clumio_get(f"/connections/aws/{kit['account_id']}_{kit['region']}")
     if status_code == 200 and body.get("organizational_unit_id") == kit["organizational_unit_id"]:
+        problem = connection_problem(body, kit["account_id"], kit["region"])
+        if problem:
+            return "FAIL", "connection", problem
         return "PASS", "connection", f"{kit['account_id']}/{kit['region']} is connected, in this unit"
     if status_code == 200:
         return ("FAIL", "connection", f"{kit['account_id']}/{kit['region']} is connected in unit {body.get('organizational_unit_id')}, "
@@ -558,7 +578,7 @@ def teardown(world):
         return "UNKNOWN", [f"no mode in {world.settings_path}, so production can't be ruled out. Set it up as 0-check/README.md says."]
     if settings["mode"] == "production":
         return "REFUSED", ["mode is production in 1-connect/terraform.tfvars, so teardown is refused. To retire production "
-                           "on purpose, see Retire a production connection in docs/operate.md."]
+                           "on purpose, see Retire a production connection in docs/production.md."]
     kit = world.kit()
     if kit is None:
         raise NothingApplied()
@@ -570,17 +590,17 @@ def teardown(world):
     for kind, name in ours:
         asset = find_database(world, kit, name) if kind.startswith("rds") else find_asset(world, kit, kind, name)
         if asset is None:
-            return "UNKNOWN", ["Clumio didn't answer, so running backups can't be ruled out. Run again."]
+            return "UNKNOWN", ["Couldn't read from Clumio, so running backups can't be ruled out. Run again."]
         if asset:
             watched.append((name, asset["id"]))
     running = []
     for label, asset_id in watched:
         # Every page, or no answer: a task on page two must never read as nothing running. No unit
-        # context: asked inside the unit, Clumio left out a restore started in the console (seen live,
-        # 2026-10-29). The filter keeps the answer to this asset's own tasks.
+        # context, so a restore started in the console is seen too (read live, 2026-10-29). The filter
+        # keeps the answer to this asset's own tasks.
         tasks = clumio_items(world, "/tasks", {"primary_entity.id": {"$eq": asset_id}}, None, complete=True)
         if tasks is None:
-            return "UNKNOWN", [f"Clumio didn't answer in full for {label}, so running backups can't be ruled out. "
+            return "UNKNOWN", [f"Couldn't read all of {label} from Clumio, so running backups can't be ruled out. "
                                "Look in Clumio's Tasks; teardown waits until nothing runs."]
         running += [f"task {t['id']} ({t.get('type', 'backup')}) for {label}: {t['status']}" for t in tasks
                     if t.get("status") in RUNNING_TASKS and (t.get("primary_entity") or {}).get("id") == asset_id]
@@ -594,7 +614,7 @@ def teardown(world):
     if applied:
         protect = [folder for folder in applied if folder != "1-connect"]
         lines.append("Still applied: " + ", ".join(protect + (["1-connect"] if "1-connect" in applied else []))
-                     + ". Destroy each 2-protect- folder first, 1-connect last (docs/operate.md, Take a trial down).")
+                     + ". Destroy each 2-protect- folder first, 1-connect last (README.md, Take a trial down).")
     if "1-connect" in applied:
         lines.append("Removing the connection ends protection, so restore anything you want to keep first.")
     return "READY", lines
@@ -606,7 +626,7 @@ RESOPS_URL = "https://www.commvault.com/explore/resilience-operations"
 REPORT_EXIT_CODES = {"PROVEN": 0, "UNFINISHED": 1, "UNKNOWN": 2}
 VERDICT_MEANING = {"PROVEN": "Every resource is protected, with a backup on record, and a restore of one of them completed.",
                    "UNFINISHED": "Not proven yet. The list below says what's missing.",
-                   "UNKNOWN": "AWS or Clumio didn't answer, so nothing is assumed. Run it again."}
+                   "UNKNOWN": "Couldn't read from AWS or Clumio, so nothing is assumed. Run it again."}
 
 
 def read_restore(world, task_id):
@@ -642,7 +662,7 @@ def restore_gap(restore, protected):
     if restore["status"] == "not_found":
         return f"Clumio has no task {restore['id']}. Check the ID on Clumio's Tasks page."
     if restore["status"] == "no_answer":
-        return f"Clumio didn't answer for task {restore['id']}."
+        return f"Couldn't read task {restore['id']} from Clumio."
     if "restore" not in restore["type"]:
         return f"Task {restore['id']} isn't a restore: it's {restore['type']}."
     if restore["status"] in RUNNING_TASKS:
@@ -655,7 +675,7 @@ def restore_gap(restore, protected):
 
 
 def evidence(world, restore_task=None, now=None):
-    """One read of the whole run, and its verdict: PROVEN when every resource is OURS and a restore of
+    """One read of the whole run, and its verdict: PROVEN when every resource is PROTECTED and a restore of
     one of them completed; UNKNOWN when AWS or Clumio didn't answer; UNFINISHED otherwise, with what's missing."""
     kit = world.kit()
     if kit is None:
@@ -663,7 +683,7 @@ def evidence(world, restore_task=None, now=None):
     records, connection = coverage(world)
     restore = read_restore(world, restore_task) if restore_task else None
     gaps = [] if connection[0] == "PASS" else [f"connection: {connection[2]}"]
-    gaps += [f"{r['name']}: {r['state']}. {r['detail']}" for r in records if r["state"] != "OURS"]
+    gaps += [f"{r['name']}: {r['state']}. {r['detail']}" for r in records if r["state"] != "PROTECTED"]
     if not records:
         gaps.append(f"Nothing in this Region carries the tag {TAG_KEY}.")
     gap = restore_gap(restore, protected_names(records, kit))
@@ -772,6 +792,7 @@ def real_world(flags=None):
         volumes=aws_volumes,
         instances=aws_instances,
         applied_folders=applied_folders,
+        connect_resources=lambda: folder_resources("1-connect"),
         pending_rule_folders=pending_rule_folders,
     )
 
@@ -809,6 +830,28 @@ def kit_from(settings):
             "organizational_unit_id": GLOBAL_UNIT if unit == "global" else unit}
 
 
+def folder_resources(folder):
+    """What Terraform's state holds for a folder at the repository root, from any backend: a list, empty
+    when nothing is applied; None when Terraform can't say. Before terraform init, a step folder can't
+    answer at all (Module not installed), so a folder with no .terraform and no local state holds nothing,
+    unless backend.tf says its state lives elsewhere: then only Terraform knows."""
+    path = os.path.join(ROOT, folder)
+    if not any(os.path.exists(os.path.join(path, name)) for name in (".terraform", "terraform.tfstate", "backend.tf")):
+        return []
+    try:
+        answer = subprocess.run(["terraform", f"-chdir={path}", "state", "pull"], capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if answer.returncode != 0:
+        return None
+    if not answer.stdout.strip():
+        return []
+    try:
+        return json.loads(answer.stdout).get("resources", [])
+    except ValueError:
+        return None
+
+
 def pending_rule_folders():
     """The 2-protect- folders for RDS, Aurora, EC2 or EBS (copies too, such as 2-protect-rds-silver) that
     have settings but no rule in their state yet: each will add one rule to the unit."""
@@ -817,28 +860,21 @@ def pending_rule_folders():
         workload = folder[len("2-protect-"):].split("-")[0] if folder.startswith("2-protect-") else ""
         if workload not in RULE_WORKLOADS or not os.path.exists(os.path.join(ROOT, folder, "terraform.tfvars")):
             continue
-        try:
-            with open(os.path.join(ROOT, folder, "terraform.tfstate"), encoding="utf-8") as file:
-                applied = any(r.get("type") == "clumio_policy_rule" for r in json.load(file).get("resources", []))
-        except (OSError, ValueError):
-            applied = False
-        if not applied:
+        resources = folder_resources(folder)
+        if not any(r.get("type") == "clumio_policy_rule" for r in resources or []):
             found.append(folder)
     return found
 
 
 def applied_folders():
-    """The 1-connect and 2-protect- folders at the repository root whose local state holds resources."""
+    """The 1-connect and 2-protect- folders at the repository root whose state holds resources. A folder
+    Terraform can't read is listed: never assume it's empty."""
     found = []
     for folder in sorted(os.listdir(ROOT)):
-        state = os.path.join(ROOT, folder, "terraform.tfstate")
-        if (folder == "1-connect" or folder.startswith("2-protect-")) and os.path.exists(state):
-            try:
-                with open(state, encoding="utf-8") as file:
-                    if json.load(file).get("resources"):
-                        found.append(folder)
-            except (OSError, ValueError):
-                found.append(folder)  # Unreadable: say so by listing it, never assume it's empty.
+        if folder == "1-connect" or folder.startswith("2-protect-"):
+            resources = folder_resources(folder)
+            if resources is None or resources:
+                found.append(folder)
     return found
 
 

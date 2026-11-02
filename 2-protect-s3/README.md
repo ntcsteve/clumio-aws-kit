@@ -4,14 +4,9 @@ Protects every S3 bucket tagged `clumio-profile = <name>`. They get Backtrack (r
 
 Do [step 1](../1-connect/README.md) first. This folder reads the account, Region, unit and mode from `1-connect`, so they always match. It stops if `1-connect` isn't applied.
 
-## Run it
+Follow [Protect](../README.md#protect) in the README, in this folder.
 
-1. Tag what to protect: `clumio-profile = gold`, or your profile's name.
-2. Here, run `cp settings.example terraform.tfvars`, then check the values.
-3. From the repository root, run `tools/status.py --preflight`.
-4. Here, run `terraform init`, then `terraform plan -out=tfplan`. Read the plan, then run `terraform apply tfplan`.
-
-The plan creates one Clumio policy, `<name>-s3-<account>-<region>`, and a protection group of the tagged buckets, assigned to it. Clumio's rules don't cover S3, so buckets join through the group.
+The plan creates one Clumio policy, `<name>-s3-<account>-<region>`, and a protection group of the tagged buckets, assigned to it.
 
 - Backtrack needs S3 Versioning on the bucket.
 - Objects in Glacier storage classes aren't backed up.
@@ -20,11 +15,4 @@ The plan creates one Clumio policy, `<name>-s3-<account>-<region>`, and a protec
 
 Protect another workload, or go to [step 3](../3-prove/README.md).
 
-For a second profile, such as `silver`, copy this folder's files, never its state:
-
-```bash
-mkdir ../2-protect-s3-silver
-cp README.md settings.example *.tf .terraform.lock.hcl ../2-protect-s3-silver/
-```
-
-In the new folder, run `cp settings.example terraform.tfvars` and set `name = "silver"` before you plan: two folders with one name would make the same policy.
+For a second profile: [A second profile](../docs/operate.md#a-second-profile).

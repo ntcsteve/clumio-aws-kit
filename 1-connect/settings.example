@@ -6,7 +6,7 @@
 account_id          = "ACCOUNT-ID-REPLACE-THIS" # your 12-digit AWS account ID; the plan stops if you're signed in to another
 region              = "REGION-REPLACE-THIS"     # where your data is, such as us-west-2
 organizational_unit = "UNIT-REPLACE-THIS"       # "global", or a unit's ID: tools/status.py --preflight lists them
-mode                = "MODE-REPLACE-THIS"       # "trial" (can be torn down, also for a proof of concept) or "production" (refuses destroy)
+mode                = "MODE-REPLACE-THIS"       # "trial" (a test account, can be torn down) or "production" (refuses destroy)
 
 # What Clumio may protect, by 2-protect folder: "s3", "rds", "aurora", "ec2", "ebs". Clumio's IAM is created
 # for these only; each 2-protect folder you use must be listed, or its plan stops and says so.

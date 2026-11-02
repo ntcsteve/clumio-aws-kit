@@ -1,8 +1,8 @@
 # One workload's protection: one Clumio policy, applied to every resource of that workload tagged
 # clumio-profile = <name> (EBS volumes on their own: clumio-volume-profile) in one account and Region.
 # DB instances, DB clusters, EC2 instances and EBS volumes join through a rule; S3 buckets through a
-# protection group, because Clumio's rules don't cover S3. Every guard lives here, so a production
-# repository that calls this module gets the same checks as the 2-protect- folders.
+# protection group, because Clumio's rules don't cover S3. Every guard lives here. The 2-protect-
+# folders call this module.
 # The caller configures both providers; the Clumio provider's organizational unit holds these objects.
 # The connection must already exist, in another state (1-connect, or the caller's own root).
 

@@ -1,10 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Going live is one path: a fresh clone in your production account, with Terraform's state in S3. [Production](docs/production.md) replaces calling the modules from your own repository. `tools/use_s3_state.py` sets the state up.
+- `tools/status.py` says PROTECTED where it said OURS, in its output and in `--json`. A script that reads the old word must change.
+- `tools/status.py` reads the connection's status: HTTP 200 alone no longer passes. It asks Terraform for state, so it works with any backend, and it never claims a connection whose state it can't read.
+- The README's steps run from preparing to taking a trial down, and folder READMEs keep only what's unique. [Retire a production connection](docs/production.md#retire-a-production-connection) moved to Production.
+- The README says what you'll see, and that this kit is independent.
+
 ## v1.0.3 (2026-11-01)
 
 Fresh clones ran live from clone to teardown on all five workloads, each with a console restore, and an AI agent that had read only the kit ran the S3 trial live from the docs alone. The S3 and Aurora run used this version's code; the last doc fixes came after it, tested offline.
 
-- Before you take the kit down: removing the connection ends protection, so restore anything you want to keep first. `tools/status.py --teardown` says so too. The docs no longer say how long copies last after that. [Take a trial down](docs/operate.md#take-a-trial-down) has one decision path and lists what's yours to clear, including a Clumio RDS snapshot.
+- Before you take the kit down: removing the connection ends protection, so restore anything you want to keep first. `tools/status.py --teardown` says so too. [Take a trial down](README.md#take-a-trial-down) has one decision path and lists what's yours to clear, including a Clumio RDS snapshot.
 - `tools/status.py --report --restore-task <id>` writes the evidence as JSON and one HTML page, with one verdict: PROVEN, UNFINISHED or UNKNOWN. PROVEN seen live on all five workloads. The restore must be of a resource this run protects: another task ID gives UNFINISHED. Seen live on S3; the other workloads are tested on task shapes read live.
 - [3-prove](3-prove/README.md) gives the console steps for each workload, and says to clear a tagged copy before the report. NOT_YET says the same for a restored copy.
 - `tools/status.py --teardown` says BLOCKED during a restore: seen live on all five workloads, which resolves v1.0.1's "tested offline".
@@ -27,12 +35,12 @@ Made for first-time readers and for AI agents. Tested offline, with a cold agent
 
 - `tools/status.py --teardown` now sees a running restore, including one started in the Clumio console. It reads each resource's tasks with no unit. Tested offline; the new request was seen working live.
 - Restores, seen live: an EC2 instance and an EBS volume restored in the Clumio console kept the source's key and the original tags. A restored instance's root volume isn't deleted with it. See [3-prove](3-prove/README.md) and [Does Clumio need our keys?](docs/keys.md#what-a-restore-needs-from-you).
-- A resource created or tagged after its rule joins at Clumio's next discovery cycle; NOT_YET now says to allow up to a day. See [Know the limits](docs/operate.md#know-the-limits).
+- A resource created or tagged after its rule joins at Clumio's next discovery cycle; NOT_YET now says to allow up to a day. See [How it behaves](docs/operate.md#how-it-behaves).
 - Proven live: production refuses a destroy and a switch to trial, and the retire steps work; EC2 and EBS back up under their own policies; an IAM user holding only the generated deploy policy deployed and removed the kit.
 
 ## v1.0.0 (2026-10-29)
 
-The first release. Proven live on 2026-10-28 and 29 in a test account (us-west-2): see [Does Clumio need our keys?](docs/keys.md) and [proof/](proof/README.md) for the evidence, and [Operate](docs/operate.md#know-the-limits) for the limits.
+The first release. Proven live on 2026-10-28 and 29 in a test account (us-west-2): see [Does Clumio need our keys?](docs/keys.md) and [proof/](proof/README.md) for the evidence, and [Operate](docs/operate.md#how-it-behaves) for the limits.
 
 - A README that is the field page: why, what you'll prove, how it works, what's safe, what to prepare, and the run as a table of steps with STOP points, for people and AI agents.
 - One Terraform folder per step, each with its own README, settings and state: [0-check](0-check/README.md) (preflight and the IAM preview), [1-connect](1-connect/README.md), a `2-protect-` folder per workload (S3, RDS, Aurora, EC2, EBS), and [3-prove](3-prove/README.md) (status, restore).

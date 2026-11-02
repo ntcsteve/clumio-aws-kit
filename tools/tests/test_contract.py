@@ -45,18 +45,18 @@ class Stage2fProtected(unittest.TestCase):
 
     def test_coverage_reads_every_resource_as_status_showed_it_live(self):
         # Expected: tools/status.py's live output at the recording, stage 2f: the bucket, the RDS
-        # instance and the Aurora cluster OURS, each under its own workload's policy; the bad tag
+        # instance and the Aurora cluster PROTECTED, each under its own workload's policy; the bad tag
         # BAD_VALUE; the volume on a tagged instance DOUBLE; the instance and the lone volume NOT_YET,
         # because the unit had no rule slot left for 2-protect-ec2 and 2-protect-ebs.
         records, connection = status.coverage(self.world)
         states = sorted((r["state"], r["kind"]) for r in records)
         self.assertEqual(states, [("BAD_VALUE", "s3"), ("DOUBLE", "ebs-volume"), ("NOT_YET", "ebs-volume"), ("NOT_YET", "ec2-instance"),
-                                  ("OURS", "rds-cluster"), ("OURS", "rds-instance"), ("OURS", "s3")])
+                                  ("PROTECTED", "rds-cluster"), ("PROTECTED", "rds-instance"), ("PROTECTED", "s3")])
         self.assertEqual(connection[0], "PASS")
-        self.assertTrue(all(r["last_backup"] for r in records if r["state"] == "OURS"))
+        self.assertTrue(all(r["last_backup"] for r in records if r["state"] == "PROTECTED"))
 
     def test_the_report_reads_the_real_answers_and_names_what_is_missing(self):
-        # Expected from the same run: not finished. Four resources weren't OURS, and no restore had run.
+        # Expected from the same run: not finished. Four resources weren't PROTECTED, and no restore had run.
         report = status.evidence(self.world, None, "2026-10-28T15:00:00Z")
         self.assertEqual(report["verdict"], "UNFINISHED")
         self.assertEqual(len(report["gaps"]), 5)

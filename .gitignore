@@ -1,6 +1,10 @@
 # Your settings: copied from settings.example, never committed
 terraform.tfvars
 
+# Your state's location: written by tools/use_s3_state.py, it names your bucket and account
+backend.tf
+connect-state.auto.tfvars
+
 # Terraform state, plans and working files. Keep state private: it maps your account's Clumio setup.
 *.tfstate
 *.tfstate.*

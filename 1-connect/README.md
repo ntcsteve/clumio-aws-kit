@@ -4,21 +4,13 @@ Connects one AWS account and Region to Clumio: the connection, and the IAM roles
 
 Do step 0 first. It makes `terraform.tfvars` in this folder and checks it.
 
-## Run it
-
-In this folder, in the shell where you exported `CLUMIO_API_BASE_URL` and `CLUMIO_API_TOKEN`:
-
-```bash
-terraform init
-terraform plan -out=tfplan     # read it
-terraform apply tfplan
-```
+Follow [Connect](../README.md#connect) in the README, in this folder.
 
 The plan creates the connection and Clumio's IAM in this account and Region.
 
-With `mode = "production"`, it adds a guard that refuses destroy, here and in every `2-protect-` folder. Choose the mode before you apply: if you switch a trial to production later, plan and apply each `2-protect-` folder again, because each gets its guard only then.
+With `mode = "production"`, it adds a guard that refuses destroy, here and in every `2-protect-` folder.
 
-Run this once per account and Region. The `2-protect-` folders read their settings from here, so once applied, never change `account_id`, `region` or `organizational_unit`: for another account or Region, use a fresh clone of the repository, never a copy of this one: a copy carries this state, and its plan would destroy this connection. The step folders keep their state locally, side by side. For production, call the modules from your own repository with its own state backend: see [Production](../docs/production.md).
+Run this once per account and Region. The `2-protect-` folders read their settings from here, so once applied, never change `account_id`, `region` or `organizational_unit`. For another account or Region, use a fresh clone of the repository, never a copy of this one: a copy carries this state, and its plan would destroy this connection. Going live: [Production](../docs/production.md).
 
 ## Next
 

@@ -1,9 +1,13 @@
 """Tests for status.py --preflight. Fakes stand in for AWS and Clumio; each fake answer has the shape
 of a real answer read on 2026-10-28. Run: python3 -m unittest discover -s tests, in tools/."""
+import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import status  # noqa: E402
@@ -51,7 +55,7 @@ class FakeClumio:
 
 
 class Preflight(unittest.TestCase):
-    def run_preflight(self, settings=GOOD_SETTINGS, signed_in=ACCOUNT, clumio=None, terraform="1.15.5", env=True, pending=(), applied=()):
+    def run_preflight(self, settings=GOOD_SETTINGS, signed_in=ACCOUNT, clumio=None, terraform="1.15.5", env=True, pending=(), applied=(), connect_unreadable=False):
         folder = tempfile.mkdtemp()
         if settings is not None:
             with open(os.path.join(folder, "terraform.tfvars"), "w") as f:
@@ -66,6 +70,7 @@ class Preflight(unittest.TestCase):
             clumio_get=self.clumio.get,
             pending_rule_folders=lambda: list(pending),
             applied_folders=lambda: list(applied),
+            connect_resources=lambda: None if connect_unreadable else (["a resource"] if "1-connect" in applied else []),
         )
         return status.preflight(world)
 
@@ -177,8 +182,8 @@ class Preflight(unittest.TestCase):
 
     # The connection line decides for itself: one word, one meaning. It was a NOTE for both "yours" and
     # "stop, not yours", so an expected NOTE needed exceptions in the docs (cold agent walk, 2026-11-01).
-    def connected_in(self, unit):
-        return FakeClumio(**{f"/connections/aws/{ACCOUNT}_us-west-2": (200, {"organizational_unit_id": unit})})
+    def connected_in(self, unit, status="connected"):
+        return FakeClumio(**{f"/connections/aws/{ACCOUNT}_us-west-2": (200, {"organizational_unit_id": unit, "connection_status": status})})
 
     def test_the_connection_1_connect_made_in_this_unit_passes(self):
         results = self.run_preflight(clumio=self.connected_in(UNIT), applied=["1-connect"])
@@ -206,6 +211,23 @@ class Preflight(unittest.TestCase):
         self.assertEqual(self.states(results)["connection"], "FAIL")
         self.assertIn("99999999-2222-3333-4444-555555555555", self.detail(results, "connection"))
         self.assertIn(UNIT, self.detail(results, "connection"))
+
+    # HTTP 200 only says the record exists: it isn't "connected".
+    def test_a_connection_clumio_doesnt_call_connected_fails_and_names_what_it_read(self):
+        results = self.run_preflight(clumio=self.connected_in(UNIT, status="disconnected"), applied=["1-connect"])
+        self.assertEqual(self.states(results)["connection"], "FAIL")
+        self.assertIn("disconnected", self.detail(results, "connection"))
+        self.assertIn("docs/operate.md", self.detail(results, "connection"))
+
+    # S3 denied, a network failure, a stale backend: not knowing whose it is must never read as ours.
+    def test_a_connection_whose_state_cant_be_read_fails_and_doesnt_claim_it(self):
+        results = self.run_preflight(clumio=self.connected_in(UNIT), connect_unreadable=True)
+        self.assertEqual(self.states(results)["connection"], "FAIL")
+        self.assertIn("state bucket", self.detail(results, "connection"))
+
+    def test_a_connection_with_no_status_fails(self):
+        results = self.run_preflight(clumio=self.connected_in(UNIT, status=None), applied=["1-connect"])
+        self.assertEqual(self.states(results)["connection"], "FAIL")
 
     def test_checks_that_need_settings_are_skipped_when_settings_fail(self):
         results = self.run_preflight(settings=None)
@@ -246,6 +268,105 @@ class Flags(unittest.TestCase):
 
     def test_no_flags_is_fine(self):
         self.assertIsNone(status.flag_problem(account=None, region=None, unit=None, mode_flag=True))
+
+class FolderStateTests(unittest.TestCase):
+    """Which folders hold something, read through real Terraform, so it works for any backend."""
+
+    # Built here, so no state-shaped text ships in this file.
+    STATE = {'version': 4, 'terraform_version': '1.15.5', 'serial': 1, 'lineage': 'test', 'outputs': {}}
+    RULE = {'mode': 'managed', 'type': 'clumio_policy_rule', 'name': 'tagged', 'provider': 'provider["registry.terraform.io/clumio-code/clumio"]', 'instances': []}
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root)
+        patcher = mock.patch.object(status, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def folder(self, name, initialized=False, resources=None, state_text=None, settings=False):
+        """A step folder as a clone holds it. It calls a local module, as every step folder does: before
+        terraform init, `terraform state pull` fails with "Module not installed"."""
+        path = os.path.join(self.root, name)
+        os.makedirs(os.path.join(path, "m"))
+        with open(os.path.join(path, "main.tf"), "w") as out:
+            out.write('module "m" {\n  source = "./m"\n}\n' if not initialized else "")
+        if initialized:
+            os.makedirs(os.path.join(path, ".terraform"))
+        if settings:
+            open(os.path.join(path, "terraform.tfvars"), "w").close()
+        if resources is not None:
+            state_text = json.dumps(dict(self.STATE, resources=resources))
+        if state_text is not None:
+            with open(os.path.join(path, "terraform.tfstate"), "w") as out:
+                out.write(state_text)
+
+    def test_a_fresh_clone_has_nothing_applied(self):
+        self.folder("1-connect")
+        self.folder("2-protect-rds")
+        self.assertEqual(status.applied_folders(), [])
+
+    def test_a_folder_with_resources_is_applied(self):
+        self.folder("1-connect", initialized=True, resources=[self.RULE])
+        self.assertEqual(status.applied_folders(), ["1-connect"])
+
+    def test_a_folder_with_an_emptied_state_isnt_applied(self):
+        self.folder("1-connect", initialized=True, resources=[])
+        self.assertEqual(status.applied_folders(), [])
+
+    def test_a_state_terraform_cant_read_is_never_taken_as_empty(self):
+        self.folder("1-connect", initialized=True, state_text="not a state")
+        self.assertEqual(status.applied_folders(), ["1-connect"])
+
+    def test_a_local_state_in_a_folder_not_initialized_is_never_taken_as_empty(self):
+        self.folder("1-connect", resources=[self.RULE])
+        self.assertEqual(status.applied_folders(), ["1-connect"])
+
+    def state_kept_elsewhere(self, name, resources):
+        """A real non-default backend, offline: the state isn't terraform.tfstate, as with S3."""
+        self.folder(name, settings=True)
+        path = os.path.join(self.root, name)
+        with open(os.path.join(path, "main.tf"), "w") as out:
+            out.write('terraform {\n  backend "local" {\n    path = "elsewhere/state"\n  }\n}\n')
+        os.makedirs(os.path.join(path, "elsewhere"))
+        with open(os.path.join(path, "elsewhere", "state"), "w") as out:
+            json.dump(dict(self.STATE, resources=resources), out)
+        subprocess.run(["terraform", "init", "-input=false"], cwd=path, capture_output=True, check=True)
+
+    def test_state_kept_elsewhere_counts_as_applied(self):
+        self.state_kept_elsewhere("1-connect", [self.RULE])
+        self.assertEqual(status.applied_folders(), ["1-connect"])
+
+    def test_a_rule_in_state_kept_elsewhere_counts(self):
+        self.state_kept_elsewhere("2-protect-rds", [self.RULE])
+        self.assertEqual(status.pending_rule_folders(), [])
+
+    # A clone on a new machine: the state exists in S3, but this folder hasn't been initialized yet.
+    def test_a_backend_not_initialized_is_never_taken_as_empty(self):
+        self.folder("2-protect-rds")
+        open(os.path.join(self.root, "2-protect-rds", "backend.tf"), "w").close()
+        self.assertIsNone(status.folder_resources("2-protect-rds"))
+        self.assertEqual(status.applied_folders(), ["2-protect-rds"])
+
+    def test_other_folders_are_left_out(self):
+        self.folder("proof", initialized=True, resources=[self.RULE])
+        self.assertEqual(status.applied_folders(), [])
+
+    def test_a_folder_with_settings_and_no_rule_will_add_one(self):
+        self.folder("2-protect-rds", settings=True)
+        self.assertEqual(status.pending_rule_folders(), ["2-protect-rds"])
+
+    def test_a_folder_whose_rule_exists_adds_none(self):
+        self.folder("2-protect-rds", settings=True, initialized=True, resources=[self.RULE])
+        self.assertEqual(status.pending_rule_folders(), [])
+
+    def test_a_folder_it_cant_read_counts_as_needing_a_rule(self):
+        self.folder("2-protect-rds", settings=True, initialized=True, state_text="not a state")
+        self.assertEqual(status.pending_rule_folders(), ["2-protect-rds"])
+
+    def test_s3_adds_no_rule(self):
+        self.folder("2-protect-s3", settings=True)
+        self.assertEqual(status.pending_rule_folders(), [])
+
 
 if __name__ == "__main__":
     unittest.main()

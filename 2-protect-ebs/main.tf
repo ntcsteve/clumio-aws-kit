@@ -4,10 +4,8 @@
 # The account, Region, unit and mode, from 1-connect's state, so they always match its connection. Until
 # 1-connect is applied, the plan stops here: "Unable to find remote state".
 data "terraform_remote_state" "connect" {
-  backend = "local"
-  config = {
-    path = "${path.root}/../1-connect/terraform.tfstate" # Moved 1-connect's state elsewhere? Point here too.
-  }
+  backend = var.connect_backend
+  config  = var.connect_config
 }
 
 locals {

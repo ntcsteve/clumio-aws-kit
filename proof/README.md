@@ -24,7 +24,7 @@ An earlier lab run (2026-10-25 to 27) proved S3, RDS and EC2 backups and restore
 2. In `proof/lab`, run `cp settings.example terraform.tfvars`, and set the test account, the Region and the profile.
 3. `terraform init`, `terraform plan -out=tfplan`, read the plan, `terraform apply tfplan`.
 4. Apply the `2-protect-` folders for the parts you built, with the same `name`. When `tools/status.py` shows the lab protected, save the evidence: `python3 proof/capture.py <set> <capture name>`.
-5. Take it down: the step folders as [Take a trial down](../docs/operate.md#take-a-trial-down) says; then in `proof/lab`, `terraform plan -destroy -out=tfplan` and `terraform apply tfplan`.
+5. Take it down: the step folders as [Take a trial down](../README.md#take-a-trial-down) says; then in `proof/lab`, `terraform plan -destroy -out=tfplan` and `terraform apply tfplan`.
 
 ## The tools
 

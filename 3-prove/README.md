@@ -8,7 +8,7 @@
 tools/status.py
 ```
 
-It lists every resource tagged `clumio-profile` (volumes on their own: `clumio-volume-profile`), who protects it, and its last backup. It reads AWS and Clumio and changes nothing. The first line checks the connection. Right after step 2, resources show NOT_YET or WAITING; after each first backup, OURS. [Read tools/status.py](../docs/operate.md#read-toolsstatuspy) explains every other state.
+It lists every resource tagged `clumio-profile` (volumes on their own: `clumio-volume-profile`), who protects it, and its last backup. It reads AWS and Clumio and changes nothing. The first line checks the connection. Right after step 2, resources show NOT_YET or WAITING; after each first backup, PROTECTED. [Read tools/status.py](../docs/operate.md#read-toolsstatuspy) explains every other state.
 
 Give it time. In the lab, a bucket joined its group within minutes, and every resource had its first backup within an hour. Allow up to a day before you look in Clumio's Tasks.
 
@@ -24,7 +24,7 @@ In the Clumio console, restore one resource you protected, to a new name beside 
 | EBS | **Restore EBS volume**. The source's key and tags are filled in |
 | S3 | Open the bucket. **Restore**, then **Restore prefix/buckets**, then **Custom**, not **Source**, which restores to the original location. Set the account, Region and bucket, and a new prefix, such as `restored/`. To keep the copy, use a bucket you'll keep |
 
-When the restore task completes, open what came back and check it: it's available, under the key you expect, and holds what you expect. The key depends on the workload: see [What a restore needs from you](../docs/keys.md#what-a-restore-needs-from-you). Check whether a restored instance has a public IP: one did in the lab, though the original had none.
+When the restore task completes, open what came back and check it: it's available, under the key you expect, and holds what you expect. The key depends on the workload: see [What a restore needs from you](../docs/keys.md#what-a-restore-needs-from-you). Check a restored instance's network settings, including whether it has a public IP.
 
 A restored database, instance or volume keeps the original's tags, profile tag included, so it joins that profile at Clumio's next discovery cycle and gets backed up and billed. When you've checked it, delete it or remove the tag. Restored S3 objects land in the bucket you name, and in a tagged bucket they're protected with it. A restored instance's Name tag is the original's, whatever name you gave in the console, so check the instance ID before you delete. Its root volume isn't deleted with it: delete that too.
 
@@ -40,13 +40,13 @@ It writes two files from one read, in the repository's root folder: `status-<tim
 
 | Verdict | What it means | What to do |
 |---|---|---|
-| PROVEN | Every resource is OURS, and a restore of one of them completed | Keep both files |
+| PROVEN | Every resource is PROTECTED, and a restore of one of them completed | Keep both files |
 | UNFINISHED | Something's missing | It lists what. Fix that, or wait, then run it again |
-| UNKNOWN | AWS or Clumio didn't answer | Run it again |
+| UNKNOWN | Couldn't read from AWS or Clumio | Run it again |
 
 Each run writes new files, so earlier evidence stays. The files name your AWS account, so keep them out of anything public; this repository's `.gitignore` skips them.
 
 ## Next
 
-- Keep it: for production, call the same modules from your own repository, with your own state and CI: see [Production](../docs/production.md).
-- Take a trial down: [Take a trial down](../docs/operate.md#take-a-trial-down).
+- Go live: a fresh clone in your production account: see [Production](../docs/production.md).
+- Take a trial down: [Take a trial down](../README.md#take-a-trial-down).
