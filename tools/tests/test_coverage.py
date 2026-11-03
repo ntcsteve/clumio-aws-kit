@@ -162,7 +162,7 @@ class Lab(unittest.TestCase):
             self.add_bucket_backup(name, backup, failed)
 
     def add_bucket_backup(self, name, start, failed=0):
-        """The bucket's own record of one backup, as read live on 2026-11-02 (v1.2 run, row 6)."""
+        """The bucket's own record of one backup, as read live on 2026-11-02."""
         self.clumio.lists["/backups/protection-groups/s3-assets"].append(
             {"protection_group_s3_asset_id": f"asset-{name}", "bucket_name": name, "start_timestamp": start,
              "failed_object_count": failed})
@@ -265,14 +265,14 @@ class Coverage(Lab):
         self.assertEqual(states["orders-db"], "UNKNOWN")
         self.assertEqual(status.coverage_exit_code(records, unit), 2)
 
-    # Read live, run 1 of v1.1: a bucket in its group has no protection_info for its first minutes.
+    # Read live on 2026-11-02: a bucket in its group has no protection_info for its first minutes.
     # That isn't another policy: OTHER told the person to remove an assignment that didn't exist.
     def test_a_bucket_in_its_group_with_no_policy_yet_is_not_yet_not_other(self):
         self.add_bucket("docs-bucket", policy=None)
         states, _, _ = self.states()
         self.assertEqual(states["docs-bucket"], "NOT_YET")
 
-    # Live, v1.2 run, row 6: an object under a key that denied Clumio was skipped. The task said
+    # Seen live on 2026-11-02: an object under a key that denied Clumio was skipped. The task said
     # completed and the bucket read PROTECTED. Only the bucket's backup record held the count.
     def test_a_bucket_whose_last_backup_skipped_objects_is_partial(self):
         self.add_bucket("docs-bucket", backup="2026-11-02T07:30:00Z", failed=1)
@@ -301,6 +301,13 @@ class Coverage(Lab):
         states, records, unit = self.states()
         self.assertEqual(states["docs-bucket"], "UNKNOWN")
         self.assertEqual(status.coverage_exit_code(records, unit), 2)
+
+    # A record that doesn't say how many objects failed can't be called whole either.
+    def test_a_backup_record_without_its_failed_count_is_unknown(self):
+        self.add_bucket("docs-bucket", backup="2026-11-02T07:30:00Z")
+        del self.clumio.lists["/backups/protection-groups/s3-assets"][0]["failed_object_count"]
+        states, _, _ = self.states()
+        self.assertEqual(states["docs-bucket"], "UNKNOWN")
 
     # A backup with no record of what it skipped can't be called whole: never a guess.
     def test_a_backup_without_its_record_is_unknown(self):
@@ -647,7 +654,7 @@ class Report(Lab):
         self.add_bucket("kitlab-9df826-docs", backup="2026-11-01T11:45:18Z")
         self.assertEqual(self.restored(f"gold-s3-{ACCOUNT}-{REGION}")["verdict"], "PROVEN")
 
-    # Live, v1.2 run, row 6: the report said PROVEN while a backup had skipped an object.
+    # Seen live on 2026-11-02: the report said PROVEN while a backup had skipped an object.
     def test_a_bucket_whose_backup_skipped_objects_is_unfinished_even_restored(self):
         self.add_bucket("kitlab-9df826-docs", backup="2026-11-01T11:45:18Z", failed=1)
         report = self.restored(f"gold-s3-{ACCOUNT}-{REGION}")

@@ -1,6 +1,6 @@
 # Does Clumio need our keys?
 
-You don't hand over a key, and you don't change a key policy. Clumio backed up and restored data under AWS-managed keys (AMK) and customer-managed keys (CMK) as they were. Your keys stay in KMS, and you stay in control: Clumio's role in your account uses them through AWS services, and your key policies decide which keys it can reach. To keep Clumio away from a key, deny Clumio's role in that key's policy: the earlier lab run below tested that, and Clumio reports the object it couldn't back up. `0-check/preview/preview.sh` lists every permission Clumio's role holds, KMS included, before anything is created.
+You don't hand over a key, and you don't change a key policy. Clumio backed up and restored data under AWS-managed keys (AMK) and customer-managed keys (CMK) as they were. Your keys stay in KMS. Clumio's role in your account may use KMS keys (`kms:Decrypt`, `Encrypt`, `GenerateDataKey*`, `ReEncrypt*`, `DescribeKey`) on any key whose policy lets IAM grant access, as AWS's default key policy does, and AWS services use the key on its behalf. To keep Clumio away from a key, deny Clumio's role in that key's policy: the earlier lab run below tested that, and Clumio reports the object it couldn't back up. `0-check/preview/preview.sh` lists every permission Clumio's role holds, KMS included, before anything is created.
 
 Two lab runs show it, each with raw AWS and Clumio answers you can check yourself.
 
@@ -14,7 +14,7 @@ Two lab runs show it, each with raw AWS and Clumio answers you can check yoursel
 | EC2 | Backed up | Backed up | A new instance. Its key depends on how you restore: see [What a restore needs from you](#what-a-restore-needs-from-you) |
 | EBS on its own | Backed up | Backed up | A new volume, restored in the Clumio console. Its key: see [What a restore needs from you](#what-a-restore-needs-from-you) |
 
-AWS doesn't let anyone share an RDS snapshot under an AWS-managed key, and Clumio doesn't. It copies the snapshot under a key it can share, and shares only the copy: [the CloudTrail record](https://github.com/ntcsteve/get-started-clumio-byok/blob/4a6dc5d/docs/PROOF.md#c9-rds-what-clumio-did-and-who-did-it).
+AWS doesn't let anyone share an RDS snapshot under an AWS-managed key, so Clumio doesn't share it either. It copies the snapshot under a key it can share, and shares only the copy: [the CloudTrail record](https://github.com/ntcsteve/get-started-clumio-byok/blob/4a6dc5d/docs/PROOF.md#c9-rds-what-clumio-did-and-who-did-it).
 
 A customer-managed key's default policy, which lets IAM in the account decide, is enough: the 2026-10-28 run used one and changed nothing. A key policy that explicitly denies Clumio's role blocks it: the object isn't backed up, and Clumio reports it with AWS's error.
 

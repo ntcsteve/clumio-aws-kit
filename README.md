@@ -12,7 +12,7 @@ On your own data, in your own account, with evidence you keep.
 
 | You'll see | Seen live |
 |---|---|
-| A copy of everything you tag, outside your account, [in your data's Region by default](#where-your-copies-live) | S3, RDS, Aurora, EC2 and EBS: [keys evidence](proof/evidence/keys-lab-2026-10-28/) |
+| A copy of what you tag, outside your account, [in your data's Region by default](#where-your-copies-live) | S3, RDS, Aurora, EC2 and EBS: [keys evidence](proof/evidence/keys-lab-2026-10-28/) |
 | Your own data restored, checked and timed | All five workloads. S3 byte for byte, in about 2 minutes: [3-prove](3-prove/README.md#2-restore-one) |
 | A deleted bucket brought back from its copy | S3: [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) |
 | A deleted database brought back, with AWS's own backups of it deleted too | RDS: [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) |

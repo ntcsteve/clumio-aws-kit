@@ -343,7 +343,7 @@ class FolderStateTests(unittest.TestCase):
         self.assertIsNone(status.folder_resources("2-protect-rds"))
         self.assertEqual(status.applied_folders(), ["2-protect-rds"])
 
-    # Read live, run 1 of v1.1: the tool writes backend.tf in every folder, used or not.
+    # Read live on 2026-11-02: the tool writes backend.tf in every folder, used or not.
     def test_a_backend_in_a_folder_with_no_settings_was_never_applied(self):
         self.folder("2-protect-ebs")
         open(os.path.join(self.root, "2-protect-ebs", "backend.tf"), "w").close()

@@ -476,7 +476,7 @@ def check_bucket(world, kit, name, value, profile):
 
 
 def skipped_objects(world, kit, name, value, asset_id, latest):
-    """PROTECTED, PARTIAL or UNKNOWN, from the bucket's own record of its last backup. Live, v1.2 run, row 6:
+    """PROTECTED, PARTIAL or UNKNOWN, from the bucket's own record of its last backup. Seen live on 2026-11-02:
     a backup that skipped an object it couldn't read still completed, and only this record held the count."""
     backups = clumio_items(world, "/backups/protection-groups/s3-assets", {"protection_group_s3_asset_id": {"$eq": asset_id}},
                            kit["organizational_unit_id"], complete=True)
@@ -486,7 +486,9 @@ def skipped_objects(world, kit, name, value, asset_id, latest):
     if not ours:
         return record("s3", name, value, "UNKNOWN", "Clumio shows a backup but no record of what it skipped. Run again.")
     last = max(ours, key=lambda b: b.get("start_timestamp", ""))
-    failed = last.get("failed_object_count") or 0
+    failed = last.get("failed_object_count")
+    if not isinstance(failed, int):
+        return record("s3", name, value, "UNKNOWN", "Clumio's record of its last backup doesn't say how many objects failed. Run again.")
     if failed:
         return record("s3", name, value, "PARTIAL", f"Its last backup skipped {failed} object{'s' if failed > 1 else ''}. "
                       "Which, and why: this bucket's backup calendar in Clumio's console. Fix that, then check after the next backup.",

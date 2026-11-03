@@ -16,7 +16,7 @@ import status  # noqa: E402
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 FIXTURE = os.path.join(FIXTURES, "stage2f-protected.json")
-# Recorded live in the B41 run (2026-11-03 00:50 UTC, masked): one bucket whose backup skipped an object
+# Recorded live on 2026-11-03 at 00:50 UTC, masked: one bucket whose backup skipped an object
 # under a key that denied Clumio, and one whose backup skipped nothing.
 PARTIAL_FIXTURE = os.path.join(FIXTURES, "b41-partial.json")
 
@@ -33,15 +33,16 @@ def bucket_backup_read(answers, asset_id):
 
 
 def with_bucket_backup_read(answers):
-    """Stage 2f's recording, plus the one read status.py added after it: a bucket's backups (B41, 2026-11-03).
-    That bucket is gone, so this read can't be recorded for it. Its answer is B41's real answer for a bucket
+    """Stage 2f's recording, plus the one read status.py added after it: a bucket's backups (2026-11-03).
+    That bucket is gone, so this read can't be recorded for it. Its answer is the 2026-11-03 run's real answer for a bucket
     whose backup skipped nothing, moved to 2f's bucket by asset ID; every other answer is 2f's own."""
     partial = load(PARTIAL_FIXTURE)
-    clean_id = "85982216-ee46-51c3-81ee-4f292fce085b"  # kitlab-1178d6-docs in the B41 recording
+    clean_id = "85982216-ee46-51c3-81ee-4f292fce085b"  # kitlab-1178d6-docs in the 2026-11-03 recording
     stage2f_id = "8dc43a62-3c2d-51a2-b9f7-a00b5cd215d1"  # kitlab-c19bd0-docs in the 2f recording
     key = next(key for key in partial["clumio"] if clean_id in urllib.parse.unquote(key)
                and "/backups/protection-groups/s3-assets?" in key)
-    answer = json.loads(json.dumps(bucket_backup_read(partial, clean_id)).replace(clean_id, stage2f_id))
+    answer = json.loads(json.dumps(bucket_backup_read(partial, clean_id)).replace(clean_id, stage2f_id)
+                        .replace("kitlab-1178d6-docs", "kitlab-c19bd0-docs"))
     answers["clumio"][key.replace(clean_id, stage2f_id)] = answer
     return answers
 
@@ -114,13 +115,13 @@ class Stage2fProtected(unittest.TestCase):
         self.assertEqual(len(lines), 2)
 
 
-class B41Partial(unittest.TestCase):
+class PartialBackup(unittest.TestCase):
     def setUp(self):
         self.world = replay(load(PARTIAL_FIXTURE))
         self.addCleanup(os.remove, self.world.settings_path)
 
     def test_a_backup_that_skipped_an_object_reads_partial_as_it_did_live(self):
-        # Expected: tools/status.py's live output in the B41 run, 2026-11-03 00:49 UTC: the bucket with the
+        # Expected: tools/status.py's live output on 2026-11-03 at 00:49 UTC: the bucket with the
         # denied object PARTIAL, skipped 1; the other PROTECTED; exit 1.
         records, connection = status.coverage(self.world)
         states = {r["name"]: r["state"] for r in records}
