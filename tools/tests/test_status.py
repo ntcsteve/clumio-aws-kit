@@ -14,6 +14,7 @@ import status  # noqa: E402
 
 ACCOUNT = "123456789012"
 UNIT = "11111111-2222-3333-4444-555555555555"
+UNIT_NAME = "example-team"
 GLOBAL = "00000000-0000-0000-0000-000000000000"
 
 GOOD_SETTINGS = f'''account_id          = "{ACCOUNT}" # a comment
@@ -39,7 +40,7 @@ class FakeClumio:
     def __init__(self, **overrides):
         self.answers = {
             "/connections/aws/regions": (200, REGIONS),
-            f"/organizational-units/{UNIT}": (200, {"id": UNIT, "name": "cvlt-cloudnatives"}),
+            f"/organizational-units/{UNIT}": (200, {"id": UNIT, "name": UNIT_NAME}),
             "/policies/rules": (200, rules(3)),
             f"/connections/aws/{ACCOUNT}_us-west-2": (404, {}),
             "/organizational-units": (200, {"_embedded": {"items": [
@@ -140,7 +141,7 @@ class Preflight(unittest.TestCase):
     def test_an_unset_unit_lists_the_units_to_choose_from(self):
         results = self.run_preflight(settings=GOOD_SETTINGS.replace(f'"{UNIT}"', '"UNIT-REPLACE-THIS"'))
         self.assertEqual(self.states(results)["unit"], "FAIL")
-        self.assertIn(f"cvlt-cloudnatives  {UNIT}", self.detail(results, "unit"))
+        self.assertIn(f"{UNIT_NAME}  {UNIT}", self.detail(results, "unit"))
         self.assertIn("global", self.detail(results, "unit"))
 
     def test_an_unsupported_region_fails(self):
