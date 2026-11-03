@@ -26,7 +26,7 @@ On your own data, in your own account, with evidence you keep.
 | Every IAM role and permission Clumio gets, before anything exists | [0-check](0-check/README.md), and a deploy on only the generated policy |
 | A verdict and the evidence behind it, for sign-off | All five workloads: [3-prove](3-prove/README.md#3-keep-the-evidence) |
 | Your restore time against your target, with each policy's frequency and retention | S3: [3-prove](3-prove/README.md#3-keep-the-evidence) |
-| A backup that skipped an object, and why | S3: [How it behaves](docs/operate.md#how-it-behaves) |
+| A backup that skipped an object, named PARTIAL, and why | S3: [How it behaves](docs/operate.md#how-it-behaves) |
 | Teardown removing everything the kit created | [Take a trial down](#take-a-trial-down) |
 
 ### Does it fit your rules?

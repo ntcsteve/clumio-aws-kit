@@ -266,7 +266,7 @@ def exit_code(results):
 
 TAG_KEY = "clumio-profile"
 VOLUME_TAG_KEY = "clumio-volume-profile"  # A volume on its own: see modules/protect, the ebs workload.
-ACTION_STATES = {"OTHER", "BAD_VALUE", "OFF", "DOUBLE"}  # a person must change something
+ACTION_STATES = {"OTHER", "BAD_VALUE", "OFF", "DOUBLE", "PARTIAL"}  # a person must change something
 # Each kind of tagged resource, and the 2-protect- folder (workload) whose policy protects it.
 WORKLOADS = {"s3": "s3", "rds-instance": "rds", "rds-cluster": "aurora", "ec2-instance": "ec2", "ebs-volume": "ebs"}
 LABELS = {"s3": "S3 buckets", "rds": "RDS instances", "aurora": "Aurora clusters", "ec2": "EC2 instances", "ebs": "volumes on their own"}
@@ -471,7 +471,27 @@ def check_bucket(world, kit, name, value, profile):
         return record("s3", name, value, "NOT_YET", "It's in this profile's protection group, and its policy attaches within minutes: run again.")
     if info["policy_id"] != profile["s3"]:
         return record("s3", name, value, "OTHER", claimed_by(world, info, kit["organizational_unit_id"]))
-    return protected("s3", name, value, asset.get("last_backup_timestamp") or "")
+    latest = asset.get("last_backup_timestamp") or ""
+    return skipped_objects(world, kit, name, value, asset["id"], latest) if latest else protected("s3", name, value, latest)
+
+
+def skipped_objects(world, kit, name, value, asset_id, latest):
+    """PROTECTED, PARTIAL or UNKNOWN, from the bucket's own record of its last backup. Live, v1.2 run, row 6:
+    a backup that skipped an object it couldn't read still completed, and only this record held the count."""
+    backups = clumio_items(world, "/backups/protection-groups/s3-assets", {"protection_group_s3_asset_id": {"$eq": asset_id}},
+                           kit["organizational_unit_id"], complete=True)
+    if backups is None:
+        return record("s3", name, value, "UNKNOWN", "Couldn't read its backups from Clumio. Run again.")
+    ours = [b for b in backups if b.get("protection_group_s3_asset_id") == asset_id]
+    if not ours:
+        return record("s3", name, value, "UNKNOWN", "Clumio shows a backup but no record of what it skipped. Run again.")
+    last = max(ours, key=lambda b: b.get("start_timestamp", ""))
+    failed = last.get("failed_object_count") or 0
+    if failed:
+        return record("s3", name, value, "PARTIAL", f"Its last backup skipped {failed} object{'s' if failed > 1 else ''}. "
+                      "Which, and why: this bucket's backup calendar in Clumio's console. Fix that, then check after the next backup.",
+                      when(latest))
+    return protected("s3", name, value, latest)
 
 
 def protected(kind, name, value, latest):

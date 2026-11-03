@@ -53,6 +53,7 @@ class FakeClumio:
             "/datasources/aws/rds-resources": [],
             "/backups/aws/rds-resources": [],
             "/datasources/protection-groups/s3-assets": [],
+            "/backups/protection-groups/s3-assets": [],
             "/datasources/aws/ec2-instances": [],
             "/datasources/aws/ebs-volumes": [],
             "/tasks": [],
@@ -151,12 +152,20 @@ class Lab(unittest.TestCase):
         if backup:
             self.clumio.lists["/backups/aws/rds-resources"].append({"resource_id": f"id-{name}", "start_timestamp": backup})
 
-    def add_bucket(self, name, in_group=True, backup=None, value="gold", policy=POLICY["s3"]):
+    def add_bucket(self, name, in_group=True, backup=None, value="gold", policy=POLICY["s3"], failed=0):
         self.resources.append(bucket(name, value))
         if in_group:
             self.clumio.lists["/datasources/protection-groups/s3-assets"].append(
                 {"id": f"asset-{name}", "bucket_name": name, "group_id": GROUP, "is_deleted": False,
                  "protection_info": {"policy_id": policy} if policy else None, "last_backup_timestamp": backup})
+        if in_group and backup:
+            self.add_bucket_backup(name, backup, failed)
+
+    def add_bucket_backup(self, name, start, failed=0):
+        """The bucket's own record of one backup, as read live on 2026-11-02 (v1.2 run, row 6)."""
+        self.clumio.lists["/backups/protection-groups/s3-assets"].append(
+            {"protection_group_s3_asset_id": f"asset-{name}", "bucket_name": name, "start_timestamp": start,
+             "failed_object_count": failed})
 
     def add_instance(self, instance_id, policy=POLICY["ec2"], backup=None, value="gold"):
         self.resources.append(instance(instance_id, value))
@@ -262,6 +271,43 @@ class Coverage(Lab):
         self.add_bucket("docs-bucket", policy=None)
         states, _, _ = self.states()
         self.assertEqual(states["docs-bucket"], "NOT_YET")
+
+    # Live, v1.2 run, row 6: an object under a key that denied Clumio was skipped. The task said
+    # completed and the bucket read PROTECTED. Only the bucket's backup record held the count.
+    def test_a_bucket_whose_last_backup_skipped_objects_is_partial(self):
+        self.add_bucket("docs-bucket", backup="2026-11-02T07:30:00Z", failed=1)
+        states, records, unit = self.states()
+        self.assertEqual(states["docs-bucket"], "PARTIAL")
+        self.assertIn("skipped 1 object", records[0]["detail"])
+        self.assertIn("backup calendar", records[0]["detail"])
+        self.assertIn("2026-11-02 07:30 UTC", records[0]["last_backup"])
+        self.assertEqual(status.coverage_exit_code(records, unit), 1)
+
+    def test_a_later_backup_that_skipped_nothing_is_protected(self):
+        self.add_bucket("docs-bucket", backup="2026-11-02T07:30:00Z")
+        self.add_bucket_backup("docs-bucket", "2026-11-01T07:30:00Z", failed=1)
+        states, _, _ = self.states()
+        self.assertEqual(states["docs-bucket"], "PROTECTED")
+
+    def test_another_buckets_skipped_objects_dont_count(self):
+        self.add_bucket("docs-bucket", backup="2026-11-02T07:30:00Z")
+        self.add_bucket("denied-bucket", backup="2026-11-02T07:30:00Z", failed=1)
+        states, _, _ = self.states()
+        self.assertEqual(states, {"docs-bucket": "PROTECTED", "denied-bucket": "PARTIAL"})
+
+    def test_a_bucket_whose_backup_records_cant_be_read_is_unknown(self):
+        self.add_bucket("docs-bucket", backup="2026-11-02T07:30:00Z")
+        self.clumio.broken.add("/backups/protection-groups/s3-assets")
+        states, records, unit = self.states()
+        self.assertEqual(states["docs-bucket"], "UNKNOWN")
+        self.assertEqual(status.coverage_exit_code(records, unit), 2)
+
+    # A backup with no record of what it skipped can't be called whole: never a guess.
+    def test_a_backup_without_its_record_is_unknown(self):
+        self.add_bucket("docs-bucket", backup="2026-11-02T07:30:00Z")
+        self.clumio.lists["/backups/protection-groups/s3-assets"] = []
+        states, _, _ = self.states()
+        self.assertEqual(states["docs-bucket"], "UNKNOWN")
 
     def test_a_connection_in_another_unit_fails(self):
         self.clumio.single[f"/connections/aws/{ACCOUNT}_{REGION}"] = (200, {"organizational_unit_id": "another-unit"})
@@ -600,6 +646,13 @@ class Report(Lab):
     def test_a_restored_bucket_is_proven_through_its_group(self):
         self.add_bucket("kitlab-9df826-docs", backup="2026-11-01T11:45:18Z")
         self.assertEqual(self.restored(f"gold-s3-{ACCOUNT}-{REGION}")["verdict"], "PROVEN")
+
+    # Live, v1.2 run, row 6: the report said PROVEN while a backup had skipped an object.
+    def test_a_bucket_whose_backup_skipped_objects_is_unfinished_even_restored(self):
+        self.add_bucket("kitlab-9df826-docs", backup="2026-11-01T11:45:18Z", failed=1)
+        report = self.restored(f"gold-s3-{ACCOUNT}-{REGION}")
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertIn("kitlab-9df826-docs: PARTIAL", report["gaps"][0])
 
     def test_a_restore_of_something_this_kit_doesnt_protect_is_unfinished_and_named(self):
         # Clumio lists the whole tenant's tasks, so a wrong ID can be another team's completed restore.

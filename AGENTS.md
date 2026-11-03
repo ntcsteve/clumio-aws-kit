@@ -49,7 +49,7 @@ After each step, compare what you see with that step's Expect column in the READ
 | UNFINISHED | The report lists what's missing | Show the person the list. Don't call the run done |
 | WAITING, NOT_YET | Clumio isn't done | Stop, and tell the person to check later. Don't loop. If it doesn't change, its row in [Operate](docs/operate.md#read-toolsstatuspy) says what's next |
 | SKIP | It waits on a FAIL above it | Fix that FAIL |
-| FAIL, BLOCKED, REFUSED, CANNOT CHECK, OTHER, BAD_VALUE, DOUBLE, OFF | A person must act | Stop, and show the person the line: it says what to do. What happens next is the person's call |
+| FAIL, BLOCKED, REFUSED, CANNOT CHECK, OTHER, BAD_VALUE, DOUBLE, OFF, PARTIAL | A person must act | Stop, and show the person the line: it says what to do. What happens next is the person's call |
 | UNKNOWN | Couldn't read from AWS or Clumio | Run it once more, then stop and tell the person |
 | A plan that stops with an error | A guard or a provider refused | Stop, and show the person the error and its row in [Operate](docs/operate.md). Never work around a guard |
 

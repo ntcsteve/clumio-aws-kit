@@ -1,0 +1,852 @@
+{
+ "clumio": {
+  " /connections/aws/123456789012_us-west-2": [
+   200,
+   {
+    "_etag": "2717669299257362711",
+    "_links": {
+     "_self": {
+      "href": "/connections/aws/123456789012_us-west-2",
+      "templated": false,
+      "type": "get"
+     },
+     "create-policy-rule": {
+      "href": "/policies/rules",
+      "templated": false,
+      "type": "post"
+     },
+     "create-protection-group": {
+      "href": "/protection-groups",
+      "templated": false,
+      "type": "post"
+     },
+     "delete-connection-aws": {
+      "href": "/connections/aws/123456789012_us-west-2",
+      "templated": false,
+      "type": "delete"
+     },
+     "read-organizational-unit": {
+      "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "templated": false,
+      "type": "get"
+     },
+     "update-connection-aws": {
+      "href": "/connections/aws/123456789012_us-west-2",
+      "templated": false,
+      "type": "patch"
+     }
+    },
+    "account_name": "",
+    "account_native_id": "123456789012",
+    "aws_region": "us-west-2",
+    "clumio_aws_account_id": "111111111111",
+    "clumio_aws_region": "us-west-2",
+    "config": {
+     "asset_types_enabled": [
+      "S3"
+     ],
+     "installed_template_minor_version": "0",
+     "installed_template_version": "26",
+     "s3": {
+      "installed_template_minor_version": "3",
+      "installed_template_version": "9"
+     }
+    },
+    "connection_group_id": "",
+    "connection_management_status": "not_managed",
+    "connection_status": "connected",
+    "created_timestamp": "2026-11-03T00:35:09Z",
+    "data_plane_account_id": "222222222222",
+    "description": "Connected by Terraform (clumio-aws-kit)",
+    "discover": {
+     "asset_types_enabled": [
+      "S3"
+     ],
+     "installed_template_minor_version": "0",
+     "installed_template_version": "26"
+    },
+    "id": "123456789012_us-west-2",
+    "ingestion_status": "completed",
+    "namespace": "prod-01-uw-2",
+    "ongoing_stack_operation": "no_active_operation",
+    "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "protect": {
+     "asset_types_enabled": [
+      "S3"
+     ],
+     "installed_template_minor_version": "0",
+     "installed_template_version": "26",
+     "s3": {
+      "installed_template_minor_version": "3",
+      "installed_template_version": "9"
+     }
+    },
+    "protect_asset_types_enabled": [
+     "S3"
+    ],
+    "services_enabled": [
+     "discover",
+     "protect"
+    ],
+    "stack_arn": "",
+    "stack_failure_details": "null",
+    "stack_name": "",
+    "target_setup_status": "completed",
+    "template_permission_set": "all",
+    "template_type": "terraform",
+    "template_version": 0,
+    "token": "df7ba7ba-3db6-490b-98b0-5772372c9cb3"
+   }
+  ],
+  " /tasks?limit=100&filter=%7B%22primary_entity.id%22%3A%20%7B%22%24eq%22%3A%20%223828dc05-3371-407b-85ae-5d5bea7e5b7a%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_etag": "10231109094094583202",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4081096641",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "backup",
+       "created_timestamp": "2026-11-03T00:45:20Z",
+       "end_timestamp": "2026-11-03T00:47:15Z",
+       "genre": "operational",
+       "id": "4081096641",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "",
+        "type": "organization",
+        "value": ""
+       },
+       "primary_entity": {
+        "id": "3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+        "type": "protection_group",
+        "value": "gold-s3-123456789012-us-west-2"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-11-03T00:45:20Z",
+       "status": "completed",
+       "type": "protection_group_backup"
+      },
+      {
+       "_embedded": {},
+       "_etag": "15459617190376467400",
+       "_links": {
+        "_self": {
+         "href": "/tasks/4081096630",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        }
+       },
+       "category": "management",
+       "created_timestamp": "2026-11-03T00:45:20Z",
+       "end_timestamp": "2026-11-03T00:45:24Z",
+       "genre": "administrative",
+       "id": "4081096630",
+       "is_abortable": false,
+       "parent_entity": {
+        "id": "",
+        "type": "organization",
+        "value": ""
+       },
+       "primary_entity": {
+        "id": "3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+        "type": "protection_group",
+        "value": "gold-s3-123456789012-us-west-2"
+       },
+       "progress_percentage": 100,
+       "start_timestamp": "2026-11-03T00:45:20Z",
+       "status": "completed",
+       "type": "protection_group_backtrack_reservation"
+      }
+     ]
+    },
+    "_links": {
+     "_self": {
+      "href": "/api/tasks?filter=%7B%22primary_entity.id%22:+%7B%22$eq%22:+%223828dc05-3371-407b-85ae-5d5bea7e5b7a%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 2,
+    "filter_applied": "{\"created_timestamp\":{\"$lte\":\"2026-11-03T00:45:21Z\"},\"primary_entity.id\":{\"$eq\":\"3828dc05-3371-407b-85ae-5d5bea7e5b7a\"}}",
+    "limit": 100,
+    "start": "",
+    "total_count": 0,
+    "total_pages_count": 0
+   }
+  ],
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /backups/protection-groups/s3-assets?limit=100&filter=%7B%22protection_group_s3_asset_id%22%3A%20%7B%22%24eq%22%3A%20%2285982216-ee46-51c3-81ee-4f292fce085b%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_links": {
+        "_self": {
+         "href": "/backups/protection-groups/s3-assets/85982216-ee46-51c3-81ee-4f292fce085b_2026-11-03T00:45:00Z.4081096902",
+         "templated": false,
+         "type": "get"
+        },
+        "restore-protection-group-s3-asset": {
+         "href": "/restores/protection-groups/s3-assets",
+         "templated": false,
+         "type": "post"
+        }
+       },
+       "aws_region": "us-west-2",
+       "backed_up_object_count": 2,
+       "backed_up_size_bytes": 52,
+       "bucket_id": "a9fc3a39-d71e-11f1-a3a4-4e7bfac22ad2",
+       "bucket_name": "kitlab-1178d6-docs",
+       "expiration_timestamp": "2026-12-03T00:45:18Z",
+       "failed_object_count": 0,
+       "failed_size_bytes": 0,
+       "id": "85982216-ee46-51c3-81ee-4f292fce085b_2026-11-03T00:45:00Z.4081096902",
+       "malicious_object_count": 0,
+       "malicious_objects_list_link": "",
+       "missing_object_count": 0,
+       "missing_size_bytes": 0,
+       "protection_group_id": "3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+       "protection_group_s3_asset_id": "85982216-ee46-51c3-81ee-4f292fce085b",
+       "protection_group_version": 4,
+       "skipped_objects_list_link": "",
+       "start_timestamp": "2026-11-03T00:45:00Z",
+       "threat_object_count": 0,
+       "threat_objects_list_link": "",
+       "type": "protection_group_s3_asset_backup"
+      }
+     ]
+    },
+    "_links": {
+     "_first": {
+      "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22%3A%7B%22%24eq%22%3A%2285982216-ee46-51c3-81ee-4f292fce085b%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-11-03T00%3A45%3A00Z%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_last": {
+      "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22%3A%7B%22%24eq%22%3A%2285982216-ee46-51c3-81ee-4f292fce085b%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-11-03T00%3A45%3A00Z%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_self": {
+      "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22:+%7B%22$eq%22:+%2285982216-ee46-51c3-81ee-4f292fce085b%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 1,
+    "filter_applied": "{\"protection_group_s3_asset_id\":{\"$eq\":\"85982216-ee46-51c3-81ee-4f292fce085b\"},\"start_timestamp\":{\"$lte\":\"2026-11-03T00:45:00Z\"}}",
+    "limit": 100,
+    "start": "1",
+    "total_count": 1,
+    "total_pages_count": 1
+   }
+  ],
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /backups/protection-groups/s3-assets?limit=100&filter=%7B%22protection_group_s3_asset_id%22%3A%20%7B%22%24eq%22%3A%20%22a46ccf89-dc23-57af-bb70-ebefbdf9b340%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_links": {
+        "_self": {
+         "href": "/backups/protection-groups/s3-assets/a46ccf89-dc23-57af-bb70-ebefbdf9b340_2026-11-03T00:45:00Z.4081096874",
+         "templated": false,
+         "type": "get"
+        },
+        "restore-protection-group-s3-asset": {
+         "href": "/restores/protection-groups/s3-assets",
+         "templated": false,
+         "type": "post"
+        }
+       },
+       "aws_region": "us-west-2",
+       "backed_up_object_count": 1,
+       "backed_up_size_bytes": 19,
+       "bucket_id": "a93ba9fc-d71e-11f1-88d3-ce62c216a08c",
+       "bucket_name": "kitlab-1178d6-denied",
+       "expiration_timestamp": "2026-12-03T00:45:18Z",
+       "failed_object_count": 1,
+       "failed_size_bytes": 17,
+       "id": "a46ccf89-dc23-57af-bb70-ebefbdf9b340_2026-11-03T00:45:00Z.4081096874",
+       "malicious_object_count": 0,
+       "malicious_objects_list_link": "",
+       "missing_object_count": 0,
+       "missing_size_bytes": 0,
+       "protection_group_id": "3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+       "protection_group_s3_asset_id": "a46ccf89-dc23-57af-bb70-ebefbdf9b340",
+       "protection_group_version": 4,
+       "skipped_objects_list_link": "https://ressrv.us1.clumio.com/clumio_skipped_s3_objects/org96122681694783822/skipped_T4081096874.csv.gz",
+       "start_timestamp": "2026-11-03T00:45:00Z",
+       "threat_object_count": 0,
+       "threat_objects_list_link": "",
+       "type": "protection_group_s3_asset_backup"
+      }
+     ]
+    },
+    "_links": {
+     "_first": {
+      "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22%3A%7B%22%24eq%22%3A%22a46ccf89-dc23-57af-bb70-ebefbdf9b340%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-11-03T00%3A45%3A00Z%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_last": {
+      "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22%3A%7B%22%24eq%22%3A%22a46ccf89-dc23-57af-bb70-ebefbdf9b340%22%7D%2C%22start_timestamp%22%3A%7B%22%24lte%22%3A%222026-11-03T00%3A45%3A00Z%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_self": {
+      "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22:+%7B%22$eq%22:+%22a46ccf89-dc23-57af-bb70-ebefbdf9b340%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 1,
+    "filter_applied": "{\"protection_group_s3_asset_id\":{\"$eq\":\"a46ccf89-dc23-57af-bb70-ebefbdf9b340\"},\"start_timestamp\":{\"$lte\":\"2026-11-03T00:45:00Z\"}}",
+    "limit": 100,
+    "start": "1",
+    "total_count": 1,
+    "total_pages_count": 1
+   }
+  ],
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /datasources/protection-groups/s3-assets?limit=100&filter=%7B%22bucket_name%22%3A%20%7B%22%24eq%22%3A%20%22kitlab-1178d6-denied%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_links": {
+        "_self": {
+         "href": "/datasources/protection-groups/buckets/a46ccf89-dc23-57af-bb70-ebefbdf9b340",
+         "templated": false,
+         "type": "get"
+        },
+        "delete-bucket-protection-group": {
+         "href": "/protection-groups/3828dc05-3371-407b-85ae-5d5bea7e5b7a/buckets/a93ba9fc-d71e-11f1-88d3-ce62c216a08c",
+         "templated": false,
+         "type": "delete"
+        },
+        "list-backup-protection-group-s3-assets": {
+         "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22%3A%7B%22%24eq%22%3A%22a46ccf89-dc23-57af-bb70-ebefbdf9b340%22%7D%7D",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        },
+        "read-policy-definition": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b",
+         "templated": false,
+         "type": "get"
+        },
+        "restore-protection-group-s3-asset": {
+         "href": "/restores/protection-groups/s3-assets",
+         "templated": false,
+         "type": "post"
+        }
+       },
+       "account_native_id": "123456789012",
+       "added_by_bucket_rule": true,
+       "added_by_user": false,
+       "aws_region": "us-west-2",
+       "backup_status_info": {
+        "backup_status": "unknown",
+        "last_failed_policy_start_timestamp": "",
+        "last_successful_policy_start_timestamp": "2026-11-03T00:45:18Z",
+        "operation_info_list": [
+         {
+          "backup_status": "unknown",
+          "last_failed_policy_start_timestamp": "",
+          "last_successful_policy_start_timestamp": "2026-11-03T00:45:18Z",
+          "operation": "protection_group_backup"
+         },
+         {
+          "backup_status": "unknown",
+          "last_failed_policy_start_timestamp": "",
+          "last_successful_policy_start_timestamp": "2026-11-03T00:45:18Z",
+          "operation": "aws_s3_backtrack"
+         }
+        ]
+       },
+       "backup_target_aws_region": "us-west-2",
+       "backup_tier_stats": [
+        {
+         "backup_tier": "standard",
+         "total_backed_up_object_count": 1,
+         "total_backed_up_size_bytes": 19
+        }
+       ],
+       "bucket_id": "a93ba9fc-d71e-11f1-88d3-ce62c216a08c",
+       "bucket_name": "kitlab-1178d6-denied",
+       "clumio_roles": null,
+       "created_timestamp": "2026-11-03T00:42:35Z",
+       "earliest_available_backup_timestamp": null,
+       "environment_id": "a2f45a8b-d71e-11f1-a3a4-4e7bfac22ad2",
+       "group_id": "3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+       "group_name": "gold-s3-123456789012-us-west-2",
+       "id": "a46ccf89-dc23-57af-bb70-ebefbdf9b340",
+       "is_deleted": false,
+       "last_backup_timestamp": "2026-11-03T00:45:00Z",
+       "last_continuous_backup_timestamp": null,
+       "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+       "protection_info": {
+        "inheriting_entity_id": null,
+        "inheriting_entity_type": null,
+        "policy_id": "4130880d-0e8d-4939-9510-c8e2cb99d48b",
+        "rule_id": "asset-level-rule"
+       },
+       "protection_status": "protected",
+       "total_backed_up_object_count": 1,
+       "total_backed_up_size_bytes": 19,
+       "unsupported_reason": ""
+      }
+     ]
+    },
+    "_links": {
+     "_first": {
+      "href": "/datasources/protection-groups/s3-assets?filter=%7B%22bucket_name%22%3A+%7B%22%24eq%22%3A+%22kitlab-1178d6-denied%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_last": {
+      "href": "/datasources/protection-groups/s3-assets?filter=%7B%22bucket_name%22%3A+%7B%22%24eq%22%3A+%22kitlab-1178d6-denied%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_self": {
+      "href": "/datasources/protection-groups/s3-assets?filter=%7B%22bucket_name%22:+%7B%22$eq%22:+%22kitlab-1178d6-denied%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 1,
+    "limit": 100,
+    "start": "1",
+    "total_count": 1,
+    "total_pages_count": 1
+   }
+  ],
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /datasources/protection-groups/s3-assets?limit=100&filter=%7B%22bucket_name%22%3A%20%7B%22%24eq%22%3A%20%22kitlab-1178d6-docs%22%7D%7D": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_links": {
+        "_self": {
+         "href": "/datasources/protection-groups/buckets/85982216-ee46-51c3-81ee-4f292fce085b",
+         "templated": false,
+         "type": "get"
+        },
+        "delete-bucket-protection-group": {
+         "href": "/protection-groups/3828dc05-3371-407b-85ae-5d5bea7e5b7a/buckets/a9fc3a39-d71e-11f1-a3a4-4e7bfac22ad2",
+         "templated": false,
+         "type": "delete"
+        },
+        "list-backup-protection-group-s3-assets": {
+         "href": "/backups/protection-groups/s3-assets?filter=%7B%22protection_group_s3_asset_id%22%3A%7B%22%24eq%22%3A%2285982216-ee46-51c3-81ee-4f292fce085b%22%7D%7D",
+         "templated": false,
+         "type": "get"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        },
+        "read-policy-definition": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b",
+         "templated": false,
+         "type": "get"
+        },
+        "restore-protection-group-s3-asset": {
+         "href": "/restores/protection-groups/s3-assets",
+         "templated": false,
+         "type": "post"
+        }
+       },
+       "account_native_id": "123456789012",
+       "added_by_bucket_rule": true,
+       "added_by_user": false,
+       "aws_region": "us-west-2",
+       "backup_status_info": {
+        "backup_status": "unknown",
+        "last_failed_policy_start_timestamp": "",
+        "last_successful_policy_start_timestamp": "2026-11-03T00:45:18Z",
+        "operation_info_list": [
+         {
+          "backup_status": "unknown",
+          "last_failed_policy_start_timestamp": "",
+          "last_successful_policy_start_timestamp": "2026-11-03T00:45:18Z",
+          "operation": "protection_group_backup"
+         },
+         {
+          "backup_status": "unknown",
+          "last_failed_policy_start_timestamp": "",
+          "last_successful_policy_start_timestamp": "2026-11-03T00:45:18Z",
+          "operation": "aws_s3_backtrack"
+         }
+        ]
+       },
+       "backup_target_aws_region": "us-west-2",
+       "backup_tier_stats": [
+        {
+         "backup_tier": "standard",
+         "total_backed_up_object_count": 2,
+         "total_backed_up_size_bytes": 52
+        }
+       ],
+       "bucket_id": "a9fc3a39-d71e-11f1-a3a4-4e7bfac22ad2",
+       "bucket_name": "kitlab-1178d6-docs",
+       "clumio_roles": null,
+       "created_timestamp": "2026-11-03T00:42:36Z",
+       "earliest_available_backup_timestamp": null,
+       "environment_id": "a2f45a8b-d71e-11f1-a3a4-4e7bfac22ad2",
+       "group_id": "3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+       "group_name": "gold-s3-123456789012-us-west-2",
+       "id": "85982216-ee46-51c3-81ee-4f292fce085b",
+       "is_deleted": false,
+       "last_backup_timestamp": "2026-11-03T00:45:00Z",
+       "last_continuous_backup_timestamp": null,
+       "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+       "protection_info": {
+        "inheriting_entity_id": null,
+        "inheriting_entity_type": null,
+        "policy_id": "4130880d-0e8d-4939-9510-c8e2cb99d48b",
+        "rule_id": "asset-level-rule"
+       },
+       "protection_status": "protected",
+       "total_backed_up_object_count": 2,
+       "total_backed_up_size_bytes": 52,
+       "unsupported_reason": ""
+      }
+     ]
+    },
+    "_links": {
+     "_first": {
+      "href": "/datasources/protection-groups/s3-assets?filter=%7B%22bucket_name%22%3A+%7B%22%24eq%22%3A+%22kitlab-1178d6-docs%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_last": {
+      "href": "/datasources/protection-groups/s3-assets?filter=%7B%22bucket_name%22%3A+%7B%22%24eq%22%3A+%22kitlab-1178d6-docs%22%7D%7D&limit=100&start=1",
+      "templated": false,
+      "type": "get"
+     },
+     "_self": {
+      "href": "/datasources/protection-groups/s3-assets?filter=%7B%22bucket_name%22:+%7B%22$eq%22:+%22kitlab-1178d6-docs%22%7D%7D&limit=100",
+      "templated": false,
+      "type": "get"
+     }
+    },
+    "current_count": 1,
+    "limit": 100,
+    "start": "1",
+    "total_count": 1,
+    "total_pages_count": 1
+   }
+  ],
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /datasources/protection-groups?limit=100": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_embedded": {},
+       "_links": {
+        "_self": {
+         "href": "/datasources/protection-groups/3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+         "templated": false,
+         "type": "get"
+        },
+        "add-bucket-protection-group": {
+         "href": "/protection-groups/3828dc05-3371-407b-85ae-5d5bea7e5b7a/buckets",
+         "templated": false,
+         "type": "post"
+        },
+        "delete-bucket-protection-group": {
+         "href": "/protection-groups/3828dc05-3371-407b-85ae-5d5bea7e5b7a/buckets/{bucket_id}",
+         "templated": false,
+         "type": "delete"
+        },
+        "list-backup-protection-groups": {
+         "href": "/backups/protection-groups?filter=%7B%22protection_group_id%22%3A%7B%22%24eq%22%3A%223828dc05-3371-407b-85ae-5d5bea7e5b7a%22%7D%7D",
+         "templated": false,
+         "type": "get"
+        },
+        "protect-entities": {
+         "href": "/policies/rules",
+         "templated": false,
+         "type": "post"
+        },
+        "read-organizational-unit": {
+         "href": "/organizational-units/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+         "templated": false,
+         "type": "get"
+        },
+        "read-policy-definition": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b",
+         "templated": false,
+         "type": "get"
+        },
+        "restore-protection-group": {
+         "href": "/restores/protection-groups",
+         "templated": false,
+         "type": "post"
+        },
+        "unprotect-entities": {
+         "href": "/policies/rules",
+         "templated": false,
+         "type": "delete"
+        },
+        "update-protection-group": {
+         "href": "/protection-groups/3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+         "templated": false,
+         "type": "put"
+        }
+       },
+       "backup_status_stats": {
+        "failure_count": 0,
+        "no_backup_count": 0,
+        "partial_success_count": 0,
+        "success_count": 0
+       },
+       "backup_target_aws_region": "",
+       "backup_tier_stats": [
+        {
+         "backup_tier": "standard",
+         "total_backed_up_object_count": 3,
+         "total_backed_up_size_bytes": 71
+        }
+       ],
+       "bucket_count": 2,
+       "bucket_rule": "{\"aws_account_native_id\":{\"$eq\":\"123456789012\"},\"aws_region\":{\"$eq\":\"us-west-2\"},\"aws_tag\":{\"$eq\":{\"key\":\"clumio-profile\",\"value\":\"gold\"}}}",
+       "created_timestamp": "2026-11-03T00:42:35Z",
+       "description": "S3 buckets tagged clumio-profile = gold in 123456789012/us-west-2",
+       "earliest_available_backup_timestamp": null,
+       "id": "3828dc05-3371-407b-85ae-5d5bea7e5b7a",
+       "is_backup_target_region_configured": true,
+       "is_deleted": false,
+       "last_backup_timestamp": "2026-11-03T00:45:18Z",
+       "last_continuous_backup_timestamp": null,
+       "modified_timestamp": "2026-11-03T00:42:35Z",
+       "name": "gold-s3-123456789012-us-west-2",
+       "object_filter": {
+        "earliest_last_modified_timestamp": "",
+        "exclude_prefix_expressions": null,
+        "include_prefix_expressions": null,
+        "latest_version_only": false,
+        "prefix_filters": [],
+        "storage_classes": [
+         "S3 Intelligent-Tiering",
+         "S3 One Zone-IA",
+         "S3 Standard",
+         "S3 Standard-IA"
+        ]
+       },
+       "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+       "protection_info": {
+        "inheriting_entity_id": null,
+        "inheriting_entity_type": null,
+        "policy_id": "4130880d-0e8d-4939-9510-c8e2cb99d48b",
+        "rule_id": "asset-level-rule"
+       },
+       "protection_stats": {
+        "deactivated_count": 0,
+        "protected_count": 2,
+        "unprotected_count": 0
+       },
+       "protection_status": "protected",
+       "total_backed_up_object_count": 3,
+       "total_backed_up_size_bytes": 71,
+       "version": 4
+      }
+     ]
+    },
+    "current_count": 68,
+    "limit": 100,
+    "start": "1",
+    "total_count": 68,
+    "total_pages_count": 1
+   }
+  ],
+  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee /policies/definitions?limit=100": [
+   200,
+   {
+    "_embedded": {
+     "items": [
+      {
+       "_links": {
+        "_self": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b",
+         "templated": false,
+         "type": "get"
+        },
+        "delete-policy-definition": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b",
+         "templated": false,
+         "type": "delete"
+        },
+        "list-audit-trails": {
+         "href": "/audit-trails",
+         "templated": false,
+         "type": "get"
+        },
+        "protect-entities": {
+         "href": "/policies/rules",
+         "templated": false,
+         "type": "post"
+        },
+        "read-policy-backup-status-stats": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b/stats/backup-status?asset_types=protection_group",
+         "templated": false,
+         "type": "get"
+        },
+        "read-policy-protection-groups-protection-stats": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b/stats/protection/protection-groups",
+         "templated": false,
+         "type": "get"
+        },
+        "set-policies-activation-status": {
+         "href": "/policies/definitions/set-activation-status",
+         "templated": false,
+         "type": "patch"
+        },
+        "update-policy-definition": {
+         "href": "/policies/definitions/4130880d-0e8d-4939-9510-c8e2cb99d48b",
+         "templated": false,
+         "type": "put"
+        }
+       },
+       "activation_status": "activated",
+       "created_time": 1793666556,
+       "id": "4130880d-0e8d-4939-9510-c8e2cb99d48b",
+       "lock_status": "unlocked",
+       "name": "gold-s3-123456789012-us-west-2",
+       "operations": [
+        {
+         "action_setting": "immediate",
+         "activation_status": "activated",
+         "advanced_settings": {
+          "protection_group_backup": {
+           "backup_tier": "cold",
+           "malware_scan": false,
+           "threat_scan": false
+          }
+         },
+         "backup_window": null,
+         "backup_window_tz": null,
+         "next_start_time": 1793729700,
+         "slas": [
+          {
+           "retention_duration": {
+            "unit": "days",
+            "value": 30
+           },
+           "rpo_frequency": {
+            "offsets": null,
+            "unit": "days",
+            "value": 1
+           }
+          }
+         ],
+         "timezone": "",
+         "type": "protection_group_backup"
+        },
+        {
+         "action_setting": "immediate",
+         "activation_status": "activated",
+         "advanced_settings": null,
+         "backup_window": null,
+         "backup_window_tz": null,
+         "next_start_time": 1793729700,
+         "slas": [
+          {
+           "retention_duration": {
+            "unit": "months",
+            "value": 3
+           },
+           "rpo_frequency": {
+            "offsets": null,
+            "unit": "days",
+            "value": 1
+           }
+          }
+         ],
+         "timezone": "",
+         "type": "aws_s3_backtrack"
+        }
+       ],
+       "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+       "timezone": "",
+       "updated_time": 1793666556
+      }
+     ]
+    },
+    "current_count": 85,
+    "limit": 100,
+    "start": ""
+   }
+  ]
+ },
+ "databases": {
+  "us-west-2": {}
+ },
+ "instances": {},
+ "kit": {
+  "account_id": "123456789012",
+  "organizational_unit_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "region": "us-west-2"
+ },
+ "tagged_resources": {
+  "us-west-2": [
+   {
+    "ResourceARN": "arn:aws:s3:::kitlab-1178d6-docs",
+    "Tags": [
+     {
+      "Key": "kitlab",
+      "Value": "proof-lab"
+     },
+     {
+      "Key": "clumio-profile",
+      "Value": "gold"
+     }
+    ]
+   },
+   {
+    "ResourceARN": "arn:aws:s3:::kitlab-1178d6-denied",
+    "Tags": [
+     {
+      "Key": "kitlab",
+      "Value": "proof-lab"
+     },
+     {
+      "Key": "clumio-profile",
+      "Value": "gold"
+     }
+    ]
+   }
+  ]
+ },
+ "volumes": {}
+}

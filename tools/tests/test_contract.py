@@ -9,11 +9,41 @@ import os
 import sys
 import tempfile
 import unittest
+import urllib.parse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import status  # noqa: E402
 
-FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "stage2f-protected.json")
+FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
+FIXTURE = os.path.join(FIXTURES, "stage2f-protected.json")
+# Recorded live in the B41 run (2026-11-03 00:50 UTC, masked): one bucket whose backup skipped an object
+# under a key that denied Clumio, and one whose backup skipped nothing.
+PARTIAL_FIXTURE = os.path.join(FIXTURES, "b41-partial.json")
+
+
+def load(path):
+    with open(path) as recording:
+        return json.load(recording)
+
+
+def bucket_backup_read(answers, asset_id):
+    """The recorded answer to status.py's read of one bucket's backups, by the bucket's Clumio asset ID."""
+    return next(answer for key, answer in answers["clumio"].items()
+                if "/backups/protection-groups/s3-assets?" in key and asset_id in urllib.parse.unquote(key))
+
+
+def with_bucket_backup_read(answers):
+    """Stage 2f's recording, plus the one read status.py added after it: a bucket's backups (B41, 2026-11-03).
+    That bucket is gone, so this read can't be recorded for it. Its answer is B41's real answer for a bucket
+    whose backup skipped nothing, moved to 2f's bucket by asset ID; every other answer is 2f's own."""
+    partial = load(PARTIAL_FIXTURE)
+    clean_id = "85982216-ee46-51c3-81ee-4f292fce085b"  # kitlab-1178d6-docs in the B41 recording
+    stage2f_id = "8dc43a62-3c2d-51a2-b9f7-a00b5cd215d1"  # kitlab-c19bd0-docs in the 2f recording
+    key = next(key for key in partial["clumio"] if clean_id in urllib.parse.unquote(key)
+               and "/backups/protection-groups/s3-assets?" in key)
+    answer = json.loads(json.dumps(bucket_backup_read(partial, clean_id)).replace(clean_id, stage2f_id))
+    answers["clumio"][key.replace(clean_id, stage2f_id)] = answer
+    return answers
 
 
 def replay(answers):
@@ -24,7 +54,6 @@ def replay(answers):
             raise AssertionError(f"status.py asked Clumio for {path.split('?')[0]} (unit {unit}), a call the live run never made")
         return answers["clumio"][key]
 
-    instances = set(answers["instances"]["us-west-2"])
     # The run's settings said trial; teardown reads only the mode from them.
     handle, settings = tempfile.mkstemp(suffix=".tfvars")
     with os.fdopen(handle, "w") as out:
@@ -33,14 +62,13 @@ def replay(answers):
         settings_path=settings, terraform_version=None, aws_cli_found=None, signed_in_account=None, clumio_credentials_set=None,
         clumio_get=clumio_get, kit=lambda: answers["kit"],
         tagged_resources=lambda region: answers["tagged_resources"][region], databases=lambda region: answers["databases"][region],
-        volumes=lambda region: answers["volumes"][region], instances=lambda region: instances,
+        volumes=lambda region: answers["volumes"][region], instances=lambda region: set(answers["instances"][region]),
         applied_folders=lambda: [])
 
 
 class Stage2fProtected(unittest.TestCase):
     def setUp(self):
-        with open(FIXTURE) as recording:
-            self.world = replay(json.load(recording))
+        self.world = replay(with_bucket_backup_read(load(FIXTURE)))
         self.addCleanup(os.remove, self.world.settings_path)
 
     def test_coverage_reads_every_resource_as_status_showed_it_live(self):
@@ -84,6 +112,27 @@ class Stage2fProtected(unittest.TestCase):
         state, lines = status.teardown(self.world)
         self.assertEqual(state, "READY")
         self.assertEqual(len(lines), 2)
+
+
+class B41Partial(unittest.TestCase):
+    def setUp(self):
+        self.world = replay(load(PARTIAL_FIXTURE))
+        self.addCleanup(os.remove, self.world.settings_path)
+
+    def test_a_backup_that_skipped_an_object_reads_partial_as_it_did_live(self):
+        # Expected: tools/status.py's live output in the B41 run, 2026-11-03 00:49 UTC: the bucket with the
+        # denied object PARTIAL, skipped 1; the other PROTECTED; exit 1.
+        records, connection = status.coverage(self.world)
+        states = {r["name"]: r["state"] for r in records}
+        self.assertEqual(states, {"kitlab-1178d6-denied": "PARTIAL", "kitlab-1178d6-docs": "PROTECTED"})
+        self.assertIn("skipped 1 object", next(r["detail"] for r in records if r["state"] == "PARTIAL"))
+        self.assertEqual(status.coverage_exit_code(records, connection), 1)
+
+    def test_the_report_names_the_partial_bucket(self):
+        # Expected from the same run: UNFINISHED, the denied bucket PARTIAL, and no restore recorded.
+        report = status.evidence(self.world, None, "2026-11-03T00:50:03Z")
+        self.assertEqual(report["verdict"], "UNFINISHED")
+        self.assertTrue(report["gaps"][0].startswith("kitlab-1178d6-denied: PARTIAL."))
 
 
 if __name__ == "__main__":
