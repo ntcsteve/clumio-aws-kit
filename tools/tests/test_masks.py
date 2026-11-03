@@ -18,7 +18,7 @@ def world(status_code, connection):
 
 
 class Masks(unittest.TestCase):
-    # Live, 2026-10-28: the first stage 2d fixture kept Clumio's own two AWS accounts, from the
+    # Live, 2026-10-28: the first fixture kept Clumio's own two AWS accounts, from the
     # connection's answer, and check.sh refused it. Masks cover them too.
     def test_masks_cover_this_account_the_unit_and_clumios_two_accounts(self):
         masks = status.masks(world(200, {"clumio_aws_account_id": CLUMIO, "data_plane_account_id": DATA_PLANE}), KIT)

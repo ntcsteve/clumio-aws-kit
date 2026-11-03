@@ -246,7 +246,7 @@ class Coverage(Lab):
         states, records, unit = self.states()
         self.assertEqual(states["orders-docs"], "BAD_VALUE")
         self.assertIn("gold", records[0]["detail"])
-        # A right tag reads the same once its folder is destroyed (stage 2g teardown), so the advice
+        # A right tag reads the same once its folder is destroyed (seen live on 2026-10-29, at teardown), so the advice
         # names both ways out, never only "fix the tag".
         self.assertIn('2-protect- folder with name = "gld"', records[0]["detail"])
         self.assertIn("or fix or remove the tag", records[0]["detail"])
@@ -417,7 +417,7 @@ class Coverage(Lab):
         self.assertEqual(state, "BLOCKED")
 
     def test_a_blocked_teardown_says_where_to_go_when_a_task_stays_queued(self):
-        # First backups sat queued 40+ minutes live (2e, 2f): "run again" alone is a dead end.
+        # First backups sat queued 40+ minutes (seen live on 2026-10-28): "run again" alone is a dead end.
         self.add_instance("i-0abc")
         self.clumio.lists["/tasks"].append({"id": "4050", "status": "queued", "primary_entity": {"id": "id-i-0abc"}})
         state, lines = status.teardown(self.world())
@@ -425,7 +425,7 @@ class Coverage(Lab):
         self.assertIn("docs/operate.md", lines[-1])
 
     def test_teardown_waits_while_a_console_restore_runs(self):
-        # Stage 2j: while a console restore of i-0259… ran, teardown said READY: Clumio didn't list the
+        # Seen live on 2026-10-29: while a console restore of i-0259… ran, teardown said READY: Clumio didn't list the
         # restore in the unit's context. Removing 1-connect then takes the IAM role the restore needs.
         self.add_instance("i-0abc")
         self.clumio.lists["/tasks"].append({"id": "4060138517", "status": "in_progress", "type": "aws_ec2_instance_restore",
@@ -505,7 +505,7 @@ class Coverage(Lab):
         self.assertTrue(any("2-protect-rds" in line and "2-protect-s3" in line and "1-connect last" in line for line in lines))
 
     def test_teardown_says_to_restore_first_while_the_connection_is_there(self):
-        # Stage 5c: READY is the moment a person acts, and the docs don't reach them there.
+        # Seen live on 2026-11-01: READY is the moment a person acts, and the docs don't reach them there.
         self.applied = ["1-connect", "2-protect-rds"]
         _, lines = status.teardown(self.world())
         self.assertEqual(lines[-1], "Removing the connection ends protection, so restore anything you want to keep first.")
@@ -616,7 +616,7 @@ class Report(Lab):
         self.assertIn("in_progress", report["gaps"][0])
 
     def test_a_restore_that_ended_badly_says_start_a_new_one(self):
-        # "aborted" is a status Clumio's tasks really carry (stage 2f): "when it completes" would never come.
+        # "aborted" is a status Clumio's tasks really carry (seen live on 2026-10-28): "when it completes" would never come.
         self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
         report = self.report(status="aborted")
         self.assertEqual(report["verdict"], "UNFINISHED")
@@ -624,14 +624,14 @@ class Report(Lab):
         self.assertNotIn("when it completes", report["gaps"][0])
 
     def test_a_restored_copy_still_tagged_is_named_until_it_goes(self):
-        # Stage 2j: a restored instance keeps its tags, and Clumio's record shows nothing that marks it
+        # Seen live on 2026-10-29: a restored instance keeps its tags, and Clumio's record shows nothing that marks it
         # as a copy, so 3-prove says to delete or untag it before the report.
         self.add_instance("i-0abc", backup="2026-10-29T05:36:00Z")
         self.add_instance("i-copy", policy=None)
         report = self.report()
         self.assertEqual(report["verdict"], "UNFINISHED")
         self.assertIn("i-copy: NOT_YET", report["gaps"][0])
-        # Stage 5c: "wait up to a day" alone sent the person the wrong way for a restored copy.
+        # Seen live on 2026-11-01: "wait up to a day" alone sent the person the wrong way for a restored copy.
         self.assertIn("If it's a restored copy, delete it or remove its tag", report["gaps"][0])
 
     def restored(self, name):

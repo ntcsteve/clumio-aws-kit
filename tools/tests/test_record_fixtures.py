@@ -15,7 +15,7 @@ KIT = {"account_id": OUR_ACCOUNT, "region": "us-west-2", "organizational_unit_id
 
 
 class Recording(unittest.TestCase):
-    # Live, 2026-10-28: the first stage 2f recording saved Clumio's whole policy and protection-group
+    # Live, 2026-10-28: the first recording saved Clumio's whole policy and protection-group
     # lists, with other teams' accounts, bucket rules and tags. check.sh's account scan caught it.
     def test_tenant_wide_lists_keep_only_the_kits_items(self):
         lists = {"/policies/definitions": [{"id": "p1", "name": f"gold-rds-{OUR_ACCOUNT}-us-west-2"}, {"id": "p2", "name": "their-policy"}],

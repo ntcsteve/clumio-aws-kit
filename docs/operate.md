@@ -47,7 +47,7 @@ Two kinds are left out on purpose: the instances of a tagged Aurora cluster, bec
 
 The first line checks that the connection sits in the organizational unit set in `1-connect/terraform.tfvars`. If it doesn't, the profiles' rules can't match anything.
 
-Exit codes, for scripts and CI: 0 nothing to do, including WAITING and NOT_YET, so 0 doesn't mean every line is PROTECTED; 1 a person must act; 2 AWS or Clumio didn't answer. `tools/status.py --json` prints the same lines as JSON.
+Exit codes, for scripts and CI: 0 nothing to do, including WAITING and NOT_YET, so 0 doesn't mean every line is PROTECTED; 1 a person must act; 2 AWS or Clumio couldn't be read. `tools/status.py --json` prints the same lines as JSON.
 
 ## How it behaves
 

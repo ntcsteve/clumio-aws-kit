@@ -1,6 +1,6 @@
 # Step 3: Prove it
 
-[ResOps](https://www.commvault.com/explore/resilience-operations) asks for evidence rather than assumptions: a backup counts once you've seen it restore. Three checks, run from the repository's root folder.
+[ResOps](https://www.commvault.com/explore/resilience-operations) asks for evidence rather than assumptions: a backup counts once you've seen it restore. Three checks, and two optional tests. Run each command from the repository's root folder.
 
 ## 1. Who protects each resource
 
@@ -10,7 +10,7 @@ tools/status.py
 
 It lists every resource tagged `clumio-profile` (volumes on their own: `clumio-volume-profile`), who protects it, and its last backup. It reads AWS and Clumio and changes nothing. The first line checks the connection. Right after step 2, resources show NOT_YET or WAITING; after each first backup, PROTECTED. [Read tools/status.py](../docs/operate.md#read-toolsstatuspy) explains every other state.
 
-Give it time. In the lab, a bucket joined its group within minutes, and every resource had its first backup within an hour. Allow up to a day before you look in Clumio's Tasks.
+Give it time: [how long first copies took in the lab](../README.md#plan-and-prepare). Allow up to a day before you look in Clumio's Tasks.
 
 ## 2. Restore one
 
@@ -44,24 +44,24 @@ It writes two files from one read, in the repository's root folder: `status-<tim
 | UNFINISHED | Something's missing | It lists what. Fix that, or wait, then run it again |
 | UNKNOWN | Couldn't read from AWS or Clumio | Run it again |
 
-The page lists each policy's frequency and retention. To measure the restore against your limit, add `--recovery-target-minutes <minutes>`: the report says MET or MISSED beside the restore time. Your limit is what [ResOps](https://www.commvault.com/explore/resilience-operations) calls an impact tolerance. MISSED doesn't change the verdict: the restore worked, and what to do about the time is your call.
+The page lists each policy's frequency and retention. To measure the restore against your target, add `--recovery-target-minutes <minutes>`: the report says MET or MISSED beside the restore time. Your target is what [ResOps](https://www.commvault.com/explore/resilience-operations) calls an impact tolerance. MISSED doesn't change the verdict: the restore worked, and what to do about the time is your call.
 
 Run the report again after each restore test: each run writes new files, so earlier evidence stays. The files name your AWS account, so keep them out of anything public; this repository's `.gitignore` skips them.
 
 ## 4. Optional: restore with the source gone
 
-A controlled test of what the copy is for. Backups live outside your account, so they outlast what they copied. To see that with S3, in a test account, delete a test bucket after you've run the report, then bring it back. The report comes first because a deleted bucket leaves it UNFINISHED. Proven live on S3 on 2026-11-02.
+A controlled test of what the copy is for. Backups live outside your account, so they outlast what they copied. To see that with S3, in a test account, delete a test bucket after you've run the report, then bring it back. The report comes first because a deleted bucket leaves it UNFINISHED. Seen live on S3 on 2026-11-02.
 
 1. Open the protection group: under **AWS**, **Protect**, **S3**, **Protection Groups**. The deleted bucket's own page no longer links to its backups.
 2. In the **All buckets** drop-down, select the deleted bucket. With **All buckets** left as it is, a restore covers only the buckets still in the group.
 3. Click the backup's date, then follow the S3 row above, into a bucket that exists.
 
-For a database, the same holds. Proven live on RDS on 2026-11-02: with the instance deleted, its automated backups deleted, and no snapshot of it left in AWS, Clumio restored it from SecureVault Standard to a new, available, encrypted instance in 11 minutes. In the Clumio console, find it under **Inventory**, **RDS resources**, with **Status in AWS** set to include deleted ones. Clumio fills in the subnet group, security group, key and tags it recorded.
+For a database, the same holds. Seen live on RDS on 2026-11-02: with the instance deleted, its automated backups deleted, and no snapshot of it left in AWS, Clumio restored it from SecureVault Standard to a new, available, encrypted instance in 11 minutes. In the Clumio console, find it under **Inventory**, **RDS resources**, with **Status in AWS** set to include deleted ones. Clumio fills in the subnet group, security group, key and tags it recorded.
 
 ## 5. Optional: one object, or a roll back
 
-- **One object:** on the protection group, open the backup's date, then **Restore object**, or use **Search objects across backups**. Restored live on S3: one object, in about 2 minutes.
-- **Roll back in place:** **Backtrack**, **Roll back**, choose the bucket and a time, then **Source**. It writes the earlier content back as a new version, so even the roll back can be undone, and the bucket, its ARN and IAM stay as they are. You can pick any point up to Backtrack's last sync, shown on the form. Proven live on S3 on 2026-11-02, in about a minute. It needs S3 Versioning on the bucket.
+- **One object:** on the protection group, open the backup's date, then **Restore object**, or use **Search objects across backups**. Seen live on S3 on 2026-11-02: one object, in about 2 minutes.
+- **Roll back in place:** **Backtrack**, **Roll back**, choose the bucket and a time, then **Source**. It writes the earlier content back as a new version, so even the roll back can be undone, and the bucket, its ARN and IAM stay as they are. You can pick any point up to Backtrack's last sync, shown on the form. Seen live on S3 on 2026-11-02, in about a minute. It needs S3 Versioning on the bucket.
 
 ## Next
 

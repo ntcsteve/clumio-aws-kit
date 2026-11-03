@@ -1,5 +1,5 @@
-"""Contract tests: status.py against the real AWS and Clumio answers recorded live in stage 2f
-(fixtures/stage2f-protected.json, 2026-10-28 15:00 UTC, masked; only this kit's policies and groups
+"""Contract tests: status.py against the real AWS and Clumio answers recorded live on 2026-10-28
+(fixtures/stage2f-protected.json, 15:00 UTC, masked; only this kit's policies and groups
 kept from Clumio's tenant-wide lists; the same assets' task lists asked with no unit, re-read live
 2026-10-29 when teardown began asking that way), not against fakes we wrote. If a
 change to status.py misreads a real answer's shape, these fail. Run: python3 -m unittest discover -s
@@ -33,12 +33,12 @@ def bucket_backup_read(answers, asset_id):
 
 
 def with_bucket_backup_read(answers):
-    """Stage 2f's recording, plus the one read status.py added after it: a bucket's backups (2026-11-03).
+    """The 2026-10-28 recording, plus the one read status.py added after it: a bucket's backups (2026-11-03).
     That bucket is gone, so this read can't be recorded for it. Its answer is the 2026-11-03 run's real answer for a bucket
-    whose backup skipped nothing, moved to 2f's bucket by asset ID; every other answer is 2f's own."""
+    whose backup skipped nothing, moved to that recording's bucket by asset ID; every other answer is its own."""
     partial = load(PARTIAL_FIXTURE)
     clean_id = "85982216-ee46-51c3-81ee-4f292fce085b"  # kitlab-1178d6-docs in the 2026-11-03 recording
-    stage2f_id = "8dc43a62-3c2d-51a2-b9f7-a00b5cd215d1"  # kitlab-c19bd0-docs in the 2f recording
+    stage2f_id = "8dc43a62-3c2d-51a2-b9f7-a00b5cd215d1"  # kitlab-c19bd0-docs in the 2026-10-28 recording
     key = next(key for key in partial["clumio"] if clean_id in urllib.parse.unquote(key)
                and "/backups/protection-groups/s3-assets?" in key)
     answer = json.loads(json.dumps(bucket_backup_read(partial, clean_id)).replace(clean_id, stage2f_id)
@@ -73,7 +73,7 @@ class Stage2fProtected(unittest.TestCase):
         self.addCleanup(os.remove, self.world.settings_path)
 
     def test_coverage_reads_every_resource_as_status_showed_it_live(self):
-        # Expected: tools/status.py's live output at the recording, stage 2f: the bucket, the RDS
+        # Expected: tools/status.py's live output at the recording, 2026-10-28: the bucket, the RDS
         # instance and the Aurora cluster PROTECTED, each under its own workload's policy; the bad tag
         # BAD_VALUE; the volume on a tagged instance DOUBLE; the instance and the lone volume NOT_YET,
         # because the unit had no rule slot left for 2-protect-ec2 and 2-protect-ebs.
@@ -93,7 +93,7 @@ class Stage2fProtected(unittest.TestCase):
         for resource in report["resources"]:
             self.assertIn(resource["name"], page)
 
-    # The expected terms are read by hand from the saved answer: the settings stage 2f applied.
+    # The expected terms are read by hand from the saved answer: the settings applied for that recording.
     def test_the_report_shows_each_policys_frequency_and_retention(self):
         terms = status.evidence(self.world, None, "2026-10-28T15:00:00Z")["policies"]
         s3 = [t for t in terms if t["policy"].startswith("gold-s3-")]

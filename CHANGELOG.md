@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.1 (2026-11-03)
+
+- Docs only: one term per idea ("seen live", "target"), README sections without numbers that clashed with step numbers, production says which of steps 3.1 to 3.3 to run, and test comments cite dates, not private run names.
+
 ## v1.2.0 (2026-11-03)
 
 - `tools/status.py` says PARTIAL for a bucket whose last backup skipped objects, and the report says UNFINISHED. It said PROTECTED and PROVEN, because the backup still completed. Seen live on 2026-11-03.

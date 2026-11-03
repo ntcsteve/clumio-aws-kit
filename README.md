@@ -38,7 +38,7 @@ On your own data, in your own account, with evidence you keep.
 
 See also [Not covered here](docs/keys.md#not-covered-here) and [How it behaves](docs/operate.md#how-it-behaves).
 
-## 1. Why care, and is this for you
+## Why care, and is this for you
 
 Keep AWS PITR and your snapshots for fast local recovery. Clumio adds a copy that doesn't share their fate: backups in the same account as the data can fall with it, in a deleted account, with a stolen admin key, or to ransomware. Clumio describes where your backups live as [a dedicated, air-gapped, immutable vault outside your cloud account](https://www.clumio.com/platform). This kit sets Clumio up with plain Terraform, protects what you tag, and shows you each backup and a restore. You decide on evidence.
 
@@ -46,7 +46,7 @@ This is a first step in [Resilience Operations (ResOps)](https://www.commvault.c
 
 This kit covers one AWS account and Region, and five workloads: S3, RDS, Aurora, EC2 and EBS. You restore in the Clumio console.
 
-## 2. How it works
+## How it works
 
 ```
  Your AWS account                                    Clumio
@@ -67,7 +67,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 
 [By default, backups stay in the same cloud region as the source](https://www.clumio.com/platform), in Clumio's accounts, outside yours. This kit leaves that default in place, and Clumio's console shows it as **In-region**. RDS and Aurora get three layers from one policy: AWS PITR stays in your account for fast local recovery, SecureVault Standard is a daily copy that restores a whole database, and SecureVault Archive is a monthly long-term copy built from Standard. A restore can go to another Region, with a key, subnet group and security group there for RDS: [What a restore needs from you](docs/keys.md#what-a-restore-needs-from-you). AWS transfer fees may apply.
 
-## 3. What it touches
+## What it touches
 
 **What it creates.** Step 1: the Clumio connection, Clumio's IAM roles and policies, EventBridge rules and an SNS topic. Step 0 shows them before they exist. Step 2: one Clumio policy per workload, with a rule (S3: a protection group).
 
@@ -83,7 +83,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 - **Mid-backup teardown:** `tools/status.py --teardown` says wait while Clumio is backing up. You run it; Terraform doesn't.
 - **Your resources:** the kit removes only what it created.
 
-## 4. Plan and prepare
+## Plan and prepare
 
 | What | Detail |
 |---|---|
@@ -91,10 +91,10 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 | Tools | Terraform 1.10 or later, the AWS CLI v2, Python 3.9 or later. macOS or Linux; on Windows, WSL |
 | Decide | The account and Region. The Clumio organizational unit. `mode`: `trial` for a test account. `workloads`: only what you'll test, so Clumio gets no more IAM than that. What to tag, and the profile name, such as `gold`. How long to keep copies |
 | Check | Each database's PITR window: set `pitr_retention_days` at least that long. One free Clumio rule slot per RDS, Aurora, EC2 or EBS folder: preflight counts them. Outbound HTTPS to the Terraform registry and your Clumio API URL. Your SCPs and data-perimeter rules: preflight can't test them, so ask your cloud security team whether they allow Clumio's cross-account roles |
-| Time | About a dozen commands, in two sittings: steps 0 to 1.1 before your security team's review, 1.2 onward after it. In the lab, first copies came within minutes for S3 and about 15 minutes for databases. Allow up to a day |
+| Time | About a dozen commands, in two sittings: steps 0 to 1.1 before your security team's review, 1.2 onward after it. In the lab, first copies came within minutes for S3, and within an hour for every other resource. Allow up to a day |
 | Cost | Clumio bills each copy while it's kept. Archive is built for 12 months or longer: a shorter copy has an early-deletion fee. To see Archive in a test, set `archive_months = 1`; 0 skips it |
 
-## 5. What to do
+## What to do
 
 Run each command in the folder under Where, in one shell: the one signed in to AWS, with the Clumio details exported. **Person**: a person does it. **STOP**: wait for a person's go. **Anyone**: a person or an agent. `<workload>` is `s3`, `rds`, `aurora`, `ec2` or `ebs`. [Operate](docs/operate.md) explains each status and error.
 
@@ -140,7 +140,7 @@ See the backup, restore it, and keep the evidence.
 |---|---|---|---|---|
 | 3.1 | Anyone | root | `tools/status.py` | Every resource PROTECTED. NOT_YET or WAITING until its first backup, up to a day |
 | 3.2 | Person | Clumio console | Restore one resource to a new name beside the original: [the steps per workload](3-prove/README.md#2-restore-one) | You open it and check it, and note the task ID. If the copy carries a profile tag, delete it or remove the tag |
-| 3.3 | Anyone | root | `tools/status.py --report --restore-task <task ID>`. To measure it against your limit, add `--recovery-target-minutes <minutes>` | PROVEN, with a JSON file and an HTML page for sign-off, and MET or MISSED if you set a target. UNFINISHED lists what's missing |
+| 3.3 | Anyone | root | `tools/status.py --report --restore-task <task ID>`. To measure it against your target, add `--recovery-target-minutes <minutes>` | PROVEN, with a JSON file and an HTML page for sign-off, and MET or MISSED if you set a target. UNFINISHED lists what's missing |
 
 To go live, use a fresh clone in your production account: [Production](docs/production.md).
 

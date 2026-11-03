@@ -146,7 +146,7 @@ ROLE_PURPOSE = {  # what each Clumio role is for, by its resource name in Clumio
 
 # What Terraform calls, per resource type, across create, update and destroy: taken from
 # CloudTrail during live runs (module 0.41.0), not assumed. Plus tagging (the module tags its
-# roles; CreateRole with tags is denied without iam:TagRole, proven live) and boundary actions.
+# roles; CreateRole with tags is denied without iam:TagRole, seen live) and boundary actions.
 ROLE_MANAGE = ["iam:TagRole", "iam:UntagRole", "iam:ListRoleTags", "iam:GetRole", "iam:DeleteRole",
                "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole",
                "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy",
