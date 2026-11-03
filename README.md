@@ -15,6 +15,9 @@ On your own data, in your own account, with evidence you keep.
 | A copy of everything you tag, outside your account, [in your data's Region by default](#where-your-copies-live) | S3, RDS, Aurora, EC2 and EBS: [keys evidence](proof/evidence/keys-lab-2026-10-28/) |
 | Your own data restored, checked and timed | All five workloads. S3 byte for byte, in about 2 minutes: [3-prove](3-prove/README.md#2-restore-one) |
 | A deleted bucket brought back from its copy | S3: [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) |
+| A deleted database brought back, with AWS's own backups of it deleted too | RDS: [3-prove](3-prove/README.md#4-optional-restore-with-the-source-gone) |
+| One object restored, or a bucket rolled back in place | S3: [3-prove](3-prove/README.md#5-optional-one-object-or-a-roll-back) |
+| Data restored while its customer-managed key is disabled | S3: [Does Clumio need our keys?](docs/keys.md#what-a-restore-needs-from-you) |
 
 ### Can you run it with confidence?
 
@@ -22,6 +25,8 @@ On your own data, in your own account, with evidence you keep.
 |---|---|
 | Every IAM role and permission Clumio gets, before anything exists | [0-check](0-check/README.md), and a deploy on only the generated policy |
 | A verdict and the evidence behind it, for sign-off | All five workloads: [3-prove](3-prove/README.md#3-keep-the-evidence) |
+| Your restore time against your target, with each policy's frequency and retention | S3: [3-prove](3-prove/README.md#3-keep-the-evidence) |
+| A backup that skipped an object, and why | S3: [How it behaves](docs/operate.md#how-it-behaves) |
 | Teardown removing everything the kit created | [Take a trial down](#take-a-trial-down) |
 
 ### Does it fit your rules?

@@ -56,6 +56,13 @@ A controlled test of what the copy is for. Backups live outside your account, so
 2. In the **All buckets** drop-down, select the deleted bucket. With **All buckets** left as it is, a restore covers only the buckets still in the group.
 3. Click the backup's date, then follow the S3 row above, into a bucket that exists.
 
+For a database, the same holds. Proven live on RDS on 2026-11-02: with the instance deleted, its automated backups deleted, and no snapshot of it left in AWS, Clumio restored it from SecureVault Standard to a new, available, encrypted instance in 11 minutes. In the Clumio console, find it under **Inventory**, **RDS resources**, with **Status in AWS** set to include deleted ones. Clumio fills in the subnet group, security group, key and tags it recorded.
+
+## 5. Optional: one object, or a roll back
+
+- **One object:** on the protection group, open the backup's date, then **Restore object**, or use **Search objects across backups**. Restored live on S3: one object, in about 2 minutes.
+- **Roll back in place:** **Backtrack**, **Roll back**, choose the bucket and a time, then **Source**. It writes the earlier content back as a new version, so even the roll back can be undone, and the bucket, its ARN and IAM stay as they are. You can pick any point up to Backtrack's last sync, shown on the form. Proven live on S3 on 2026-11-02, in about a minute. It needs S3 Versioning on the bucket.
+
 ## Next
 
 - Go live: a fresh clone in your production account: see [Production](../docs/production.md).

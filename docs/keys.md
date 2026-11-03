@@ -29,7 +29,7 @@ Check the captures here, offline: `proof/verify-evidence.sh`. Each folder matche
 
 ## What a restore needs from you
 
-- **S3:** restored copies take the target bucket's default encryption (seen live). If they must use a customer-managed key, make it the bucket's default before you restore, then check a restored object.
+- **S3:** restored copies take the target bucket's default encryption (seen live). They don't need the source's key: with the source's customer-managed key disabled, so AWS refused to read the object, Clumio still restored it, byte for byte (seen live on 2026-11-02). If they must use a customer-managed key, make it the bucket's default before you restore, then check a restored object.
 - **EC2 and EBS:** the Clumio console's restore fills in the source's key, and the copy comes back under it (seen live on this kit with an AWS-managed key). Through Clumio's API, always name the key.
 - **RDS and Aurora, same Region:** nothing. The restore keeps the source's key.
 - **RDS, another Region:** name a key, a subnet group and a security group in that Region.
