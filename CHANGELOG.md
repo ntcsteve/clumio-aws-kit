@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.2.0 (2026-11-03)
 
 - `tools/status.py` says PARTIAL for a bucket whose last backup skipped objects, and the report says UNFINISHED. It said PROTECTED and PROVEN, because the backup still completed. Seen live on 2026-11-03.
 - `tools/status.py --report` lists each policy's frequency and retention, and `--recovery-target-minutes` says MET or MISSED beside the restore time.
