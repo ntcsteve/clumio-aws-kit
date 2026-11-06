@@ -52,7 +52,7 @@ locals {
   }
   # What Clumio calls each workload's resources, for the rule. S3 has no rule.
   entity = { rds = "aws_rds_instance", aurora = "aws_rds_cluster", ec2 = "aws_ec2_instance", ebs = "aws_ebs_volume" }
-  # Databases whose window would get shorter, with today's window in days. Keyed by kind and name.
+  # Every tagged database this plan checks, with today's window in days. Keyed by kind and name. shorter_pitr, below, keeps the ones that would shrink.
   pitr_now = merge(
     { for name, db in data.aws_db_instance.tagged : "RDS instance ${name}" => db.backup_retention_period if db.db_cluster_identifier == "" },
     { for name, cluster in data.aws_rds_cluster.all : "Aurora cluster ${name}" => cluster.backup_retention_period

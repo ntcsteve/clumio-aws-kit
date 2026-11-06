@@ -78,7 +78,7 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 **What stops a mistake.**
 
 - **Wrong account:** every plan stops if you're signed in to another AWS account.
-- **Shorter backups:** a plan stops if it would shorten a database's PITR window, which deletes AWS's older backups for good, unless you accept it in writing.
+- **Shorter backups:** a plan stops if it would shorten a database's PITR window, which deletes AWS's older backups for good, unless you accept it in writing. It checks the databases tagged when you plan. One tagged after apply gets the window with no check, so tag before you plan.
 - **Production:** with `mode = "production"`, Terraform refuses to destroy the connection or a policy.
 - **Mid-backup teardown:** `tools/status.py --teardown` says wait while Clumio is backing up. You run it; Terraform doesn't.
 - **Your resources:** the kit removes only what it created.
@@ -105,9 +105,9 @@ See everything Clumio will get, before anything exists.
 | Step | Who | Where | Do | Expect |
 |---|---|---|---|---|
 | 0.1 | Person | shell | Sign in to AWS. Export `CLUMIO_API_BASE_URL` and `CLUMIO_API_TOKEN`, as [0-check](0-check/README.md) shows | `aws sts get-caller-identity` shows your account |
-| 0.2 | Person | root | `cp 1-connect/settings.example 1-connect/terraform.tfvars`, then set `account_id`, `region`, `organizational_unit`, `mode` and `workloads` (such as `["rds"]`) | Five values set |
+| 0.2 | Person | root | `cp 1-connect/settings.example 1-connect/terraform.tfvars`, then set `account_id`, `region`, `organizational_unit`, `mode` and `workloads` (such as `["rds"]`). Don't know the unit's ID yet? Leave it: 0.3 lists the units | Five values set, or four and the unit next |
 | 0.3 | Anyone | root | `tools/status.py --preflight` | Every line PASS, or NOTE: read it |
-| 0.4 | Anyone | root | `0-check/preview/preview.sh` | READY: send the review pack to your security team. BLOCKED or CANNOT CHECK: stop, and see [0-check](0-check/README.md) |
+| 0.4 | Anyone | root | `0-check/preview/preview.sh` | READY: send the review pack to your security team. BLOCKED, CANNOT CHECK or FAIL: stop, and see [0-check](0-check/README.md) |
 
 ### Connect
 
@@ -128,7 +128,7 @@ Tag what matters, and set how long to keep it. Repeat per workload.
 | 2.1 | Person | AWS | Tag what to protect: `clumio-profile = gold` (an EBS volume on its own: `clumio-volume-profile = gold`). Note each tagged database's PITR window | Tagged before the plan; windows noted |
 | 2.2 | Person | `2-protect-<workload>` | `cp settings.example terraform.tfvars`, then set any value marked REPLACE and check the rest | Settings set |
 | 2.3 | Anyone | root | `tools/status.py --preflight` | Every line PASS, or NOTE: read it |
-| 2.4 | Anyone | `2-protect-<workload>` | `terraform init`, then `terraform plan -out=tfplan` | Adds one Clumio policy and its rule (S3: its protection group), and markers that create nothing. Nothing to change or destroy. RDS and Aurora: `pitr_checked` lists each database. Empty means none found: stop, and check the tags |
+| 2.4 | Anyone | `2-protect-<workload>` | `terraform init`, then `terraform plan -out=tfplan` | Adds one Clumio policy and its rule (S3: a protection group and its assignment, in place of a rule), and markers that create nothing. Nothing to change or destroy. RDS and Aurora: `pitr_checked` lists each database. Empty means none found: stop, and check the tags |
 | STOP | Person | | Read the plan. Go, or stop | |
 | 2.5 | Anyone | `2-protect-<workload>` | `terraform apply tfplan` | Apply complete |
 

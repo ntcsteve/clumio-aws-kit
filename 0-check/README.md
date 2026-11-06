@@ -54,13 +54,15 @@ It checks your tools, settings, AWS sign-in, Clumio token, organizational unit, 
 
 It shows every IAM role, policy and permission Clumio will create in your account, and checks whether your sign-in may create them. It writes a review pack, `clumio-iam-preview-<region>-<time>/`, in the folder you run it from: give it to your security team.
 
-It ends with one of three results:
+It ends with one of four results:
 
 - **READY**: your sign-in may create all of it.
 - **BLOCKED**: it lists each missing permission. Grant them, then run it again.
 - **CANNOT CHECK**: it can't test your sign-in. Either you're the account's root user, which the IAM simulator can't test, or your role may not read itself (`iam:GetRole`) or use the simulator (`iam:SimulatePrincipalPolicy`). Have someone who can, such as your security team, run it for the identity that will deploy: `0-check/preview/preview.sh --as <its role ARN>`.
 
-Its exit code says the same, for scripts and agents: 0 READY, 1 BLOCKED, 2 CANNOT CHECK. Each writes the review pack.
+- **FAIL**: it stopped before the check, such as with no AWS sign-in, or with no way to reach the Terraform registry. It says what to fix, and writes no review pack.
+
+Its exit code says the same, for scripts and agents: 0 READY, 1 BLOCKED or FAIL, 2 CANNOT CHECK. READY, BLOCKED and CANNOT CHECK write the review pack.
 
 If a CI/CD role deploys for you, check that role the same way, with `--as`.
 

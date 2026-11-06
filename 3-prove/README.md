@@ -56,7 +56,7 @@ A controlled test of what the copy is for. Backups live outside your account, so
 2. In the **All buckets** drop-down, select the deleted bucket. With **All buckets** left as it is, a restore covers only the buckets still in the group.
 3. Click the backup's date, then follow the S3 row above, into a bucket that exists.
 
-For a database, the same holds. Seen live on RDS on 2026-11-02: with the instance deleted, its automated backups deleted, and no snapshot of it left in AWS, Clumio restored it from SecureVault Standard to a new, available, encrypted instance in 11 minutes. In the Clumio console, find it under **Inventory**, **RDS resources**, with **Status in AWS** set to include deleted ones. Clumio fills in the subnet group, security group, key and tags it recorded.
+For a database, the same holds: only a test database, only after the report. Deleting its automated backups can't be undone. Seen live on RDS on 2026-11-02: with the instance deleted, its automated backups deleted, and no snapshot of it left in AWS, Clumio restored it from SecureVault Standard to a new, available, encrypted instance in 11 minutes. In the Clumio console, find it under **Inventory**, **RDS resources**, with **Status in AWS** set to include deleted ones. Clumio fills in the subnet group, security group, key and tags it recorded.
 
 ## 5. Optional: one object, or a roll back
 

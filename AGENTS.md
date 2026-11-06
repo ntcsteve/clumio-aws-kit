@@ -9,7 +9,7 @@ This repository sets Clumio up on AWS with Terraform: it connects an AWS account
 
 | Path | What it is |
 |---|---|
-| `0-check/` | Step 0, read-only: preflight, and the IAM preview (`preview/`), which shows every IAM role and policy before anything exists and checks the deploy role. Its golden tests are what security reviewed |
+| `0-check/` | Step 0, read-only: its README covers preflight (`tools/status.py --preflight`) and the IAM preview (`preview/`), which shows every IAM role and policy before anything exists and checks the deploy role. Its golden tests are what security reviewed |
 | `1-connect/` | Step 1: the connection and Clumio's IAM, one state. Its `terraform.tfvars` holds the account, Region, unit, mode and workloads for every step |
 | `2-protect-s3/`, `-rds/`, `-aurora/`, `-ec2/`, `-ebs/` | Step 2: one Clumio policy per workload, one state each. Each reads the account, Region, unit and mode from `1-connect`'s state |
 | `3-prove/` | Step 3: who protects each resource, a restore, and the evidence |

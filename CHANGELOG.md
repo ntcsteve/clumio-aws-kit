@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.2 (unreleased)
+
+- Docs only, from a first-timer read:
+  - the README's safety list says the PITR check covers only databases tagged when you plan;
+  - the IAM preview's FAIL result is documented;
+  - the second-profile commands end in the new folder, so `cp` can't overwrite the first profile's settings;
+  - Operate names the error a protect folder shows after `1-connect` is destroyed;
+  - the source-gone test says test database only, after the report;
+  - "trial" replaces "proof of concept" in the settings comments;
+  - one code comment now describes `pitr_now` correctly.
+
 ## v1.2.1 (2026-11-03)
 
 - Docs only: one term per idea ("seen live", "target"), README sections without numbers that clashed with step numbers, production says which of steps 3.1 to 3.3 to run, and test comments cite dates, not private run names.

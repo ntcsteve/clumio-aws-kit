@@ -1,6 +1,6 @@
 # Production
 
-Deploy to production from a fresh clone of this kit, with the same steps you ran in your test account. The one difference is where Terraform keeps its state.
+Deploy to production from a fresh clone of this kit, with the same steps you ran in your test account. Two things differ: `mode = "production"`, and where Terraform keeps its state.
 
 ## Before you start
 
@@ -17,7 +17,7 @@ Deploy to production from a fresh clone of this kit, with the same steps you ran
 
 To work from another machine, make a fresh clone, copy your `terraform.tfvars` files and any second profile's folder, run the tool with the same bucket, and run `terraform init` in each folder you applied before any check.
 
-Seen live on 2026-11-02 for S3: a fresh clone in production mode, state in S3, on an identity holding only the generated deploy policy, `tools/status.py`'s reads and the state bucket's permissions, from a second machine too, through to retiring it.
+Seen live on 2026-11-02 for S3, through to retiring it: a fresh clone in production mode, with state in S3, run from two machines. The identity held only the generated deploy policy, `tools/status.py`'s reads and the state bucket's permissions.
 
 ## What you get
 

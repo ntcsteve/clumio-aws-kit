@@ -10,7 +10,7 @@ The plan creates one Clumio policy, `<name>-rds-<account>-<region>`, and a rule 
 
 - If a tagged database's PITR window would get shorter, the plan stops and names it. Raise `pitr_retention_days`, or set `allow_shorter_pitr = true` to accept it.
 - Where PITR is off, Clumio turns it on at the next maintenance window, because turning it on restarts an RDS instance. Seen live on 2026-11-02, on a small single-AZ Postgres instance: one restart, down for about 12 seconds, in its window. Its SecureVault copy had already finished, so the database was protected before PITR came on.
-- A longer window is set at once, with no restart: 7 to 14 days within 8 minutes in the same run.
+- A longer window is set at once, with no restart. Seen live: raising a window from 7 to 14 days took effect within 8 minutes.
 - **Tag before you plan.** The plan checks the windows of what's tagged, and lists each database and its window in its `pitr_checked` output. Empty means it found none: check the tags, then plan again. A database tagged after apply gets this window with no check: a longer window is cut, and AWS's older backups are deleted.
 - Before you apply, note each database's window from `pitr_checked`: after teardown the window stays as set, and you can set the old one back.
 
