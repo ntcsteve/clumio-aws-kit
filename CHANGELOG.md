@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.2.2 (unreleased)
+## v1.2.2 (2026-11-06)
 
 - Docs only, from a first-timer read:
   - the README's safety list says the PITR check covers only databases tagged when you plan;
