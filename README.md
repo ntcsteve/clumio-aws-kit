@@ -96,6 +96,23 @@ You tag a resource. A Clumio rule matches the tag. The policy decides what Clumi
 
 ## What to do
 
+The whole route, in two sittings:
+
+```
+ SITTING 1
+ 0    Prepare   preflight, IAM preview      review pack -> your security team
+ 1.1  Connect   plan the connection
+                .... wait for your security team's answer ....
+ SITTING 2
+ 1.2  Connect   STOP: read the plan -> apply  the connection + Clumio's IAM
+ 2    Protect   tag -> plan -> STOP -> apply  once per workload
+                .... first copies: minutes to an hour, allow a day ....
+ 3    Prove     PROTECTED -> restore one -> report: PROVEN
+ 4    Finish    take the trial down (restore first), or go live (fresh clone)
+```
+
+Each stage has its own table below: [Prepare](#prepare), [Connect](#connect), [Protect](#protect), [Prove](#prove), [Take a trial down](#take-a-trial-down). To go live: [Production](docs/production.md).
+
 Run each command in the folder under Where, in one shell: the one signed in to AWS, with the Clumio details exported. **Person**: a person does it. **STOP**: wait for a person's go. **Anyone**: a person or an agent. `<workload>` is `s3`, `rds`, `aurora`, `ec2` or `ebs`. [Operate](docs/operate.md) explains each status and error.
 
 ### Prepare
