@@ -14,7 +14,7 @@ Give it time: [how long first copies took in the lab](../README.md#plan-and-prep
 
 ## 2. Restore one
 
-In the Clumio console, restore one resource you protected, to a new name beside the original, never over it. Open the resource under **AWS**, click its backup's date, and choose a SecureVault backup. If the date lists several, choose **SecureVault Standard**, not Archive or point-in-time recovery. Labels are as seen in the lab:
+In the Clumio console, restore one resource you protected, to a new name beside the original, never over it. Open the resource under **AWS**, click its backup's date, and choose a SecureVault backup. If the date lists several, choose **SecureVault Standard**, not Archive or point-in-time recovery. An Archive restore starts only after 24 to 48 hours, as [Clumio's tiers page](https://documentation.commvault.com/clumio/securevault_backup_tier_options.html) says. Labels are as seen in the lab:
 
 | Workload | In the console |
 |---|---|

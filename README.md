@@ -142,7 +142,7 @@ Tag what matters, and set how long to keep it. Repeat per workload.
 
 | Step | Who | Where | Do | Expect |
 |---|---|---|---|---|
-| 2.1 | Person | AWS | Tag what to protect: `clumio-profile = gold` (an EBS volume on its own: `clumio-volume-profile = gold`). Note each tagged database's PITR window | Tagged before the plan; windows noted |
+| 2.1 | Person | AWS | Tag what to protect: `clumio-profile = gold` (an EBS volume on its own: `clumio-volume-profile = gold`). Note each tagged database's PITR window, and one value you'll check after a restore, such as a row, a file or an object's contents | Tagged before the plan; windows and a check value noted |
 | 2.2 | Person | `2-protect-<workload>` | `cp settings.example terraform.tfvars`, then set any value marked REPLACE and check the rest | Settings set |
 | 2.3 | Anyone | root | `tools/status.py --preflight` | Every line PASS, or NOTE: read it |
 | 2.4 | Anyone | `2-protect-<workload>` | `terraform init`, then `terraform plan -out=tfplan` | Adds one Clumio policy and its rule (S3: a protection group and its assignment, in place of a rule), and markers that create nothing. Nothing to change or destroy. RDS and Aurora: `pitr_checked` lists each database. Empty means none found: stop, and check the tags |
